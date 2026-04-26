@@ -1,6 +1,6 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v12 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
+The current engine now has functional v13 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
 
 ## Editor
 
@@ -39,8 +39,8 @@ The current engine now has functional v12 versions of many requested followups. 
 
 ## Production
 
-- Expand the new replay/baseline asset format into multiple scenario suites for editor camera, selection, gizmo dragging, asset reload, and rendering debug views.
-- Promote the PPM capture/hash/luminance verifier into binary golden-image comparison with tolerances per GPU/driver family.
-- Turn the new local performance history CSV into automated regression summaries across commits.
+- Expand the new multi-suite replay/baseline/golden format into editor camera, selection, gizmo dragging, asset reload, and rendering debug-view suites.
+- Add per-GPU/driver golden tolerance profiles and richer image-diff diagnostics around the new thumbnail comparator.
+- Turn the local performance history summary into automated commit-to-commit regression gates.
 - Extend CI with packaged runtime smoke tests by default when an interactive desktop runner is available.
 - Add installer-style packaging, symbols handling, versioned release artifacts, and crash upload plumbing beyond local `Saved/CrashLogs` reports.

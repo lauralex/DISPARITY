@@ -168,13 +168,22 @@ Editor UI:
 - `RuntimeVerifyDisparity.ps1` appends `Saved/Verification/performance_history.csv` so local verification runs produce a trendable performance/capture history.
 - `VerifyDisparity.ps1` exposes replay and baseline path overrides for future scenario-specific verification suites.
 
+## Engine v13 Followups Implemented
+
+- `Assets/Verification/RuntimeSuites.dverify` now drives multiple runtime suites through the unified verifier.
+- `CameraSweep` adds a second deterministic replay/baseline path focused on camera movement and render stability.
+- Runtime verification compares captured frames against suite-specific 64x36 golden PPM thumbnails under `Assets/Verification/Goldens`.
+- `Tools/CompareCaptureDisparity.ps1` can update goldens or fail on mean-delta/bad-pixel-ratio drift.
+- `Tools/SummarizePerformanceHistory.ps1` reports recent CPU/GPU deltas by suite and executable.
+- `VerifyDisparity.ps1` now runs all suites for Debug and packaged builds, then prints the local performance trend summary.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
 - Turn the scheduled render graph into the authoritative renderer execution path with real DX11 resource lifetime ownership, alias allocation decisions, async compute candidates, and GPU-driven culling.
-- Add a dedicated editor viewport render target, object-ID selection buffers, depth-aware gizmo handle picking, and stronger transform constraints.
+- Add a dedicated editor viewport render target, object-ID selection buffers, depth-aware gizmo handle picking, and editor interaction verification suites.
 - Add prefab variants, nested prefabs, dependency-aware apply/revert, and save-game separation.
 - Add production `.glb` cooking, animation retargeting/blending, and GPU skinning palettes.
 - Replace the WinMM prototype audio backend with XAudio2 voices, sends, snapshots, streamed layers, spatial emitters, and meters.
-- Add multiple replay/baseline suites, binary golden-image diffing with per-GPU tolerances, and automated performance trend regression summaries.
+- Extend golden-image and performance regression gates with per-GPU tolerance profiles and commit-to-commit baselines.

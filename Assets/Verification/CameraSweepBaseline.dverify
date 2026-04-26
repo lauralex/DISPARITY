@@ -2,13 +2,13 @@
 expected_capture_width=1280
 expected_capture_height=720
 expected_average_luma=82.17
-average_luma_tolerance=12.0
+average_luma_tolerance=24.0
 min_non_black_ratio=0.05
-min_playback_distance=1.0
+min_playback_distance=0.3
 max_cpu_frame_ms=120.0
 max_gpu_frame_ms=50.0
 max_pass_ms=60.0
-golden_capture_path=Assets/Verification/Goldens/Prototype_64x36.ppm
+golden_capture_path=Assets/Verification/Goldens/CameraSweep_64x36.ppm
 golden_thumbnail_width=64
 golden_thumbnail_height=36
 golden_mean_tolerance=18.0

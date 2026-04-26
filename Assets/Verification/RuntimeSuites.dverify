@@ -1,0 +1,3 @@
+# name|frames|replay|baseline
+Prototype|90|Assets/Verification/Prototype.dreplay|Assets/Verification/RuntimeBaseline.dverify
+CameraSweep|90|Assets/Verification/CameraSweep.dreplay|Assets/Verification/CameraSweepBaseline.dverify

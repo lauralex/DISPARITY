@@ -7,7 +7,9 @@ param(
     [double]$RuntimeGpuFrameBudgetMs = 50.0,
     [double]$RuntimePassBudgetMs = 60.0,
     [string]$RuntimeReplayPath = "Assets/Verification/Prototype.dreplay",
-    [string]$RuntimeBaselinePath = "Assets/Verification/RuntimeBaseline.dverify"
+    [string]$RuntimeBaselinePath = "Assets/Verification/RuntimeBaseline.dverify",
+    [string]$RuntimeSuiteFile = "Assets/Verification/RuntimeSuites.dverify",
+    [switch]$DisableGoldenComparison
 )
 
 $ErrorActionPreference = "Stop"
@@ -108,6 +110,59 @@ function Get-FxcPath {
     return $fxc
 }
 
+function Resolve-RepoPath {
+    param([string]$Path)
+
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+
+    return Join-Path $root $Path
+}
+
+function Get-RuntimeSuites {
+    $suitePath = Resolve-RepoPath -Path $RuntimeSuiteFile
+    if (!(Test-Path -LiteralPath $suitePath)) {
+        return @([pscustomobject]@{
+            Name = "Default"
+            Frames = $RuntimeFrames
+            ReplayPath = $RuntimeReplayPath
+            BaselinePath = $RuntimeBaselinePath
+        })
+    }
+
+    $suites = @()
+    foreach ($line in Get-Content -LiteralPath $suitePath) {
+        $trimmed = $line.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith("#")) {
+            continue
+        }
+
+        $parts = $trimmed -split "\|"
+        if ($parts.Count -ne 4) {
+            throw "Invalid runtime suite line in ${suitePath}: $line"
+        }
+
+        $frames = [int]$parts[1].Trim()
+        if ($frames -le 0) {
+            throw "Runtime suite $($parts[0]) has invalid frame count $frames."
+        }
+
+        $suites += [pscustomobject]@{
+            Name = $parts[0].Trim()
+            Frames = $frames
+            ReplayPath = $parts[2].Trim()
+            BaselinePath = $parts[3].Trim()
+        }
+    }
+
+    if ($suites.Count -eq 0) {
+        throw "Runtime suite file $suitePath did not define any suites."
+    }
+
+    return $suites
+}
+
 Invoke-Step "Git whitespace check" {
     Push-Location $root
     try {
@@ -148,12 +203,30 @@ Invoke-Step "HLSL shader compilation" {
 }
 
 if (!$SkipRuntime) {
+    $runtimeSuites = Get-RuntimeSuites
     Invoke-Step "Debug runtime window smoke" {
         & (Join-Path $PSScriptRoot "SmokeTestDisparity.ps1") -Configuration Debug -Seconds 3 -ExerciseWindow
     }
 
-    Invoke-Step "Debug runtime self-verification" {
-        & (Join-Path $PSScriptRoot "RuntimeVerifyDisparity.ps1") -Configuration Debug -Frames $RuntimeFrames -CpuFrameBudgetMs $RuntimeCpuFrameBudgetMs -GpuFrameBudgetMs $RuntimeGpuFrameBudgetMs -PassBudgetMs $RuntimePassBudgetMs -ReplayPath $RuntimeReplayPath -BaselinePath $RuntimeBaselinePath
+    foreach ($suite in $runtimeSuites) {
+        Invoke-Step "Debug runtime self-verification ($($suite.Name))" {
+            $runtimeArguments = @{
+                Configuration = "Debug"
+                Frames = $suite.Frames
+                CpuFrameBudgetMs = $RuntimeCpuFrameBudgetMs
+                GpuFrameBudgetMs = $RuntimeGpuFrameBudgetMs
+                PassBudgetMs = $RuntimePassBudgetMs
+                SuiteName = $suite.Name
+                ReplayPath = $suite.ReplayPath
+                BaselinePath = $suite.BaselinePath
+                HistoryPath = (Join-Path $root "Saved\Verification\performance_history.csv")
+            }
+            if ($DisableGoldenComparison) {
+                $runtimeArguments["DisableGoldenComparison"] = $true
+            }
+
+            & (Join-Path $PSScriptRoot "RuntimeVerifyDisparity.ps1") @runtimeArguments
+        }
     }
 }
 
@@ -168,9 +241,36 @@ if (!$SkipPackage) {
             & (Join-Path $PSScriptRoot "SmokeTestDisparity.ps1") -ExecutablePath $packagedExecutable -Seconds 3 -ExerciseWindow
         }
 
-        Invoke-Step "Packaged runtime self-verification" {
-            & (Join-Path $PSScriptRoot "RuntimeVerifyDisparity.ps1") -ExecutablePath $packagedExecutable -Frames $RuntimeFrames -CpuFrameBudgetMs $RuntimeCpuFrameBudgetMs -GpuFrameBudgetMs $RuntimeGpuFrameBudgetMs -PassBudgetMs $RuntimePassBudgetMs -ReplayPath $RuntimeReplayPath -BaselinePath $RuntimeBaselinePath
+        if (!$SkipRuntime) {
+            $runtimeSuites = Get-RuntimeSuites
         }
+
+        foreach ($suite in $runtimeSuites) {
+            Invoke-Step "Packaged runtime self-verification ($($suite.Name))" {
+                $runtimeArguments = @{
+                    ExecutablePath = $packagedExecutable
+                    Frames = $suite.Frames
+                    CpuFrameBudgetMs = $RuntimeCpuFrameBudgetMs
+                    GpuFrameBudgetMs = $RuntimeGpuFrameBudgetMs
+                    PassBudgetMs = $RuntimePassBudgetMs
+                    SuiteName = $suite.Name
+                    ReplayPath = $suite.ReplayPath
+                    BaselinePath = $suite.BaselinePath
+                    HistoryPath = (Join-Path $root "Saved\Verification\performance_history.csv")
+                }
+                if ($DisableGoldenComparison) {
+                    $runtimeArguments["DisableGoldenComparison"] = $true
+                }
+
+                & (Join-Path $PSScriptRoot "RuntimeVerifyDisparity.ps1") @runtimeArguments
+            }
+        }
+    }
+}
+
+if (!$SkipRuntime) {
+    Invoke-Step "Performance history summary" {
+        & (Join-Path $PSScriptRoot "SummarizePerformanceHistory.ps1") -HistoryPath (Join-Path $root "Saved\Verification\performance_history.csv")
     }
 }
 

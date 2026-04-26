@@ -67,7 +67,7 @@ Use the full local gate before calling the repository healthy:
 powershell -ExecutionPolicy Bypass -File .\Tools\VerifyDisparity.ps1
 ```
 
-The verification script runs `git diff --check`, warning-free Debug and Release builds, MSVC static analysis, all shader entry-point compiles, Debug window smoke, Debug runtime self-verification, Release packaging, packaged window smoke, and packaged runtime self-verification.
+The verification script runs `git diff --check`, warning-free Debug and Release builds, MSVC static analysis, all shader entry-point compiles, Debug window smoke, every runtime verification suite, Release packaging, packaged window smoke, every packaged runtime verification suite, and a performance-history summary.
 
 Targeted checks are still useful while iterating:
 
@@ -77,12 +77,17 @@ powershell -ExecutionPolicy Bypass -File .\Tools\RuntimeVerifyDisparity.ps1 -Con
 .\bin\x64\Debug\DisparityGame.exe --verify-runtime --verify-frames=90
 ```
 
-Runtime verification writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, runs deterministic input playback, validates capture dimensions/luminance/checksum/nonblank pixels, checks CPU/GPU frame budgets and per-pass render-graph budgets, and exits non-zero if an invariant fails. Budget defaults can be overridden through `RuntimeVerifyDisparity.ps1` or direct flags such as `--verify-cpu-budget-ms=120`, `--verify-gpu-budget-ms=50`, and `--verify-pass-budget-ms=60`.
+Runtime verification writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, runs deterministic input playback, validates capture dimensions/luminance/checksum/nonblank pixels, checks CPU/GPU frame budgets and per-pass render-graph budgets, downsamples the frame into a thumbnail, compares it against a suite-specific golden PPM, and exits non-zero if an invariant fails. Budget defaults can be overridden through `RuntimeVerifyDisparity.ps1` or direct flags such as `--verify-cpu-budget-ms=120`, `--verify-gpu-budget-ms=50`, and `--verify-pass-budget-ms=60`.
 
 Runtime replay and baseline expectations are assetized:
 
+- `Assets/Verification/RuntimeSuites.dverify` defines named runtime suites. The current suites are `Prototype` and `CameraSweep`.
 - `Assets/Verification/Prototype.dreplay` defines frame ranges, movement vectors, and camera drift for deterministic playback.
-- `Assets/Verification/RuntimeBaseline.dverify` defines expected capture dimensions, average luminance tolerance, nonblack pixel ratio, minimum replay distance, and performance budgets.
+- `Assets/Verification/CameraSweep.dreplay` adds a camera-heavy deterministic playback path.
+- `Assets/Verification/RuntimeBaseline.dverify` and `Assets/Verification/CameraSweepBaseline.dverify` define expected capture dimensions, average luminance tolerance, nonblack pixel ratio, minimum replay distance, performance budgets, and golden thumbnail tolerances.
+- `Assets/Verification/Goldens/*.ppm` stores suite-specific 64x36 golden thumbnails.
+- `Tools/CompareCaptureDisparity.ps1` creates or compares capture thumbnails against goldens.
+- `Tools/SummarizePerformanceHistory.ps1` groups recent local runs by suite/executable and reports CPU/GPU deltas.
 - `Saved/Verification/performance_history.csv` is appended by `RuntimeVerifyDisparity.ps1` so repeated local runs leave a trend trail without committing generated data.
 
 Crashes write a small report to `Saved/CrashLogs`. GitHub Actions runs the static side of `Tools/VerifyDisparity.ps1` on push and pull request; an opt-in `workflow_dispatch` input can run the runtime gate when a runner has an interactive desktop.
