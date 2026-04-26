@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{7F7E3C07-7F8F-4BEA-9D5F-E6A92590B277}</ProjectGuid>
+    <RootNamespace>DisparityEngine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)obj\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalIncludeDirectories>$(ProjectDir)Source;$(SolutionDir)ThirdParty\imgui;$(SolutionDir)ThirdParty\imgui\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Lib />
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalIncludeDirectories>$(ProjectDir)Source;$(SolutionDir)ThirdParty\imgui;$(SolutionDir)ThirdParty\imgui\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+    <Lib />
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="Source\Disparity\Animation\Animation.h" />
+    <ClInclude Include="Source\Disparity\Assets\AssetHotReloader.h" />
+    <ClInclude Include="Source\Disparity\Assets\GltfLoader.h" />
+    <ClInclude Include="Source\Disparity\Assets\MaterialAsset.h" />
+    <ClInclude Include="Source\Disparity\Assets\Prefab.h" />
+    <ClInclude Include="Source\Disparity\Assets\SimpleJson.h" />
+    <ClInclude Include="Source\Disparity\Audio\AudioSystem.h" />
+    <ClInclude Include="Source\Disparity\Disparity.h" />
+    <ClInclude Include="Source\Disparity\Core\Application.h" />
+    <ClInclude Include="Source\Disparity\Core\FileSystem.h" />
+    <ClInclude Include="Source\Disparity\Core\Input.h" />
+    <ClInclude Include="Source\Disparity\Core\Layer.h" />
+    <ClInclude Include="Source\Disparity\Core\Log.h" />
+    <ClInclude Include="Source\Disparity\Core\Time.h" />
+    <ClInclude Include="Source\Disparity\Diagnostics\Profiler.h" />
+    <ClInclude Include="Source\Disparity\ECS\Registry.h" />
+    <ClInclude Include="Source\Disparity\Editor\EditorGui.h" />
+    <ClInclude Include="Source\Disparity\Editor\EditorOverlay.h" />
+    <ClInclude Include="Source\Disparity\Math\Transform.h" />
+    <ClInclude Include="Source\Disparity\Rendering\Renderer.h" />
+    <ClInclude Include="Source\Disparity\Scripting\ScriptRunner.h" />
+    <ClInclude Include="Source\Disparity\Scene\Camera.h" />
+    <ClInclude Include="Source\Disparity\Scene\Material.h" />
+    <ClInclude Include="Source\Disparity\Scene\Mesh.h" />
+    <ClInclude Include="Source\Disparity\Scene\PrimitiveFactory.h" />
+    <ClInclude Include="Source\Disparity\Scene\Scene.h" />
+    <ClInclude Include="Source\Disparity\Scene\SceneObject.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Source\Disparity\Animation\Animation.cpp" />
+    <ClCompile Include="Source\Disparity\Assets\AssetHotReloader.cpp" />
+    <ClCompile Include="Source\Disparity\Assets\GltfLoader.cpp" />
+    <ClCompile Include="Source\Disparity\Assets\MaterialAsset.cpp" />
+    <ClCompile Include="Source\Disparity\Assets\Prefab.cpp" />
+    <ClCompile Include="Source\Disparity\Assets\SimpleJson.cpp" />
+    <ClCompile Include="Source\Disparity\Audio\AudioSystem.cpp" />
+    <ClCompile Include="Source\Disparity\Core\Application.cpp" />
+    <ClCompile Include="Source\Disparity\Core\FileSystem.cpp" />
+    <ClCompile Include="Source\Disparity\Core\Input.cpp" />
+    <ClCompile Include="Source\Disparity\Core\Log.cpp" />
+    <ClCompile Include="Source\Disparity\Core\Time.cpp" />
+    <ClCompile Include="Source\Disparity\Diagnostics\Profiler.cpp" />
+    <ClCompile Include="Source\Disparity\ECS\Registry.cpp" />
+    <ClCompile Include="Source\Disparity\Editor\EditorGui.cpp" />
+    <ClCompile Include="Source\Disparity\Editor\EditorOverlay.cpp" />
+    <ClCompile Include="Source\Disparity\Rendering\Renderer.cpp" />
+    <ClCompile Include="Source\Disparity\Scripting\ScriptRunner.cpp" />
+    <ClCompile Include="Source\Disparity\Scene\Camera.cpp" />
+    <ClCompile Include="Source\Disparity\Scene\PrimitiveFactory.cpp" />
+    <ClCompile Include="Source\Disparity\Scene\Scene.cpp" />
+    <ClCompile Include="..\ThirdParty\imgui\imgui.cpp" />
+    <ClCompile Include="..\ThirdParty\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\ThirdParty\imgui\imgui_tables.cpp" />
+    <ClCompile Include="..\ThirdParty\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_dx11.cpp" />
+    <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_win32.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

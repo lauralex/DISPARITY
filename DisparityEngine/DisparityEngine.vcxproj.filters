@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source">
+      <UniqueIdentifier>{4A0AAB50-F671-4DEE-A0FD-6D50D6F4E0F1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Core">
+      <UniqueIdentifier>{C7550277-C399-48A3-8A53-E8FC7A6AD6B5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Animation">
+      <UniqueIdentifier>{D7CD3C52-D34D-41E5-A7B6-08B8373E9173}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Assets">
+      <UniqueIdentifier>{87E8AF89-795F-44F3-B03B-4AB95D9EE35C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Audio">
+      <UniqueIdentifier>{75C48993-5341-47B1-91C4-0535987FA105}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Diagnostics">
+      <UniqueIdentifier>{9221FA19-733D-4D8F-8C3D-2FA41C6C868B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\ECS">
+      <UniqueIdentifier>{5C6F077D-D5C7-4690-821C-3A8F7F268DE8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor">
+      <UniqueIdentifier>{D26A4610-B7E4-4E82-A109-65983FB4290B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Math">
+      <UniqueIdentifier>{F10D8B52-E5E0-4DDE-8CF8-31C36D56CDAE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Rendering">
+      <UniqueIdentifier>{717DD262-0CC6-477A-8C4E-95608B922065}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Scene">
+      <UniqueIdentifier>{0D9D9623-A38E-44C2-87F3-D8CB7B1644D2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Scripting">
+      <UniqueIdentifier>{B49D98FB-7E75-4ACF-A068-0E891CE3D7B7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Source\Disparity\Animation\Animation.h"><Filter>Source\Animation</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Assets\AssetHotReloader.h"><Filter>Source\Assets</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Assets\GltfLoader.h"><Filter>Source\Assets</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Assets\MaterialAsset.h"><Filter>Source\Assets</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Assets\Prefab.h"><Filter>Source\Assets</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Assets\SimpleJson.h"><Filter>Source\Assets</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Audio\AudioSystem.h"><Filter>Source\Audio</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Disparity.h"><Filter>Source</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Core\Application.h"><Filter>Source\Core</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Core\FileSystem.h"><Filter>Source\Core</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Core\Input.h"><Filter>Source\Core</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Core\Layer.h"><Filter>Source\Core</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Core\Log.h"><Filter>Source\Core</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Core\Time.h"><Filter>Source\Core</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Diagnostics\Profiler.h"><Filter>Source\Diagnostics</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\ECS\Registry.h"><Filter>Source\ECS</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Editor\EditorGui.h"><Filter>Source\Editor</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Editor\EditorOverlay.h"><Filter>Source\Editor</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Math\Transform.h"><Filter>Source\Math</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Rendering\Renderer.h"><Filter>Source\Rendering</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Scripting\ScriptRunner.h"><Filter>Source\Scripting</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Scene\Camera.h"><Filter>Source\Scene</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Scene\Material.h"><Filter>Source\Scene</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Scene\Mesh.h"><Filter>Source\Scene</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Scene\PrimitiveFactory.h"><Filter>Source\Scene</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Scene\Scene.h"><Filter>Source\Scene</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Scene\SceneObject.h"><Filter>Source\Scene</Filter></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Source\Disparity\Animation\Animation.cpp"><Filter>Source\Animation</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Assets\AssetHotReloader.cpp"><Filter>Source\Assets</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Assets\GltfLoader.cpp"><Filter>Source\Assets</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Assets\MaterialAsset.cpp"><Filter>Source\Assets</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Assets\Prefab.cpp"><Filter>Source\Assets</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Assets\SimpleJson.cpp"><Filter>Source\Assets</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Audio\AudioSystem.cpp"><Filter>Source\Audio</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Core\Application.cpp"><Filter>Source\Core</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Core\FileSystem.cpp"><Filter>Source\Core</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Core\Input.cpp"><Filter>Source\Core</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Core\Log.cpp"><Filter>Source\Core</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Core\Time.cpp"><Filter>Source\Core</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Diagnostics\Profiler.cpp"><Filter>Source\Diagnostics</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\ECS\Registry.cpp"><Filter>Source\ECS</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Editor\EditorGui.cpp"><Filter>Source\Editor</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Editor\EditorOverlay.cpp"><Filter>Source\Editor</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Rendering\Renderer.cpp"><Filter>Source\Rendering</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Scripting\ScriptRunner.cpp"><Filter>Source\Scripting</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Scene\Camera.cpp"><Filter>Source\Scene</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Scene\PrimitiveFactory.cpp"><Filter>Source\Scene</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Scene\Scene.cpp"><Filter>Source\Scene</Filter></ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\imgui.cpp"><Filter>Source\Editor</Filter></ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\imgui_draw.cpp"><Filter>Source\Editor</Filter></ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\imgui_tables.cpp"><Filter>Source\Editor</Filter></ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\imgui_widgets.cpp"><Filter>Source\Editor</Filter></ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_dx11.cpp"><Filter>Source\Editor</Filter></ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_win32.cpp"><Filter>Source\Editor</Filter></ClCompile>
+  </ItemGroup>
+</Project>

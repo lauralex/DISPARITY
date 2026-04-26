@@ -1,0 +1,7 @@
+# DISPARITY material v1
+name=PlayerHead
+albedo=0.88,0.92,0.98
+roughness=0.28
+metallic=0.02
+alpha=1
+texture=
