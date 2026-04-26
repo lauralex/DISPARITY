@@ -14,7 +14,7 @@ Current shape:
 - Renderer backend is DirectX 11.
 - Dependency policy now allows the vendored Dear ImGui docking branch in `ThirdParty/imgui`; otherwise prefer Win32, DirectX 11, DirectXMath, WIC/WinMM, and the Windows SDK.
 - Geometry includes procedural primitives, procedural terrain, and a glTF 2.0 scene loader path for static mesh primitives, material texture binding, node instancing, skin metadata, joint/weight attributes, and animation sampler data.
-- Editor/runtime v16 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, stable-ID/OBB editor picking, dedicated editor viewport/object-ID/object-depth GPU targets, gizmo hover highlighting, copy/paste/duplicate/delete scene-object workflows, an independent editor camera with right-drag WASD/QE fly controls, simple transform gizmo buttons plus camera-scaled 3D translate/rotate/scale handles, torus rotate rings, translucent XY/XZ/YZ translate-plane handles, snapping and world/local space, prefab apply/save workflows, schema v3 scene saves, visibly stronger post effects with debug views, bus-based audio controls, bus sends, simple meters, mixer snapshots, spatial listener orientation, XAudio2 availability detection, an asset database with import settings plus deterministic cooked metadata and `.dassetbin` package manifests, a compiled render graph schedule with pass CPU/GPU timings, culled passes, transition diagnostics, alias candidates, resource lifetimes, transient allocation slots, alias reuse, renderer pass-dispatch validation, job system, version reporting, crash logs plus local crash upload manifests/dry-run transport, deterministic runtime self-verification, six-suite assetized replay/baseline/golden verification, frame capture validation, adapter-aware golden profile selection, golden diff thumbnails, committed performance baselines, package manifests/symbols/zip artifacts, symbol indexing, installer payload manifests, stronger window smoke tests, and unified static/runtime verification scripts.
+- Editor/runtime v17 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, stable-ID/OBB editor picking, dedicated editor viewport/object-ID/object-depth GPU targets, gizmo hover highlighting, copy/paste/duplicate/delete scene-object workflows, an independent editor camera with right-drag WASD/QE fly controls, simple transform gizmo buttons plus camera-scaled 3D translate/rotate/scale handles, torus rotate rings, translucent XY/XZ/YZ translate-plane handles, snapping and world/local space, prefab apply/save workflows, schema v3 scene saves, an animated procedural DISPARITY rift set piece, F7 cinematic showcase mode with a boosted orbit camera, visibly stronger post effects with debug views, bus-based audio controls, bus sends, simple meters, mixer snapshots, spatial listener orientation, XAudio2 availability detection, an asset database with import settings plus deterministic cooked metadata and `.dassetbin` package manifests, a compiled render graph schedule with pass CPU/GPU timings, culled passes, transition diagnostics, alias candidates, resource lifetimes, transient allocation slots, alias reuse, renderer pass-dispatch validation, job system, version reporting, crash logs plus local crash upload manifests/dry-run transport, deterministic runtime self-verification, six-suite assetized replay/baseline/golden verification, showcase coverage counters, deterministic rift timing for runtime captures, frame capture validation, adapter-aware golden profile selection, golden diff thumbnails, committed performance baselines, package manifests/symbols/zip artifacts, symbol indexing, installer payload manifests, stronger window smoke tests, and unified static/runtime verification scripts.
 
 ## Important Paths
 
@@ -94,7 +94,7 @@ Runtime verification mode:
 .\bin\x64\Debug\DisparityGame.exe --verify-runtime --verify-frames=90
 ```
 
-It writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, loads a `.dreplay` asset, compares against a `.dverify` baseline, exercises deterministic player/camera input playback, scene reload, runtime scene save, renderer post-debug cycling, selection cycling, stable-ID object/gizmo picks, gizmo transform constraints, audio mixer snapshots, draw-call counters, render-graph validation, render-graph allocation/alias/dispatch diagnostics, dedicated editor viewport/object-ID/object-depth target readiness, image stats, and CPU/GPU/pass performance budgets, then exits with code `0` for PASS or `20` for FAIL. `Tools/RuntimeVerifyDisparity.ps1` also compares the capture against the baseline's golden thumbnail through an adapter-specific profile when present or the default golden profile unless `-DisableGoldenComparison` is used.
+It writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, loads a `.dreplay` asset, compares against a `.dverify` baseline, exercises deterministic player/camera input playback, scene reload, runtime scene save, renderer post-debug cycling, cinematic showcase mode, selection cycling, stable-ID object/gizmo picks, gizmo transform constraints, audio mixer snapshots, draw-call counters, render-graph validation, render-graph allocation/alias/dispatch diagnostics, dedicated editor viewport/object-ID/object-depth target readiness, image stats, and CPU/GPU/pass performance budgets, then exits with code `0` for PASS or `20` for FAIL. `Tools/RuntimeVerifyDisparity.ps1` also compares the capture against the baseline's golden thumbnail through an adapter-specific profile when present or the default golden profile unless `-DisableGoldenComparison` is used.
 
 ## Current Controls
 
@@ -107,6 +107,7 @@ It writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/
 - `F3`: cycle selected scene object in the overlay.
 - `F5`: reload scene and script; this is only visually obvious after the asset files are edited while the game is running.
 - `F6`: save runtime scene snapshot to `Saved/PrototypeRuntime.dscene`.
+- `F7`: toggle cinematic showcase mode, hide the editor, boost the post stack, and orbit the animated DISPARITY rift for capture-friendly footage.
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 - When mouse capture is released with `Tab`, left-click the main viewport to pick objects. Hold `Ctrl` while picking or selecting in Hierarchy for multi-selection.
@@ -125,14 +126,14 @@ It writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/
 
 ## Verified Baseline
 
-On 2026-04-27 after the v16 production followup pass:
+On 2026-04-27 after the v17 showcase followup pass:
 
 - `Debug|x64` built successfully with 0 warnings and 0 errors.
 - `Release|x64` built successfully with 0 warnings and 0 errors.
 - MSVC static analysis completed successfully.
 - `Assets/Shaders/Basic.hlsl` and `Assets/Shaders/PostProcess.hlsl` compiled successfully for `VSMain` and `PSMain` with `fxc`.
 - `Tools/SmokeTestDisparity.ps1 -Configuration Debug -ExerciseWindow` launched `DisparityGame.exe`, found the window, resized it, sent basic editor hotkeys, kept it alive for 3 seconds, and closed it cleanly.
-- `Tools/VerifyDisparity.ps1` produced PASS Debug runtime reports for the `Prototype`, `CameraSweep`, `EditorPrecision`, `PostDebug`, `AssetReload`, and `GizmoDrag` suites, wrote captures/thumbnails/diff thumbnails, compared them against `Assets/Verification/Goldens/*.ppm` through adapter/default golden profiles, validated stable-ID editor picks, gizmo picks, render-graph allocation/alias/dispatch diagnostics, dedicated editor GPU target readiness, gizmo transform constraints, scene reload/save counters, post-debug view counters, and audio snapshot counters, loaded the replay/baseline assets, and appended `Saved/Verification/performance_history.csv`.
+- `Tools/VerifyDisparity.ps1` produced PASS Debug runtime reports for the `Prototype`, `CameraSweep`, `EditorPrecision`, `PostDebug`, `AssetReload`, and `GizmoDrag` suites, wrote captures/thumbnails/diff thumbnails, compared them against `Assets/Verification/Goldens/*.ppm` through adapter/default golden profiles, validated stable-ID editor picks, gizmo picks, render-graph allocation/alias/dispatch diagnostics, dedicated editor GPU target readiness, gizmo transform constraints, scene reload/save counters, post-debug view counters, showcase frame counters, and audio snapshot counters, loaded the replay/baseline assets, and appended `Saved/Verification/performance_history.csv`.
 - `Tools/CookDisparityAssets.ps1 -Configuration Debug -BinaryPackages` produced `Saved/CookedAssets/manifest.dcook` plus `.dassetbin` package records.
 - `Tools/CollectCrashReports.ps1 -DryRun` produced `Saved/CrashUploads/crash_upload_manifest.json`, and `Tools/UploadCrashReports.ps1 -DryRun` validated the transport dry run.
 - `Tools/ReviewVerificationBaselines.ps1 -ListGoldenProfiles` validated required baseline keys and printed available golden profiles.
@@ -140,9 +141,9 @@ On 2026-04-27 after the v16 production followup pass:
 - `Tools/IndexDisparitySymbols.ps1` produced `Symbols/symbols_manifest.json` for packaged PDBs.
 - `Tools/CreateDisparityInstaller.ps1 -CreateArchive` produced `dist/Installer/DISPARITY-SetupManifest.json` and an installer payload zip.
 - `Tools/SmokeTestDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe -ExerciseWindow` launched the packaged build, found/resized/exercised the window, and closed it cleanly.
-- `Tools/VerifyDisparity.ps1` produced PASS packaged runtime reports, captures, golden comparisons, and local performance history rows for all six suites against `dist/DISPARITY-Release\DisparityGame.exe`.
+- `Tools/VerifyDisparity.ps1` produced PASS packaged runtime reports, captures, golden comparisons, showcase coverage, and local performance history rows for all six suites against `dist/DISPARITY-Release\DisparityGame.exe`.
 - `Tools/SummarizePerformanceHistory.ps1 -BaselinePath Assets/Verification/PerformanceBaselines.dperf` completed successfully as part of `Tools/VerifyDisparity.ps1`.
-- The v16 pass was committed only after `Tools/VerifyDisparity.ps1`, `git status --short`, and signed-commit review.
+- The v17 pass was committed only after `Tools/VerifyDisparity.ps1`, `git status --short`, and signed-commit review.
 
 After feature work, run `powershell -ExecutionPolicy Bypass -File .\Tools\VerifyDisparity.ps1` and `git status --short` before declaring the repo healthy.
 
@@ -154,6 +155,8 @@ Good next steps for making the engine more modern and AAA-like:
 - Populate the dedicated editor object-ID/depth targets with real scene-object and gizmo-handle IDs, then switch picking to GPU readback.
 - Add committed per-adapter golden profiles for known GPUs and turn baseline review into an explicit approval workflow.
 - Replace `.dassetbin` source bundles with optimized cooked `.glb` mesh/material packages, animation blending, retargeting, and GPU skinning palette upload.
+- Add a trailer/photo mode with authored camera splines, high-resolution capture, depth of field, title-safe overlays, and deterministic shot playback.
+- Replace the procedural rift proof with a real VFX layer: billboard particles, ribbon trails, lightning arcs, volumetric fog cards, lens dirt, emissive material channels, and beat-synced audio pulses.
 - Add prefab variants, nested prefabs, override visualization, and dependency-aware apply/revert.
 - Replace the WinMM prototype implementation behind the v16 audio surface with XAudio2 voices, streamed music, spatial emitters, attenuation curves, and production meters.
 - Replace installer manifests with a real bootstrapper, publish symbols to a symbol server, add authenticated crash upload retries, and run packaged runtime smoke tests on interactive CI runners.

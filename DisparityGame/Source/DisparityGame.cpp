@@ -291,6 +291,7 @@ namespace
             const float aspect = static_cast<float>(application.GetWidth()) / static_cast<float>(application.GetHeight());
             m_camera.SetPerspective(DirectX::XMConvertToRadians(67.0f), aspect, 0.1f, 400.0f);
             m_editorCamera.SetPerspective(DirectX::XMConvertToRadians(67.0f), aspect, 0.1f, 400.0f);
+            m_showcaseCamera.SetPerspective(DirectX::XMConvertToRadians(58.0f), aspect, 0.1f, 520.0f);
 
             if (!m_scene.Load("Assets/Scenes/Prototype.dscene", m_meshes))
             {
@@ -343,6 +344,10 @@ namespace
             {
                 SaveRuntimeScene();
             }
+            if (Disparity::Input::WasKeyPressed(VK_F7))
+            {
+                SetShowcaseMode(!m_showcaseMode);
+            }
             if (Disparity::Input::IsKeyDown(VK_CONTROL) && Disparity::Input::WasKeyPressed('Z'))
             {
                 UndoEdit();
@@ -389,16 +394,17 @@ namespace
             }
 
             const DirectX::XMFLOAT2 mouseDelta = Disparity::Input::GetMouseDelta();
-            if (Disparity::Input::IsMouseCaptured() && !editorCapturesMouse && !m_editorCameraEnabled)
+            if (Disparity::Input::IsMouseCaptured() && !editorCapturesMouse && !m_editorCameraEnabled && !m_showcaseMode)
             {
                 m_cameraYaw += mouseDelta.x * 0.0025f;
                 m_cameraPitch = std::clamp(m_cameraPitch - mouseDelta.y * 0.0022f, -0.15f, 0.95f);
             }
 
             PollHotReload(dt);
-            UpdatePlayer((editorCapturesKeyboard || m_editorCameraEnabled) ? 0.0f : dt);
+            UpdatePlayer((editorCapturesKeyboard || m_editorCameraEnabled || m_showcaseMode) ? 0.0f : dt);
             AnimateScene(dt);
             UpdateCamera();
+            UpdateShowcaseCamera(dt);
             UpdateEditorCamera(dt, editorCapturesMouse, editorCapturesKeyboard);
             UpdateEditorHover(editorCapturesMouse);
             const DirectX::XMFLOAT3 listenerPosition = GetRenderCamera().GetPosition();
@@ -417,14 +423,23 @@ namespace
             Disparity::DirectionalLight light;
             light.Direction = { -0.35f, -1.0f, 0.25f };
             light.Color = { 1.0f, 0.92f, 0.78f };
-            light.Intensity = 1.18f;
-            light.AmbientIntensity = 0.20f;
+            light.Intensity = m_showcaseMode ? 1.34f : 1.18f;
+            light.AmbientIntensity = m_showcaseMode ? 0.24f : 0.20f;
             renderer.SetLighting(light);
-            const std::array<Disparity::PointLight, 4> pointLights = {
+            const float visualTime = ShowcaseVisualTime();
+            const float riftPulse = 0.5f + 0.5f * std::sin(visualTime * 2.6f);
+            const float showcaseBoost = m_showcaseMode ? 1.8f : 1.0f;
+            const DirectX::XMFLOAT3 riftLightA = Add(m_riftPosition, { std::sin(visualTime * 0.9f) * 1.8f, 0.45f, std::cos(visualTime * 0.9f) * 1.2f });
+            const DirectX::XMFLOAT3 riftLightB = Add(m_riftPosition, { std::sin(visualTime * 1.17f + Pi) * 2.0f, -0.15f, std::cos(visualTime * 1.17f + Pi) * 1.7f });
+            const std::array<Disparity::PointLight, 8> pointLights = {
                 Disparity::PointLight{ { -4.0f, 3.2f, 3.0f }, 8.0f, { 0.28f, 0.52f, 1.0f }, 0.82f },
                 Disparity::PointLight{ { 4.5f, 2.5f, -2.0f }, 7.0f, { 1.0f, 0.46f, 0.24f }, 0.62f },
                 Disparity::PointLight{ { 0.0f, 2.0f, 7.0f }, 5.0f, { 0.9f, 0.82f, 0.38f }, 0.55f },
-                Disparity::PointLight{ Add(m_playerPosition, { 0.0f, 1.75f, 0.0f }), 4.5f, { 0.35f, 0.72f, 1.0f }, 0.45f }
+                Disparity::PointLight{ Add(m_playerPosition, { 0.0f, 1.75f, 0.0f }), 4.5f, { 0.35f, 0.72f, 1.0f }, 0.45f },
+                Disparity::PointLight{ m_riftPosition, 13.5f, { 0.20f, 0.78f, 1.0f }, (1.6f + riftPulse * 0.8f) * showcaseBoost },
+                Disparity::PointLight{ riftLightA, 9.5f, { 1.0f, 0.18f, 0.82f }, (1.1f + riftPulse * 0.7f) * showcaseBoost },
+                Disparity::PointLight{ riftLightB, 8.0f, { 0.56f, 0.28f, 1.0f }, (0.85f + riftPulse * 0.55f) * showcaseBoost },
+                Disparity::PointLight{ Add(m_riftPosition, { 0.0f, -1.55f, 0.0f }), 10.0f, { 0.18f, 0.9f, 0.72f }, 0.75f * showcaseBoost }
             };
             renderer.SetPointLights(pointLights.data(), static_cast<uint32_t>(pointLights.size()));
 
@@ -471,6 +486,8 @@ namespace
 
                 renderer.DrawMesh(renderable.MeshRenderer->Mesh, *renderable.TransformData, renderable.MeshRenderer->MaterialData);
             }
+
+            DrawShowcaseRift(renderer);
         }
 
         void OnResize(unsigned int width, unsigned int height) override
@@ -483,6 +500,7 @@ namespace
             const float aspect = static_cast<float>(width) / static_cast<float>(height);
             m_camera.SetPerspective(DirectX::XMConvertToRadians(67.0f), aspect, 0.1f, 400.0f);
             m_editorCamera.SetPerspective(DirectX::XMConvertToRadians(67.0f), aspect, 0.1f, 400.0f);
+            m_showcaseCamera.SetPerspective(DirectX::XMConvertToRadians(58.0f), aspect, 0.1f, 520.0f);
         }
 
     private:
@@ -547,6 +565,7 @@ namespace
             uint32_t MinSceneReloads = 0;
             uint32_t MinSceneSaves = 0;
             uint32_t MinPostDebugViews = 0;
+            uint32_t MinShowcaseFrames = 0;
             uint32_t MinAudioSnapshotTests = 0;
             uint32_t MinRenderGraphAllocations = 4;
             uint32_t MinRenderGraphAliasedResources = 1;
@@ -643,6 +662,7 @@ namespace
             uint32_t SceneReloads = 0;
             uint32_t SceneSaves = 0;
             uint32_t PostDebugViews = 0;
+            uint32_t ShowcaseFrames = 0;
             uint32_t AudioSnapshotTests = 0;
         };
 
@@ -679,6 +699,26 @@ namespace
             m_gizmoPlaneYZMaterial.Albedo = { 0.12f, 0.82f, 1.0f };
             m_gizmoPlaneYZMaterial.Roughness = 0.35f;
             m_gizmoPlaneYZMaterial.Alpha = 0.36f;
+
+            m_riftCoreMaterial.Albedo = { 3.4f, 0.56f, 4.6f };
+            m_riftCoreMaterial.Roughness = 0.08f;
+            m_riftCoreMaterial.Metallic = 0.18f;
+
+            m_riftCyanMaterial.Albedo = { 0.16f, 2.65f, 4.4f };
+            m_riftCyanMaterial.Roughness = 0.16f;
+            m_riftCyanMaterial.Metallic = 0.06f;
+
+            m_riftMagentaMaterial.Albedo = { 4.3f, 0.18f, 2.95f };
+            m_riftMagentaMaterial.Roughness = 0.18f;
+            m_riftMagentaMaterial.Metallic = 0.08f;
+
+            m_riftVioletMaterial.Albedo = { 1.05f, 0.38f, 4.8f };
+            m_riftVioletMaterial.Roughness = 0.14f;
+            m_riftVioletMaterial.Metallic = 0.12f;
+
+            m_riftObsidianMaterial.Albedo = { 0.035f, 0.04f, 0.075f };
+            m_riftObsidianMaterial.Roughness = 0.28f;
+            m_riftObsidianMaterial.Metallic = 0.72f;
         }
 
         void ReloadGltfAssets()
@@ -1132,9 +1172,177 @@ namespace
             m_editorCamera.LookAt(position, m_editorCameraTarget, { 0.0f, 1.0f, 0.0f });
         }
 
+        void UpdateShowcaseCamera(float dt)
+        {
+            if (!m_showcaseMode)
+            {
+                return;
+            }
+
+            m_showcaseTime += dt;
+            const float orbit = m_showcaseTime * 0.24f;
+            const float radius = 10.8f + std::sin(m_showcaseTime * 0.31f) * 1.4f;
+            const float height = 3.85f + std::sin(m_showcaseTime * 0.53f) * 0.65f;
+            const DirectX::XMFLOAT3 target = Add(m_riftPosition, { 0.0f, 0.12f + std::sin(m_showcaseTime * 0.72f) * 0.22f, 0.0f });
+            const DirectX::XMFLOAT3 position = {
+                target.x + std::sin(orbit) * radius,
+                height,
+                target.z + std::cos(orbit) * radius
+            };
+            m_showcaseCamera.LookAt(position, target, { 0.0f, 1.0f, 0.0f });
+        }
+
         const Disparity::Camera& GetRenderCamera() const
         {
+            if (m_showcaseMode)
+            {
+                return m_showcaseCamera;
+            }
+
             return m_editorCameraEnabled ? m_editorCamera : m_camera;
+        }
+
+        float ShowcaseVisualTime() const
+        {
+            if (m_runtimeVerification.Enabled)
+            {
+                return static_cast<float>(m_runtimeVerificationFrame) * (1.0f / 60.0f);
+            }
+
+            return m_sceneAnimationTime;
+        }
+
+        void SetShowcaseMode(bool enabled)
+        {
+            if (m_showcaseMode == enabled)
+            {
+                return;
+            }
+
+            if (enabled)
+            {
+                m_showcaseSavedEditorVisible = m_editorVisible;
+                m_editorVisible = false;
+                m_showcaseTime = 0.0f;
+                if (m_renderer)
+                {
+                    m_showcaseSavedRendererSettings = m_renderer->GetSettings();
+                    Disparity::RendererSettings settings = *m_showcaseSavedRendererSettings;
+                    settings.ToneMapping = true;
+                    settings.Bloom = true;
+                    settings.SSAO = true;
+                    settings.AntiAliasing = true;
+                    settings.TemporalAA = true;
+                    settings.ClusteredLighting = true;
+                    settings.Exposure = 1.28f;
+                    settings.BloomStrength = 1.16f;
+                    settings.BloomThreshold = 0.28f;
+                    settings.SsaoStrength = 0.74f;
+                    settings.AntiAliasingStrength = 1.0f;
+                    settings.TemporalBlend = 0.18f;
+                    settings.ColorSaturation = 1.32f;
+                    settings.ColorContrast = 1.16f;
+                    settings.PostDebugView = 0;
+                    m_renderer->SetSettings(settings);
+                }
+                m_showcaseMode = true;
+                UpdateShowcaseCamera(0.0f);
+                Disparity::AudioSystem::PlaySpatialTone("SFX", 660.0f, 0.22f, 0.9f, m_riftPosition);
+                SetStatus("Showcase mode enabled");
+                return;
+            }
+
+            m_showcaseMode = false;
+            m_editorVisible = m_showcaseSavedEditorVisible;
+            if (m_renderer && m_showcaseSavedRendererSettings.has_value())
+            {
+                m_renderer->SetSettings(*m_showcaseSavedRendererSettings);
+            }
+            m_showcaseSavedRendererSettings.reset();
+            Disparity::AudioSystem::PlaySpatialTone("UI", 440.0f, 0.16f, 0.65f, m_riftPosition);
+            SetStatus("Showcase mode disabled");
+        }
+
+        void DrawShowcaseRift(Disparity::Renderer& renderer)
+        {
+            const float visualTime = ShowcaseVisualTime();
+            const float pulse = 0.5f + 0.5f * std::sin(visualTime * 2.7f);
+            const float fastPulse = 0.5f + 0.5f * std::sin(visualTime * 5.4f);
+            const float showcaseBoost = m_showcaseMode ? 1.22f : 1.0f;
+
+            Disparity::Transform core;
+            core.Position = m_riftPosition;
+            core.Rotation = { visualTime * 0.47f, visualTime * 0.79f, visualTime * 0.36f };
+            const float coreScale = (0.54f + pulse * 0.16f) * showcaseBoost;
+            core.Scale = { coreScale, coreScale, coreScale };
+            renderer.DrawMesh(m_cubeMesh, core, m_riftCoreMaterial);
+
+            for (int ringIndex = 0; ringIndex < 4; ++ringIndex)
+            {
+                const float ring = static_cast<float>(ringIndex);
+                Disparity::Transform ringTransform;
+                ringTransform.Position = Add(m_riftPosition, { 0.0f, (ring - 1.5f) * 0.05f, 0.0f });
+                ringTransform.Rotation = {
+                    Pi * 0.5f + std::sin(visualTime * 0.33f + ring) * 0.48f,
+                    visualTime * (0.22f + ring * 0.06f),
+                    ring * Pi * 0.25f + visualTime * (0.34f + ring * 0.04f)
+                };
+                const float radius = (2.16f + ring * 0.28f + pulse * 0.08f) * showcaseBoost;
+                ringTransform.Scale = { radius, radius, radius };
+                const Disparity::Material& ringMaterial = ringIndex % 2 == 0 ? m_riftCyanMaterial : m_riftMagentaMaterial;
+                renderer.DrawMesh(m_gizmoRingMesh, ringTransform, ringMaterial);
+            }
+
+            constexpr int ShardCount = 14;
+            for (int shardIndex = 0; shardIndex < ShardCount; ++shardIndex)
+            {
+                const float shard = static_cast<float>(shardIndex);
+                const float alpha = shard / static_cast<float>(ShardCount);
+                const float angle = alpha * Pi * 2.0f + visualTime * (0.43f + alpha * 0.27f);
+                const float verticalAngle = visualTime * 0.71f + alpha * Pi * 4.0f;
+                const float radius = (2.95f + std::sin(verticalAngle) * 0.45f) * showcaseBoost;
+                Disparity::Transform shardTransform;
+                shardTransform.Position = Add(m_riftPosition, {
+                    std::sin(angle) * radius,
+                    std::sin(verticalAngle) * 0.9f,
+                    std::cos(angle) * radius * 0.76f
+                });
+                shardTransform.Rotation = {
+                    visualTime * (0.91f + alpha),
+                    angle,
+                    visualTime * (0.58f + alpha * 0.4f)
+                };
+                const float shardScale = 0.18f + (shardIndex % 4) * 0.04f + fastPulse * 0.035f;
+                shardTransform.Scale = { shardScale * 0.72f, shardScale * 1.85f, shardScale * 0.72f };
+                const Disparity::Material& shardMaterial = shardIndex % 3 == 0
+                    ? m_riftVioletMaterial
+                    : (shardIndex % 3 == 1 ? m_riftCyanMaterial : m_riftMagentaMaterial);
+                renderer.DrawMesh(m_cubeMesh, shardTransform, shardMaterial);
+            }
+
+            constexpr int SpireCount = 6;
+            for (int spireIndex = 0; spireIndex < SpireCount; ++spireIndex)
+            {
+                const float spire = static_cast<float>(spireIndex);
+                const float angle = spire / static_cast<float>(SpireCount) * Pi * 2.0f + Pi * 0.16f;
+                const DirectX::XMFLOAT3 base = Add(m_riftPosition, {
+                    std::sin(angle) * 4.25f,
+                    -1.28f,
+                    std::cos(angle) * 3.35f
+                });
+
+                Disparity::Transform spireTransform;
+                spireTransform.Position = base;
+                spireTransform.Rotation = { 0.0f, angle, 0.08f * std::sin(visualTime + spire) };
+                spireTransform.Scale = { 0.38f, 2.15f + (spireIndex % 2) * 0.55f, 0.38f };
+                renderer.DrawMesh(m_cubeMesh, spireTransform, m_riftObsidianMaterial);
+
+                Disparity::Transform capTransform = spireTransform;
+                capTransform.Position = Add(base, { 0.0f, spireTransform.Scale.y + 0.18f, 0.0f });
+                capTransform.Scale = { 0.22f, 0.22f, 0.22f };
+                const Disparity::Material& capMaterial = spireIndex % 2 == 0 ? m_riftCyanMaterial : m_riftMagentaMaterial;
+                renderer.DrawMesh(m_cubeMesh, capTransform, capMaterial);
+            }
         }
 
         Disparity::Transform PlayerBodyTransform() const
@@ -1308,6 +1516,10 @@ namespace
             {
                 if (ImGui::BeginMenu("DISPARITY"))
                 {
+                    if (ImGui::MenuItem("Showcase Mode", "F7", m_showcaseMode))
+                    {
+                        SetShowcaseMode(!m_showcaseMode);
+                    }
                     if (ImGui::MenuItem("Reload Scene", "F5"))
                     {
                         ReloadSceneAndScript();
@@ -1372,6 +1584,11 @@ namespace
                 return;
             }
 
+            bool showcaseMode = m_showcaseMode;
+            if (ImGui::Checkbox("Showcase mode", &showcaseMode))
+            {
+                SetShowcaseMode(showcaseMode);
+            }
             ImGui::Checkbox("Editor camera", &m_editorCameraEnabled);
             if (ImGui::Button("Frame Selection"))
             {
@@ -1404,7 +1621,7 @@ namespace
             ImGui::Text("Hover: %s", DescribeEditorPick(m_hoverPick).c_str());
             ImGui::Text("Viewport: %.0fx%.0f", m_editorViewport.Width, m_editorViewport.Height);
             ImGui::Text("Gizmo: %s", m_gizmoStatus.c_str());
-            ImGui::TextDisabled("Tab releases mouse; left-click picks. Right-drag plus WASD/QE flies the editor camera.");
+            ImGui::TextDisabled("F7 enters cinematic showcase. Tab releases mouse; left-click picks. Right-drag plus WASD/QE flies the editor camera.");
             ImGui::End();
         }
 
@@ -1718,6 +1935,11 @@ namespace
             changed |= ImGui::SliderFloat("Saturation", &settings.ColorSaturation, 0.0f, 2.0f);
             changed |= ImGui::SliderFloat("Contrast", &settings.ColorContrast, 0.0f, 2.0f);
 
+            if (ImGui::Button(m_showcaseMode ? "Stop Showcase" : "Start Showcase"))
+            {
+                SetShowcaseMode(!m_showcaseMode);
+            }
+
             const char* debugViews[] = { "Final", "Bloom", "SSAO mask", "AA edges", "Depth" };
             int postDebugView = static_cast<int>(settings.PostDebugView);
             if (ImGui::Combo("Post debug", &postDebugView, debugViews, IM_ARRAYSIZE(debugViews)))
@@ -1733,7 +1955,7 @@ namespace
             }
 
             ImGui::Text("Shadow map: %u", settings.ShadowMapSize);
-            ImGui::Text("Point lights: 4");
+            ImGui::Text("Point lights: 8");
             ImGui::End();
         }
 
@@ -2125,6 +2347,26 @@ namespace
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
+            if (!m_runtimeVerificationStartedShowcase && m_runtimeVerificationFrame >= 38)
+            {
+                SetShowcaseMode(true);
+                m_runtimeVerificationStartedShowcase = true;
+                AddRuntimeVerificationNote("Started cinematic showcase mode.");
+            }
+
+            if (m_showcaseMode)
+            {
+                ++m_runtimeEditorStats.ShowcaseFrames;
+            }
+
+            const uint32_t showcaseStopFrame = std::max(48u, m_runtimeVerification.TargetFrames > 12u ? m_runtimeVerification.TargetFrames - 12u : 48u);
+            if (m_runtimeVerificationStartedShowcase && !m_runtimeVerificationStoppedShowcase && m_runtimeVerificationFrame >= showcaseStopFrame)
+            {
+                SetShowcaseMode(false);
+                m_runtimeVerificationStoppedShowcase = true;
+                AddRuntimeVerificationNote("Stopped cinematic showcase mode and restored renderer settings.");
+            }
+
             const uint32_t captureRequestFrame = m_runtimeVerification.TargetFrames > 6u ? m_runtimeVerification.TargetFrames - 4u : m_runtimeVerification.TargetFrames;
             if (m_runtimeVerification.CaptureFrame && !m_runtimeVerificationCaptureRequested && m_runtimeVerificationFrame >= captureRequestFrame && m_renderer)
             {
@@ -2477,6 +2719,10 @@ namespace
             {
                 AddRuntimeVerificationFailure("post debug view count is below baseline.");
             }
+            if (m_runtimeEditorStats.ShowcaseFrames < m_runtimeBaseline.MinShowcaseFrames)
+            {
+                AddRuntimeVerificationFailure("showcase frame count is below baseline.");
+            }
         }
 
         void CollectRuntimeBudgetStats()
@@ -2727,6 +2973,10 @@ namespace
             {
                 AddRuntimeVerificationFailure("frame capture was not validated before runtime verification completed.");
             }
+            if (m_showcaseMode)
+            {
+                SetShowcaseMode(false);
+            }
             ValidateRuntimeBudgets();
             ValidateRuntimeVerificationState("final");
             ValidateRuntimeScenarioCoverage();
@@ -2801,6 +3051,7 @@ namespace
             report << "scene_reload_tests=" << m_runtimeEditorStats.SceneReloads << "\n";
             report << "scene_save_tests=" << m_runtimeEditorStats.SceneSaves << "\n";
             report << "post_debug_view_tests=" << m_runtimeEditorStats.PostDebugViews << "\n";
+            report << "showcase_frames=" << m_runtimeEditorStats.ShowcaseFrames << "\n";
             report << "audio_snapshot_tests=" << m_runtimeEditorStats.AudioSnapshotTests << "\n";
             report << "cpu_frame_samples=" << m_runtimeBudgetStats.CpuSamples << "\n";
             report << "cpu_frame_max_ms=" << m_runtimeBudgetStats.CpuFrameMaxMs << "\n";
@@ -4346,6 +4597,7 @@ namespace
                     else if (key == "min_scene_reloads") { loadedBaseline.MinSceneReloads = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_scene_saves") { loadedBaseline.MinSceneSaves = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_post_debug_views") { loadedBaseline.MinPostDebugViews = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_showcase_frames") { loadedBaseline.MinShowcaseFrames = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_audio_snapshot_tests") { loadedBaseline.MinAudioSnapshotTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_render_graph_allocations") { loadedBaseline.MinRenderGraphAllocations = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_render_graph_aliased_resources") { loadedBaseline.MinRenderGraphAliasedResources = static_cast<uint32_t>(std::stoul(value)); }
@@ -4376,6 +4628,7 @@ namespace
         Disparity::Renderer* m_renderer = nullptr;
         Disparity::Camera m_camera;
         Disparity::Camera m_editorCamera;
+        Disparity::Camera m_showcaseCamera;
         Disparity::Registry m_registry;
         Disparity::Scene m_scene;
         Disparity::AssetDatabase m_assetDatabase;
@@ -4395,6 +4648,7 @@ namespace
         std::optional<Disparity::AudioSnapshot> m_audioSnapshot;
         std::optional<EditState> m_gizmoDragBeforeState;
         std::optional<Disparity::RendererSettings> m_runtimeVerificationOriginalRendererSettings;
+        std::optional<Disparity::RendererSettings> m_showcaseSavedRendererSettings;
         std::vector<GizmoDragObject> m_gizmoDragObjects;
         std::vector<std::string> m_runtimeVerificationNotes;
         std::vector<std::string> m_runtimeVerificationFailures;
@@ -4421,7 +4675,13 @@ namespace
         Disparity::Material m_gizmoPlaneXYMaterial;
         Disparity::Material m_gizmoPlaneXZMaterial;
         Disparity::Material m_gizmoPlaneYZMaterial;
+        Disparity::Material m_riftCoreMaterial;
+        Disparity::Material m_riftCyanMaterial;
+        Disparity::Material m_riftMagentaMaterial;
+        Disparity::Material m_riftVioletMaterial;
+        Disparity::Material m_riftObsidianMaterial;
         DirectX::XMFLOAT3 m_playerPosition = { 0.0f, 0.0f, 0.0f };
+        DirectX::XMFLOAT3 m_riftPosition = { 0.0f, 2.25f, -7.4f };
         DirectX::XMFLOAT3 m_gizmoDragStartPivot = {};
         DirectX::XMFLOAT3 m_gizmoDragStartPlayerPosition = {};
         DirectX::XMFLOAT3 m_gizmoDragAxisVector = {};
@@ -4438,6 +4698,7 @@ namespace
         float m_editorCameraDistance = 9.0f;
         float m_playerBobOffset = 0.0f;
         float m_sceneAnimationTime = 0.0f;
+        float m_showcaseTime = 0.0f;
         float m_statusTimer = 0.0f;
         float m_hotReloadPollTimer = 0.0f;
         float m_runtimeVerificationElapsed = 0.0f;
@@ -4452,6 +4713,8 @@ namespace
         RuntimeVerificationConfig m_runtimeVerification;
         bool m_selectedPlayer = true;
         bool m_editorVisible = true;
+        bool m_showcaseSavedEditorVisible = true;
+        bool m_showcaseMode = false;
         bool m_editorCameraEnabled = false;
         bool m_hotReloadEnabled = true;
         bool m_gltfAnimationPlayback = true;
@@ -4464,6 +4727,8 @@ namespace
         bool m_runtimeVerificationValidatedEditorPrecision = false;
         bool m_runtimeVerificationCaptureRequested = false;
         bool m_runtimeVerificationCaptureValidated = false;
+        bool m_runtimeVerificationStartedShowcase = false;
+        bool m_runtimeVerificationStoppedShowcase = false;
         bool m_runtimeBaselineLoaded = false;
         bool m_gizmoDragging = false;
         bool m_gizmoDragMoved = false;

@@ -87,8 +87,9 @@ foreach ($group in $groups) {
     $gizmoPicks = if ($latest.PSObject.Properties.Name -contains "gizmo_pick_tests" -and ![string]::IsNullOrWhiteSpace($latest.gizmo_pick_tests)) { [int]$latest.gizmo_pick_tests } else { 0 }
     $gizmoDrags = if ($latest.PSObject.Properties.Name -contains "gizmo_drag_tests" -and ![string]::IsNullOrWhiteSpace($latest.gizmo_drag_tests)) { [int]$latest.gizmo_drag_tests } else { 0 }
     $postDebugViews = if ($latest.PSObject.Properties.Name -contains "post_debug_view_tests" -and ![string]::IsNullOrWhiteSpace($latest.post_debug_view_tests)) { [int]$latest.post_debug_view_tests } else { 0 }
+    $showcaseFrames = if ($latest.PSObject.Properties.Name -contains "showcase_frames" -and ![string]::IsNullOrWhiteSpace($latest.showcase_frames)) { [int]$latest.showcase_frames } else { 0 }
 
-    Write-Host ("{0}: latest cpu_max={1:N3}ms gpu_max={2:N3}ms pass_cpu_max={3:N3}ms luma={4:N2} editor_picks={5} gizmo_picks={6} gizmo_drags={7} post_debug={8}" -f $label, $latestCpu, $latestGpu, $latestPassCpu, $latestLuma, $editorPicks, $gizmoPicks, $gizmoDrags, $postDebugViews)
+    Write-Host ("{0}: latest cpu_max={1:N3}ms gpu_max={2:N3}ms pass_cpu_max={3:N3}ms luma={4:N2} editor_picks={5} gizmo_picks={6} gizmo_drags={7} post_debug={8} showcase_frames={9}" -f $label, $latestCpu, $latestGpu, $latestPassCpu, $latestLuma, $editorPicks, $gizmoPicks, $gizmoDrags, $postDebugViews, $showcaseFrames)
     if (!$latestBySuite.ContainsKey($suiteName)) {
         $latestBySuite[$suiteName] = $latest
     }

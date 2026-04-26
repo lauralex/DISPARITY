@@ -1,6 +1,13 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v16 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
+The current engine now has functional v17 versions of many requested followups. The next milestones should turn those prototypes into durable production systems and build on the new showcase-friendly presentation layer.
+
+## v17 Completed Showcase Batch
+
+- The prototype scene now includes a procedural DISPARITY rift made from existing engine meshes, HDR materials, animated rings, orbiting shards, dark spires, and stronger colored point-light choreography.
+- `F7` toggles a cinematic showcase mode that hides the editor, switches to an orbiting rift camera, boosts bloom/SSAO/AA/color grading, and restores previous renderer settings afterward.
+- Runtime verification exercises showcase mode, records `showcase_frames`, and uses deterministic rift timing during verification captures so the new VFX remains golden-testable.
+- Runtime baselines, performance history, baseline review, and suite goldens now know about showcase coverage and the refreshed rift scene thumbnails.
 
 ## v16 Completed Production Batch
 
@@ -47,6 +54,8 @@ The current engine now has functional v16 versions of many requested followups. 
 - Add GPU frustum/occlusion culling and real clustered or Forward+ light binning.
 - Replace the single shadow-map coverage mode with true cascaded shadow maps.
 - Add normal/depth pre-pass options, SSR/SSGI experiments, motion vectors, and a more correct temporal AA resolve beyond the current FXAA-style resolve plus history blend.
+- Add a real VFX layer for the rift: billboard particles, ribbon trails, lightning arcs, volumetric fog cards, lens dirt, and material emissive controls instead of HDR albedo-only glow.
+- Add trailer/photo-mode rendering controls: camera splines, depth of field, cinematic bars, high-resolution captures, and deterministic shot playback.
 - Investigate a DX12 or Vulkan backend once the DX11 renderer has a stable render graph contract.
 
 ## Runtime
@@ -55,6 +64,7 @@ The current engine now has functional v16 versions of many requested followups. 
 - Add serialization versioning, save-game separation, and deterministic scene IDs.
 - Add physics, collision queries, controller movement, animation-driven character logic, and gameplay event routing.
 - Add scripting reload boundaries, script state preservation, and a safer script asset format.
+- Add a shot director asset format so camera moves, renderer settings, audio cues, and scene beats can be authored for repeatable trailers and vertical-slice demos.
 
 ## Audio
 

@@ -37,6 +37,7 @@ Controls:
 - `F3`: cycle the selected scene object.
 - `F5`: reload the serialized scene and scene script; visible changes appear after editing `Assets/Scenes/Prototype.dscene` or `Assets/Scripts/Prototype.dscript`.
 - `F6`: save the runtime scene snapshot to `Saved/PrototypeRuntime.dscene` and show status in the editor menu bar.
+- `F7`: toggle cinematic showcase mode, hide the editor, boost post-processing, and orbit the animated DISPARITY rift for capture-friendly footage.
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 - When the mouse is released with `Tab`, left-click the viewport to pick objects. Hold `Ctrl` while clicking or selecting in the hierarchy to multi-select.
@@ -210,6 +211,13 @@ Editor UI:
 - Production tooling now includes verification baseline review, symbol indexing, installer payload manifest generation, and crash upload dry-run transport.
 - The audio layer detects XAudio2 runtime availability and exposes a preference switch while keeping the stable WinMM render path for v16.
 
+## Engine v17 Followups Implemented
+
+- The prototype scene now has an always-visible procedural DISPARITY rift built from engine-owned torus/cube meshes, with animated rings, orbiting shards, dark spires, HDR materials, and eight point lights.
+- `F7` toggles a cinematic showcase camera that hides the editor, boosts bloom/SSAO/AA/color grading, orbits the rift, and plays a short spatial cue so the build has an immediate recording mode.
+- Runtime verification now exercises showcase mode, records `showcase_frames`, restores renderer settings before capture, and uses deterministic rift timing during verification for repeatable thumbnails.
+- All runtime golden thumbnails and luminance baselines were refreshed for the new showpiece scene.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
@@ -220,3 +228,5 @@ More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 - Add prefab variants, nested prefabs, override diffing, and dependency-aware apply/revert with undo grouping.
 - Replace the WinMM playback path with XAudio2 voices, sends, streamed music, spatial emitters, attenuation curves, and live meters.
 - Add real installer bootstrapper output, symbol-server indexing, crash upload authentication/retry, and packaged runtime smoke on interactive CI runners.
+- Add a trailer/photo mode with timeline camera splines, depth-of-field, title-safe overlays, and one-click high-resolution frame capture.
+- Give the rift authored VFX controls: particle ribbons, volumetric fog cards, lightning arcs, lens dirt, and beat-synced audio-reactive pulses.

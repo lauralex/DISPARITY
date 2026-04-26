@@ -25,6 +25,7 @@ $requiredKeys = @(
     "min_editor_pick_tests",
     "min_gizmo_pick_tests",
     "min_gizmo_drag_tests",
+    "min_showcase_frames",
     "min_render_graph_allocations",
     "min_render_graph_aliased_resources",
     "require_editor_gpu_pick_resources",
