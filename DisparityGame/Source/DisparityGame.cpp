@@ -7,8 +7,10 @@
 #include <cfloat>
 #include <cmath>
 #include <cstddef>
+#include <cctype>
 #include <deque>
 #include <filesystem>
+#include <functional>
 #include <limits>
 #include <map>
 #include <memory>
@@ -28,9 +30,43 @@ namespace
         return { a.x + b.x, a.y + b.y, a.z + b.z };
     }
 
+    DirectX::XMFLOAT3 Subtract(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b)
+    {
+        return { a.x - b.x, a.y - b.y, a.z - b.z };
+    }
+
     DirectX::XMFLOAT3 Scale(const DirectX::XMFLOAT3& value, float scalar)
     {
         return { value.x * scalar, value.y * scalar, value.z * scalar };
+    }
+
+    float Dot(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b)
+    {
+        return a.x * b.x + a.y * b.y + a.z * b.z;
+    }
+
+    float Length(const DirectX::XMFLOAT3& value)
+    {
+        return std::sqrt(Dot(value, value));
+    }
+
+    std::string SafeFileStem(std::string value)
+    {
+        if (value.empty())
+        {
+            value = "Material";
+        }
+
+        for (char& character : value)
+        {
+            const unsigned char c = static_cast<unsigned char>(character);
+            if (std::isalnum(c) == 0 && character != '_' && character != '-')
+            {
+                character = '_';
+            }
+        }
+
+        return value;
     }
 
     DirectX::XMFLOAT3 NormalizeFlat(const DirectX::XMFLOAT3& value)
@@ -126,6 +162,7 @@ namespace
 
             const float aspect = static_cast<float>(application.GetWidth()) / static_cast<float>(application.GetHeight());
             m_camera.SetPerspective(DirectX::XMConvertToRadians(67.0f), aspect, 0.1f, 400.0f);
+            m_editorCamera.SetPerspective(DirectX::XMConvertToRadians(67.0f), aspect, 0.1f, 400.0f);
 
             if (!m_scene.Load("Assets/Scenes/Prototype.dscene", m_meshes))
             {
@@ -138,6 +175,7 @@ namespace
             WatchAssets();
 
             UpdateCamera();
+            UpdateEditorCamera(0.0f, true, true);
             return true;
         }
 
@@ -194,25 +232,30 @@ namespace
             {
                 DeleteSelectedObject();
             }
+            if (m_editorVisible && !Disparity::Input::IsMouseCaptured() && !editorCapturesMouse && Disparity::Input::WasMouseButtonPressed(0))
+            {
+                PickSceneObjectAtMouse();
+            }
 
             const DirectX::XMFLOAT2 mouseDelta = Disparity::Input::GetMouseDelta();
-            if (Disparity::Input::IsMouseCaptured() && !editorCapturesMouse)
+            if (Disparity::Input::IsMouseCaptured() && !editorCapturesMouse && !m_editorCameraEnabled)
             {
                 m_cameraYaw += mouseDelta.x * 0.0025f;
                 m_cameraPitch = std::clamp(m_cameraPitch - mouseDelta.y * 0.0022f, -0.15f, 0.95f);
             }
 
             PollHotReload(dt);
-            UpdatePlayer(editorCapturesKeyboard ? 0.0f : dt);
+            UpdatePlayer((editorCapturesKeyboard || m_editorCameraEnabled) ? 0.0f : dt);
             AnimateScene(dt);
             UpdateCamera();
-            Disparity::AudioSystem::SetListenerPosition(m_camera.GetPosition());
+            UpdateEditorCamera(dt, editorCapturesMouse, editorCapturesKeyboard);
+            Disparity::AudioSystem::SetListenerPosition(GetRenderCamera().GetPosition());
             UpdateStatusTimer(dt);
         }
 
         void OnRender(Disparity::Renderer& renderer) override
         {
-            renderer.SetCamera(m_camera);
+            renderer.SetCamera(GetRenderCamera());
 
             Disparity::DirectionalLight light;
             light.Direction = { -0.35f, -1.0f, 0.25f };
@@ -234,7 +277,7 @@ namespace
             DrawPlayer(renderer);
             renderer.EndShadowPass();
 
-            renderer.SetCamera(m_camera);
+            renderer.SetCamera(GetRenderCamera());
             renderer.SetLighting(light);
             DrawWorld(renderer);
             DrawPlayer(renderer);
@@ -250,6 +293,7 @@ namespace
 
             DrawDockspace();
             DrawMainMenu();
+            DrawViewportPanel();
             DrawHierarchyPanel();
             DrawInspectorPanel();
             DrawAssetsPanel();
@@ -280,6 +324,7 @@ namespace
 
             const float aspect = static_cast<float>(width) / static_cast<float>(height);
             m_camera.SetPerspective(DirectX::XMConvertToRadians(67.0f), aspect, 0.1f, 400.0f);
+            m_editorCamera.SetPerspective(DirectX::XMConvertToRadians(67.0f), aspect, 0.1f, 400.0f);
         }
 
     private:
@@ -291,6 +336,12 @@ namespace
             Disparity::Material PlayerBodyMaterial;
             Disparity::Material PlayerHeadMaterial;
             Disparity::RendererSettings RendererSettings;
+        };
+
+        struct HistoryEntry
+        {
+            std::string Label;
+            EditState State;
         };
 
         void InitializeMaterials()
@@ -684,6 +735,69 @@ namespace
             m_camera.LookAt(position, target, { 0.0f, 1.0f, 0.0f });
         }
 
+        void UpdateEditorCamera(float dt, bool editorCapturesMouse, bool editorCapturesKeyboard)
+        {
+            if (!m_editorCameraEnabled)
+            {
+                m_editorCameraTarget = Add(m_playerPosition, { 0.0f, 1.1f, 0.0f });
+                m_editorLastMousePosition = Disparity::Input::GetMousePosition();
+            }
+            else
+            {
+                const DirectX::XMFLOAT2 mouseDelta = Disparity::Input::GetMouseDelta();
+                const DirectX::XMFLOAT2 mousePosition = Disparity::Input::GetMousePosition();
+                if (!editorCapturesMouse && Disparity::Input::IsMouseButtonDown(1))
+                {
+                    const DirectX::XMFLOAT2 cursorDelta = {
+                        mousePosition.x - m_editorLastMousePosition.x,
+                        mousePosition.y - m_editorLastMousePosition.y
+                    };
+                    const float deltaX = std::abs(cursorDelta.x) > 0.0f ? cursorDelta.x : mouseDelta.x;
+                    const float deltaY = std::abs(cursorDelta.y) > 0.0f ? cursorDelta.y : mouseDelta.y;
+                    m_editorCameraYaw += deltaX * 0.003f;
+                    m_editorCameraPitch = std::clamp(m_editorCameraPitch - deltaY * 0.0025f, -0.95f, 1.15f);
+                }
+                m_editorLastMousePosition = mousePosition;
+
+                if (!editorCapturesKeyboard && dt > 0.0f)
+                {
+                    DirectX::XMFLOAT3 moveInput = {};
+                    if (Disparity::Input::IsKeyDown(VK_UP)) { moveInput.z += 1.0f; }
+                    if (Disparity::Input::IsKeyDown(VK_DOWN)) { moveInput.z -= 1.0f; }
+                    if (Disparity::Input::IsKeyDown(VK_RIGHT)) { moveInput.x += 1.0f; }
+                    if (Disparity::Input::IsKeyDown(VK_LEFT)) { moveInput.x -= 1.0f; }
+                    if (Disparity::Input::IsKeyDown(VK_PRIOR)) { moveInput.y += 1.0f; }
+                    if (Disparity::Input::IsKeyDown(VK_NEXT)) { moveInput.y -= 1.0f; }
+
+                    const DirectX::XMFLOAT3 normalizedInput = NormalizeFlat({ moveInput.x, 0.0f, moveInput.z });
+                    const DirectX::XMFLOAT3 forward = { std::sin(m_editorCameraYaw), 0.0f, std::cos(m_editorCameraYaw) };
+                    const DirectX::XMFLOAT3 right = { std::cos(m_editorCameraYaw), 0.0f, -std::sin(m_editorCameraYaw) };
+                    DirectX::XMFLOAT3 movement = Add(Scale(forward, normalizedInput.z), Scale(right, normalizedInput.x));
+                    movement.y += moveInput.y;
+                    if (Length(movement) > 0.0001f)
+                    {
+                        movement = Scale(movement, 1.0f / Length(movement));
+                        m_editorCameraTarget = Add(m_editorCameraTarget, Scale(movement, 7.5f * dt));
+                    }
+                }
+            }
+
+            const float cosPitch = std::cos(m_editorCameraPitch);
+            const DirectX::XMFLOAT3 lookDirection = {
+                std::sin(m_editorCameraYaw) * cosPitch,
+                std::sin(m_editorCameraPitch),
+                std::cos(m_editorCameraYaw) * cosPitch
+            };
+            DirectX::XMFLOAT3 position = Add(m_editorCameraTarget, Scale(lookDirection, -m_editorCameraDistance));
+            position.y = std::max(position.y, 0.75f);
+            m_editorCamera.LookAt(position, m_editorCameraTarget, { 0.0f, 1.0f, 0.0f });
+        }
+
+        const Disparity::Camera& GetRenderCamera() const
+        {
+            return m_editorCameraEnabled ? m_editorCamera : m_camera;
+        }
+
         Disparity::Transform PlayerBodyTransform() const
         {
             Disparity::Transform body;
@@ -731,10 +845,14 @@ namespace
                 return;
             }
 
-            const Disparity::NamedSceneObject& selected = m_scene.GetObjects()[m_selectedIndex];
-            Disparity::Transform outlineTransform = selected.Object.TransformData;
-            outlineTransform.Scale = Scale(outlineTransform.Scale, 1.06f);
-            renderer.DrawMesh(selected.Object.Mesh, outlineTransform, outlineMaterial);
+            const std::vector<size_t> selectedIndices = GetSelectedSceneIndices();
+            for (const size_t selectedIndex : selectedIndices)
+            {
+                const Disparity::NamedSceneObject& selected = m_scene.GetObjects()[selectedIndex];
+                Disparity::Transform outlineTransform = selected.Object.TransformData;
+                outlineTransform.Scale = Scale(outlineTransform.Scale, 1.06f);
+                renderer.DrawMesh(selected.Object.Mesh, outlineTransform, outlineMaterial);
+            }
         }
 
         void DrawDockspace()
@@ -802,6 +920,35 @@ namespace
             }
         }
 
+        void DrawViewportPanel()
+        {
+            ImGui::SetNextWindowPos(ImVec2(12.0f, 464.0f), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(280.0f, 190.0f), ImGuiCond_FirstUseEver);
+            if (!ImGui::Begin("Viewport"))
+            {
+                ImGui::End();
+                return;
+            }
+
+            ImGui::Checkbox("Editor camera", &m_editorCameraEnabled);
+            if (ImGui::Button("Frame Selection"))
+            {
+                FrameSelectedObject();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Frame Player"))
+            {
+                m_editorCameraTarget = Add(m_playerPosition, { 0.0f, 1.1f, 0.0f });
+                m_editorCameraEnabled = true;
+            }
+
+            ImGui::SliderFloat("Orbit distance", &m_editorCameraDistance, 2.5f, 40.0f);
+            ImGui::DragFloat3("Target", &m_editorCameraTarget.x, 0.08f);
+            ImGui::Text("Pick: %s", m_lastPickStatus.c_str());
+            ImGui::TextDisabled("Tab releases mouse; left-click picks. Right-drag or arrow/Page keys move the editor camera.");
+            ImGui::End();
+        }
+
         void DrawHierarchyPanel()
         {
             ImGui::SetNextWindowPos(ImVec2(12.0f, 32.0f), ImGuiCond_FirstUseEver);
@@ -815,21 +962,23 @@ namespace
             if (ImGui::Selectable("Player", m_selectedPlayer))
             {
                 m_selectedPlayer = true;
+                m_multiSelection.clear();
             }
 
             ImGui::SeparatorText("Scene");
             const auto& objects = m_scene.GetObjects();
             for (size_t index = 0; index < objects.size(); ++index)
             {
-                const bool selected = !m_selectedPlayer && index == m_selectedIndex;
+                const bool selected = IsSceneObjectSelected(index);
                 if (ImGui::Selectable(objects[index].Name.c_str(), selected))
                 {
-                    m_selectedPlayer = false;
-                    m_selectedIndex = index;
+                    SelectSceneObject(index, Disparity::Input::IsKeyDown(VK_CONTROL));
                 }
             }
 
             ImGui::SeparatorText("Actions");
+            const std::vector<size_t> selectedIndices = GetSelectedSceneIndices();
+            ImGui::Text("Selected objects: %zu", selectedIndices.size());
             const bool canEditSelection = CanCopySelection();
             if (ImGui::Button("Copy") && canEditSelection)
             {
@@ -874,7 +1023,7 @@ namespace
                 changed |= DrawMaterialEditor("Body Material", m_playerBodyMaterial);
                 if (changed)
                 {
-                    PushUndoState(before);
+                    PushUndoState(before, "Edit Player");
                 }
             }
             else if (m_scene.Count() > 0 && m_selectedIndex < m_scene.Count())
@@ -882,6 +1031,7 @@ namespace
                 Disparity::NamedSceneObject& selected = m_scene.GetObjects()[m_selectedIndex];
                 ImGui::Text("Name: %s", selected.Name.c_str());
                 ImGui::Text("Mesh: %s", selected.MeshName.c_str());
+                ImGui::Text("Stable ID: %llu", static_cast<unsigned long long>(selected.StableId));
                 const EditState before = CaptureEditState();
                 bool changed = false;
                 changed |= ImGui::DragFloat3("Position", &selected.Object.TransformData.Position.x, 0.05f);
@@ -891,7 +1041,7 @@ namespace
                 changed |= DrawMaterialEditor("Material", selected.Object.MaterialData);
                 if (changed)
                 {
-                    PushUndoState(before);
+                    PushUndoState(before, "Edit " + selected.Name);
                     SyncSceneObjectToRegistry(m_selectedIndex);
                 }
             }
@@ -1016,6 +1166,17 @@ namespace
             ImGui::Text("Assets: %zu", m_assetDatabase.GetRecords().size());
             ImGui::SameLine();
             ImGui::Text("Dirty: %zu", m_assetDatabase.DirtyCount());
+            if (ImGui::Button("Cook Dirty Assets"))
+            {
+                const size_t cooked = m_assetDatabase.CookDirtyAssets();
+                WatchAssets();
+                SetStatus("Cooked " + std::to_string(cooked) + " asset metadata file(s)");
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Export glTF Materials"))
+            {
+                ExportGltfMaterialAssets();
+            }
 
             const std::map<Disparity::AssetKind, size_t> assetCounts = m_assetDatabase.CountByKind();
             for (const auto& [kind, count] : assetCounts)
@@ -1108,7 +1269,7 @@ namespace
 
             if (changed)
             {
-                PushUndoState(before);
+                PushUndoState(before, "Renderer Settings");
                 m_renderer->SetSettings(settings);
             }
 
@@ -1185,10 +1346,45 @@ namespace
             ImGui::Text("FPS: %.1f", snapshot.FramesPerSecond);
             ImGui::Text("Frame: %.2f ms", snapshot.FrameMilliseconds);
             ImGui::Text("Job workers: %u", Disparity::JobSystem::WorkerCount());
+            if (m_renderer)
+            {
+                ImGui::Text("Draw calls: %u total / %u scene / %u shadow",
+                    m_renderer->GetFrameDrawCalls(),
+                    m_renderer->GetSceneDrawCalls(),
+                    m_renderer->GetShadowDrawCalls());
+            }
             ImGui::Separator();
             for (const Disparity::ProfileRecord& record : snapshot.Records)
             {
                 ImGui::Text("%s: %.3f ms", record.Name.c_str(), record.Milliseconds);
+            }
+
+            if (m_renderer && ImGui::TreeNode("Render Graph"))
+            {
+                const Disparity::RenderGraph& graph = m_renderer->GetRenderGraph();
+                ImGui::Text("Resources: %zu", graph.GetResources().size());
+                for (const Disparity::RenderGraphPass& pass : graph.GetPasses())
+                {
+                    ImGui::BulletText("%s  R:%zu W:%zu", pass.Name.c_str(), pass.Reads.size(), pass.Writes.size());
+                }
+
+                const std::vector<std::string> validation = graph.Validate();
+                ImGui::Text("Validation: %s", validation.empty() ? "OK" : "Issues");
+                for (const std::string& issue : validation)
+                {
+                    ImGui::BulletText("%s", issue.c_str());
+                }
+
+                ImGui::TreePop();
+            }
+
+            if (ImGui::TreeNode("Command History"))
+            {
+                for (const std::string& command : m_commandHistory)
+                {
+                    ImGui::BulletText("%s", command.c_str());
+                }
+                ImGui::TreePop();
             }
 
             ImGui::End();
@@ -1204,6 +1400,7 @@ namespace
 
             m_selectedIndex = (m_selectedIndex + 1) % m_scene.Count();
             m_selectedPlayer = false;
+            m_multiSelection.clear();
         }
 
         void ReloadSceneAndScript()
@@ -1212,6 +1409,7 @@ namespace
             const bool scriptLoaded = Disparity::ScriptRunner::RunSceneScript("Assets/Scripts/Prototype.dscript", m_scene, m_meshes);
             AppendImportedGltfSceneObjects();
             BuildRuntimeRegistry();
+            m_multiSelection.clear();
             SetStatus(sceneLoaded && scriptLoaded ? "Reloaded scene + script" : "Reload attempted; check asset paths");
         }
 
@@ -1219,6 +1417,28 @@ namespace
         {
             const bool saved = m_scene.Save("Saved/PrototypeRuntime.dscene");
             SetStatus(saved ? "Saved runtime scene snapshot" : "Scene save failed");
+        }
+
+        void ExportGltfMaterialAssets()
+        {
+            size_t savedCount = 0;
+            for (size_t index = 0; index < m_gltfSceneAsset.Materials.size(); ++index)
+            {
+                const Disparity::GltfMaterialInfo& gltfMaterial = m_gltfSceneAsset.Materials[index];
+                Disparity::MaterialAsset materialAsset;
+                materialAsset.Name = gltfMaterial.Name.empty() ? "GltfMaterial_" + std::to_string(index) : gltfMaterial.Name;
+                materialAsset.MaterialData = gltfMaterial.MaterialData;
+                materialAsset.BaseColorTexturePath = gltfMaterial.BaseColorTexturePath;
+
+                const std::filesystem::path path = std::filesystem::path("Assets") / "Materials" / "Imported" / (SafeFileStem(materialAsset.Name) + ".dmat");
+                if (Disparity::MaterialAssetIO::Save(path, materialAsset))
+                {
+                    ++savedCount;
+                }
+            }
+
+            WatchAssets();
+            SetStatus("Exported " + std::to_string(savedCount) + " glTF material asset(s)");
         }
 
         void UpdateStatusTimer(float dt)
@@ -1260,22 +1480,40 @@ namespace
             }
 
             m_selectedIndex = std::min(m_selectedIndex, m_scene.Count() == 0 ? 0u : m_scene.Count() - 1u);
+            m_multiSelection.erase(std::remove_if(m_multiSelection.begin(), m_multiSelection.end(), [this](size_t index) {
+                return index >= m_scene.Count();
+            }), m_multiSelection.end());
             BuildRuntimeRegistry();
         }
 
-        void PushUndoState(const EditState& state)
+        void AddCommandHistory(std::string label)
+        {
+            if (label.empty())
+            {
+                return;
+            }
+
+            m_commandHistory.push_back(std::move(label));
+            while (m_commandHistory.size() > 16)
+            {
+                m_commandHistory.pop_front();
+            }
+        }
+
+        void PushUndoState(const EditState& state, std::string label = "Edit")
         {
             if (m_applyingHistory)
             {
                 return;
             }
 
-            m_undoStack.push_back(state);
+            m_undoStack.push_back(HistoryEntry{ label, state });
             while (m_undoStack.size() > 64)
             {
                 m_undoStack.pop_front();
             }
             m_redoStack.clear();
+            AddCommandHistory(label);
         }
 
         bool CanUndo() const
@@ -1296,12 +1534,13 @@ namespace
             }
 
             m_applyingHistory = true;
-            m_redoStack.push_back(CaptureEditState());
-            const EditState state = m_undoStack.back();
+            const HistoryEntry entry = m_undoStack.back();
+            m_redoStack.push_back(HistoryEntry{ entry.Label, CaptureEditState() });
             m_undoStack.pop_back();
-            ApplyEditState(state);
+            ApplyEditState(entry.State);
             m_applyingHistory = false;
-            SetStatus("Undo");
+            SetStatus("Undo: " + entry.Label);
+            AddCommandHistory("Undo: " + entry.Label);
         }
 
         void RedoEdit()
@@ -1312,17 +1551,232 @@ namespace
             }
 
             m_applyingHistory = true;
-            m_undoStack.push_back(CaptureEditState());
-            const EditState state = m_redoStack.back();
+            const HistoryEntry entry = m_redoStack.back();
+            m_undoStack.push_back(HistoryEntry{ entry.Label, CaptureEditState() });
             m_redoStack.pop_back();
-            ApplyEditState(state);
+            ApplyEditState(entry.State);
             m_applyingHistory = false;
-            SetStatus("Redo");
+            SetStatus("Redo: " + entry.Label);
+            AddCommandHistory("Redo: " + entry.Label);
+        }
+
+        bool IntersectRaySphere(
+            const DirectX::XMFLOAT3& origin,
+            const DirectX::XMFLOAT3& direction,
+            const DirectX::XMFLOAT3& center,
+            float radius,
+            float& outDistance) const
+        {
+            const DirectX::XMFLOAT3 toCenter = Subtract(center, origin);
+            const float projection = Dot(toCenter, direction);
+            const float distanceSquared = Dot(toCenter, toCenter) - projection * projection;
+            const float radiusSquared = radius * radius;
+            if (distanceSquared > radiusSquared)
+            {
+                return false;
+            }
+
+            const float halfChord = std::sqrt(std::max(0.0f, radiusSquared - distanceSquared));
+            float distance = projection - halfChord;
+            if (distance < 0.0f)
+            {
+                distance = projection + halfChord;
+            }
+
+            if (distance < 0.0f)
+            {
+                return false;
+            }
+
+            outDistance = distance;
+            return true;
+        }
+
+        float PickRadiusForTransform(const Disparity::Transform& transform) const
+        {
+            return std::max(0.45f, Length(transform.Scale) * 0.62f);
+        }
+
+        void PickSceneObjectAtMouse()
+        {
+            if (!m_application)
+            {
+                return;
+            }
+
+            const DirectX::XMFLOAT2 mouse = Disparity::Input::GetMousePosition();
+            const float width = static_cast<float>(std::max(1u, m_application->GetWidth()));
+            const float height = static_cast<float>(std::max(1u, m_application->GetHeight()));
+            if (mouse.x < 0.0f || mouse.y < 0.0f || mouse.x > width || mouse.y > height)
+            {
+                return;
+            }
+
+            const DirectX::XMMATRIX identity = DirectX::XMMatrixIdentity();
+            const DirectX::XMMATRIX view = GetRenderCamera().GetViewMatrix();
+            const DirectX::XMMATRIX projection = GetRenderCamera().GetProjectionMatrix();
+            const DirectX::XMVECTOR nearPoint = DirectX::XMVector3Unproject(
+                DirectX::XMVectorSet(mouse.x, mouse.y, 0.0f, 1.0f),
+                0.0f,
+                0.0f,
+                width,
+                height,
+                0.0f,
+                1.0f,
+                projection,
+                view,
+                identity);
+            const DirectX::XMVECTOR farPoint = DirectX::XMVector3Unproject(
+                DirectX::XMVectorSet(mouse.x, mouse.y, 1.0f, 1.0f),
+                0.0f,
+                0.0f,
+                width,
+                height,
+                0.0f,
+                1.0f,
+                projection,
+                view,
+                identity);
+            const DirectX::XMVECTOR directionVector = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(farPoint, nearPoint));
+
+            DirectX::XMFLOAT3 origin = {};
+            DirectX::XMFLOAT3 direction = {};
+            DirectX::XMStoreFloat3(&origin, nearPoint);
+            DirectX::XMStoreFloat3(&direction, directionVector);
+
+            float bestDistance = FLT_MAX;
+            bool hitPlayer = false;
+            size_t hitIndex = InvalidIndex;
+            float distance = 0.0f;
+            if (IntersectRaySphere(origin, direction, Add(m_playerPosition, { 0.0f, 1.1f, 0.0f }), 1.2f, distance))
+            {
+                bestDistance = distance;
+                hitPlayer = true;
+            }
+
+            const auto& objects = m_scene.GetObjects();
+            for (size_t index = 0; index < objects.size(); ++index)
+            {
+                const Disparity::Transform& transform = objects[index].Object.TransformData;
+                if (IntersectRaySphere(origin, direction, transform.Position, PickRadiusForTransform(transform), distance) && distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    hitPlayer = false;
+                    hitIndex = index;
+                }
+            }
+
+            if (hitPlayer)
+            {
+                m_selectedPlayer = true;
+                m_multiSelection.clear();
+                m_lastPickStatus = "Player";
+                SetStatus("Picked Player");
+                return;
+            }
+
+            if (hitIndex != InvalidIndex)
+            {
+                SelectSceneObject(hitIndex, Disparity::Input::IsKeyDown(VK_CONTROL));
+                m_lastPickStatus = objects[hitIndex].Name;
+                SetStatus("Picked " + objects[hitIndex].Name);
+                return;
+            }
+
+            m_lastPickStatus = "None";
+        }
+
+        void FrameSelectedObject()
+        {
+            m_editorCameraEnabled = true;
+            if (m_selectedPlayer)
+            {
+                m_editorCameraTarget = Add(m_playerPosition, { 0.0f, 1.1f, 0.0f });
+                return;
+            }
+
+            if (m_selectedIndex < m_scene.Count())
+            {
+                m_editorCameraTarget = m_scene.GetObjects()[m_selectedIndex].Object.TransformData.Position;
+            }
+        }
+
+        bool IsSceneObjectSelected(size_t index) const
+        {
+            if (m_selectedPlayer)
+            {
+                return false;
+            }
+
+            if (index == m_selectedIndex)
+            {
+                return true;
+            }
+
+            return std::find(m_multiSelection.begin(), m_multiSelection.end(), index) != m_multiSelection.end();
+        }
+
+        void SelectSceneObject(size_t index, bool additive)
+        {
+            if (index >= m_scene.Count())
+            {
+                return;
+            }
+
+            m_selectedPlayer = false;
+            if (!additive)
+            {
+                m_multiSelection.clear();
+                m_selectedIndex = index;
+                return;
+            }
+
+            if (m_multiSelection.empty() && m_selectedIndex < m_scene.Count())
+            {
+                m_multiSelection.push_back(m_selectedIndex);
+            }
+
+            const auto found = std::find(m_multiSelection.begin(), m_multiSelection.end(), index);
+            if (found == m_multiSelection.end())
+            {
+                m_multiSelection.push_back(index);
+                m_selectedIndex = index;
+            }
+            else if (m_multiSelection.size() > 1)
+            {
+                m_multiSelection.erase(found);
+                m_selectedIndex = m_multiSelection.back();
+            }
+        }
+
+        std::vector<size_t> GetSelectedSceneIndices() const
+        {
+            std::vector<size_t> indices;
+            if (m_selectedPlayer || m_scene.Count() == 0)
+            {
+                return indices;
+            }
+
+            if (!m_multiSelection.empty())
+            {
+                indices = m_multiSelection;
+            }
+            else if (m_selectedIndex < m_scene.Count())
+            {
+                indices.push_back(m_selectedIndex);
+            }
+
+            std::sort(indices.begin(), indices.end());
+            indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
+            indices.erase(std::remove_if(indices.begin(), indices.end(), [this](size_t index) {
+                return index >= m_scene.Count();
+            }), indices.end());
+            return indices;
         }
 
         bool CanCopySelection() const
         {
-            return !m_selectedPlayer && m_scene.Count() > 0 && m_selectedIndex < m_scene.Count();
+            return !GetSelectedSceneIndices().empty();
         }
 
         std::string MakeUniqueSceneObjectName(const std::string& requestedName) const
@@ -1355,9 +1809,10 @@ namespace
 
             m_sceneClipboard = m_scene.GetObjects()[m_selectedIndex];
             SetStatus("Copied " + m_sceneClipboard->Name);
+            AddCommandHistory("Copy " + m_sceneClipboard->Name);
         }
 
-        void PasteSceneObject()
+        void PasteSceneObject(std::string label = "Paste")
         {
             if (!m_sceneClipboard.has_value())
             {
@@ -1367,12 +1822,14 @@ namespace
             const EditState before = CaptureEditState();
             Disparity::NamedSceneObject pasted = *m_sceneClipboard;
             pasted.Name = MakeUniqueSceneObjectName(pasted.Name);
+            pasted.StableId = 0;
             pasted.Object.TransformData.Position.x += 0.75f;
             pasted.Object.TransformData.Position.z += 0.75f;
             m_scene.Add(pasted);
             m_selectedPlayer = false;
             m_selectedIndex = m_scene.Count() - 1u;
-            PushUndoState(before);
+            m_multiSelection.clear();
+            PushUndoState(before, label + " " + m_scene.GetObjects()[m_selectedIndex].Name);
             BuildRuntimeRegistry();
             SetStatus("Pasted " + m_scene.GetObjects()[m_selectedIndex].Name);
         }
@@ -1385,7 +1842,7 @@ namespace
             }
 
             m_sceneClipboard = m_scene.GetObjects()[m_selectedIndex];
-            PasteSceneObject();
+            PasteSceneObject("Duplicate");
             SetStatus("Duplicated " + m_scene.GetObjects()[m_selectedIndex].Name);
         }
 
@@ -1397,9 +1854,26 @@ namespace
             }
 
             const EditState before = CaptureEditState();
-            const std::string deletedName = m_scene.GetObjects()[m_selectedIndex].Name;
+            std::vector<size_t> selectedIndices = GetSelectedSceneIndices();
+            if (selectedIndices.empty())
+            {
+                return;
+            }
+
+            const std::string deletedName = selectedIndices.size() == 1
+                ? m_scene.GetObjects()[selectedIndices.front()].Name
+                : std::to_string(selectedIndices.size()) + " objects";
             std::vector<Disparity::NamedSceneObject>& objects = m_scene.GetObjects();
-            objects.erase(objects.begin() + static_cast<std::ptrdiff_t>(m_selectedIndex));
+            std::sort(selectedIndices.begin(), selectedIndices.end(), std::greater<size_t>());
+            for (const size_t index : selectedIndices)
+            {
+                if (index < objects.size())
+                {
+                    objects.erase(objects.begin() + static_cast<std::ptrdiff_t>(index));
+                }
+            }
+
+            m_multiSelection.clear();
             if (objects.empty())
             {
                 m_selectedPlayer = true;
@@ -1410,7 +1884,7 @@ namespace
                 m_selectedIndex = std::min(m_selectedIndex, objects.size() - 1u);
             }
 
-            PushUndoState(before);
+            PushUndoState(before, "Delete " + deletedName);
             BuildRuntimeRegistry();
             SetStatus("Deleted " + deletedName);
         }
@@ -1522,6 +1996,7 @@ namespace
         Disparity::Application* m_application = nullptr;
         Disparity::Renderer* m_renderer = nullptr;
         Disparity::Camera m_camera;
+        Disparity::Camera m_editorCamera;
         Disparity::Registry m_registry;
         Disparity::Scene m_scene;
         Disparity::AssetDatabase m_assetDatabase;
@@ -1533,8 +2008,10 @@ namespace
         std::vector<Disparity::MeshHandle> m_gltfMeshes;
         std::vector<Disparity::Material> m_gltfMaterials;
         std::vector<size_t> m_gltfNodeSceneIndices;
-        std::deque<EditState> m_undoStack;
-        std::deque<EditState> m_redoStack;
+        std::vector<size_t> m_multiSelection;
+        std::deque<HistoryEntry> m_undoStack;
+        std::deque<HistoryEntry> m_redoStack;
+        std::deque<std::string> m_commandHistory;
         std::optional<Disparity::NamedSceneObject> m_sceneClipboard;
         Disparity::Entity m_playerEntity = 0;
         Disparity::MeshHandle m_cubeMesh = 0;
@@ -1549,17 +2026,24 @@ namespace
         float m_cameraYaw = Pi;
         float m_cameraPitch = 0.42f;
         float m_cameraDistance = 7.0f;
+        float m_editorCameraYaw = Pi;
+        float m_editorCameraPitch = 0.52f;
+        float m_editorCameraDistance = 9.0f;
         float m_playerBobOffset = 0.0f;
         float m_sceneAnimationTime = 0.0f;
         float m_statusTimer = 0.0f;
         float m_hotReloadPollTimer = 0.0f;
         size_t m_selectedIndex = 0;
+        DirectX::XMFLOAT3 m_editorCameraTarget = { 0.0f, 1.1f, 0.0f };
+        DirectX::XMFLOAT2 m_editorLastMousePosition = {};
         bool m_selectedPlayer = true;
         bool m_editorVisible = true;
+        bool m_editorCameraEnabled = false;
         bool m_hotReloadEnabled = true;
         bool m_gltfAnimationPlayback = true;
         bool m_applyingHistory = false;
         std::string m_statusMessage;
+        std::string m_lastPickStatus = "None";
     };
 }
 

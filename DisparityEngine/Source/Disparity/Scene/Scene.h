@@ -3,6 +3,7 @@
 #include "Disparity/Scene/SceneObject.h"
 
 #include <filesystem>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -11,6 +12,7 @@ namespace Disparity
 {
     struct NamedSceneObject
     {
+        uint64_t StableId = 0;
         std::string Name;
         std::string MeshName;
         SceneObject Object;

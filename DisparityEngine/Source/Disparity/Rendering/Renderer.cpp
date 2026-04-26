@@ -469,8 +469,12 @@ namespace Disparity
 
         m_frameBegun = true;
         m_elapsedTime += 1.0f / 60.0f;
+        m_frameDrawCalls = 0;
+        m_sceneDrawCalls = 0;
+        m_shadowDrawCalls = 0;
 
         m_shadowPassActive = false;
+        BuildFrameRenderGraph();
         m_context->OMSetRenderTargets(1, m_hdrSceneRenderTargetView.GetAddressOf(), m_depthStencilView.Get());
         m_context->ClearRenderTargetView(m_hdrSceneRenderTargetView.Get(), clearColor);
         m_context->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
@@ -578,6 +582,8 @@ namespace Disparity
 
         if (m_shadowPassActive)
         {
+            ++m_frameDrawCalls;
+            ++m_shadowDrawCalls;
             const UINT stride = sizeof(Vertex);
             const UINT offset = 0;
             ID3D11Buffer* vertexBuffer = found->second.VertexBuffer.Get();
@@ -605,6 +611,8 @@ namespace Disparity
         m_context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
         m_context->IASetIndexBuffer(found->second.IndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
         m_context->DrawIndexed(found->second.IndexCount, 0, 0);
+        ++m_frameDrawCalls;
+        ++m_sceneDrawCalls;
 
         ID3D11ShaderResourceView* nullTexture = nullptr;
         m_context->PSSetShaderResources(0, 1, &nullTexture);
@@ -646,6 +654,49 @@ namespace Disparity
     const RendererSettings& Renderer::GetSettings() const
     {
         return m_settings;
+    }
+
+    const RenderGraph& Renderer::GetRenderGraph() const
+    {
+        return m_renderGraph;
+    }
+
+    uint32_t Renderer::GetFrameDrawCalls() const
+    {
+        return m_frameDrawCalls;
+    }
+
+    uint32_t Renderer::GetSceneDrawCalls() const
+    {
+        return m_sceneDrawCalls;
+    }
+
+    uint32_t Renderer::GetShadowDrawCalls() const
+    {
+        return m_shadowDrawCalls;
+    }
+
+    void Renderer::BuildFrameRenderGraph()
+    {
+        m_renderGraph.Reset();
+        m_graphBackBuffer = m_renderGraph.AddResource("Back Buffer", RenderGraphResourceKind::External);
+        m_graphHdrScene = m_renderGraph.AddResource("HDR Scene Color", RenderGraphResourceKind::Texture);
+        m_graphDepth = m_renderGraph.AddResource("Scene Depth", RenderGraphResourceKind::Texture);
+        m_graphHistory = m_renderGraph.AddResource("Temporal History", RenderGraphResourceKind::Texture);
+        m_graphShadowMap = m_renderGraph.AddResource("Directional Shadow Map", RenderGraphResourceKind::Texture);
+        uint32_t ignoredPass = m_renderGraph.AddPass("Clear HDR+Depth", {}, { m_graphHdrScene, m_graphDepth });
+        (void)ignoredPass;
+        if (m_settings.Shadows)
+        {
+            ignoredPass = m_renderGraph.AddPass("Shadow Map", {}, { m_graphShadowMap });
+            (void)ignoredPass;
+        }
+        ignoredPass = m_renderGraph.AddPass("Scene Color", { m_graphShadowMap }, { m_graphHdrScene, m_graphDepth });
+        (void)ignoredPass;
+        ignoredPass = m_renderGraph.AddPass("Post Process", { m_graphHdrScene, m_graphDepth, m_graphHistory }, { m_graphBackBuffer, m_graphHistory });
+        (void)ignoredPass;
+        ignoredPass = m_renderGraph.AddPass("Editor UI", { m_graphBackBuffer }, { m_graphBackBuffer });
+        (void)ignoredPass;
     }
 
     bool Renderer::CreateDeviceAndSwapChain()

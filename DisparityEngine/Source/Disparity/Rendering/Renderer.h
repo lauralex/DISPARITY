@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Disparity/Math/Transform.h"
+#include "Disparity/Rendering/RenderGraph.h"
 #include "Disparity/Scene/Camera.h"
 #include "Disparity/Scene/Material.h"
 #include "Disparity/Scene/Mesh.h"
@@ -88,6 +89,10 @@ namespace Disparity
         [[nodiscard]] ID3D11Device* GetDevice() const;
         [[nodiscard]] ID3D11DeviceContext* GetContext() const;
         [[nodiscard]] const RendererSettings& GetSettings() const;
+        [[nodiscard]] const RenderGraph& GetRenderGraph() const;
+        [[nodiscard]] uint32_t GetFrameDrawCalls() const;
+        [[nodiscard]] uint32_t GetSceneDrawCalls() const;
+        [[nodiscard]] uint32_t GetShadowDrawCalls() const;
 
     private:
         struct GpuMesh
@@ -113,6 +118,7 @@ namespace Disparity
         void ApplyScenePipeline();
         void UploadFrameConstants(const DirectX::XMMATRIX& viewProjection);
         void RenderPostProcess();
+        void BuildFrameRenderGraph();
 
         HWND m_windowHandle = nullptr;
         uint32_t m_width = 1;
@@ -121,10 +127,19 @@ namespace Disparity
         bool m_frameBegun = false;
         float m_elapsedTime = 0.0f;
         bool m_shadowPassActive = false;
+        uint32_t m_frameDrawCalls = 0;
+        uint32_t m_sceneDrawCalls = 0;
+        uint32_t m_shadowDrawCalls = 0;
+        uint32_t m_graphBackBuffer = 0;
+        uint32_t m_graphHdrScene = 0;
+        uint32_t m_graphDepth = 0;
+        uint32_t m_graphHistory = 0;
+        uint32_t m_graphShadowMap = 0;
 
         Camera m_camera;
         DirectionalLight m_light;
         RendererSettings m_settings;
+        RenderGraph m_renderGraph;
         DirectX::XMFLOAT4X4 m_lightViewProjection = {};
 
         Microsoft::WRL::ComPtr<ID3D11Device> m_device;

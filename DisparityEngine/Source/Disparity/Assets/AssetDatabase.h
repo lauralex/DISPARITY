@@ -17,7 +17,8 @@ namespace Disparity
         Material,
         Shader,
         Texture,
-        Audio
+        Audio,
+        ImportSettings
     };
 
     struct AssetRecord
@@ -27,6 +28,8 @@ namespace Disparity
         uintmax_t SizeBytes = 0;
         std::filesystem::file_time_type LastWriteTime = {};
         std::vector<std::filesystem::path> Dependencies;
+        std::filesystem::path ImportSettingsPath;
+        bool HasImportSettings = false;
         std::filesystem::path CookedPath;
         bool Dirty = true;
     };
@@ -40,6 +43,7 @@ namespace Disparity
         [[nodiscard]] std::map<AssetKind, size_t> CountByKind() const;
         [[nodiscard]] std::optional<AssetRecord> Find(const std::filesystem::path& path) const;
         [[nodiscard]] size_t DirtyCount() const;
+        [[nodiscard]] size_t CookDirtyAssets() const;
 
         [[nodiscard]] static AssetKind KindFromPath(const std::filesystem::path& path);
         [[nodiscard]] static const char* KindToString(AssetKind kind);
@@ -47,6 +51,7 @@ namespace Disparity
     private:
         [[nodiscard]] std::filesystem::path MakeDisplayPath(const std::filesystem::path& path) const;
         [[nodiscard]] std::filesystem::path MakeCookedPath(const std::filesystem::path& path) const;
+        [[nodiscard]] std::filesystem::path MakeImportSettingsPath(const std::filesystem::path& path) const;
         [[nodiscard]] bool IsDirty(const AssetRecord& record, const std::filesystem::path& absolutePath) const;
 
         std::filesystem::path m_root = "Assets";

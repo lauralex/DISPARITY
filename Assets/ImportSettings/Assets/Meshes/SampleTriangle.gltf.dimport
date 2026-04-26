@@ -1,0 +1,8 @@
+# DISPARITY import settings v1
+source=Assets/Meshes/SampleTriangle.gltf
+assetType=Mesh
+generateTangents=true
+scale=1
+cookStaticMeshes=true
+cookMaterials=true
+cookAnimations=true

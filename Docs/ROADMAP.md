@@ -1,24 +1,24 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v4 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
+The current engine now has functional v5 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
 
 ## Editor
 
-- Build a dedicated scene viewport with object picking and camera controls independent of gameplay input.
+- Replace the main-window picking/editor camera path with a dedicated scene viewport render target and object-ID selection buffer.
 - Replace the button-based transform gizmo with real 3D translate/rotate/scale handles.
-- Upgrade the current selection outline plus copy/paste/duplicate/delete support with multi-select, undo grouping, and command history labels.
+- Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command filters, and visible command history.
 - Add prefab override visualization, nested prefabs, prefab variants, and dependency-aware apply/revert.
 
 ## Asset Pipeline
 
-- Expand the new `AssetDatabase` into real `.glb` cooking, import settings, cached cooked assets, and dependency graph invalidation.
-- Convert glTF materials into engine material assets with texture slots for base color, normal, metallic-roughness, emissive, and occlusion.
+- Expand the new `AssetDatabase` metadata cook into real `.glb` cooking and dependency graph invalidation.
+- Expand glTF-to-material export with texture slots for base color, normal, metallic-roughness, emissive, and occlusion.
 - Add animation clips, skeleton assets, animation blending, retargeting, and GPU skinning palette upload.
 - Add hot-reload dependency graphs so reloading one source asset updates all dependent runtime resources, not only the current prototype scene/script/material set.
 
 ## Rendering
 
-- Integrate the new render graph scaffold into `Renderer` with explicit passes and resource lifetime tracking.
+- Replace the current live render-graph snapshot with true pass scheduling, explicit resource lifetime tracking, and GPU timing scopes.
 - Add GPU frustum/occlusion culling and real clustered or Forward+ light binning.
 - Replace the single shadow-map coverage mode with true cascaded shadow maps.
 - Add normal/depth pre-pass options, SSR/SSGI experiments, motion vectors, and a more correct temporal AA resolve beyond the current FXAA-style resolve plus history blend.

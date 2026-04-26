@@ -1,8 +1,8 @@
-# DISPARITY scene v1
-object Terrain terrain 0 0 0 0 0 0 1 1 1 0.16 0.25 0.18 0.92 0 1
-object NorthPillar cube -5 0.95 6 0 0.25 0 1.1 1.9 1.1 0.28 0.38 0.72 0.42 0.08 1
-object EastPillar cube 5 0.7 4 0 -0.35 0 1.0 1.4 1.0 0.56 0.36 0.72 0.48 0.1 1
-object SouthPillar cube 3 0.85 -6 0 0.65 0 1.2 1.7 1.2 0.34 0.55 0.46 0.54 0.05 1
-object WestPillar cube -6 0.6 -3 0 -0.15 0 1.0 1.2 1.0 0.64 0.46 0.30 0.62 0.04 1
-object GoldenMarker cube 0 0.08 7 0 0 0 3.0 0.16 0.45 0.95 0.66 0.20 0.24 0.2 1
-object ImportedTriangle gltf_sample 0 1.45 -4 0 0 0 1.4 1.4 1.4 0.72 0.92 1.00 0.25 0.0 1
+# DISPARITY scene v2
+object 1000001 Terrain terrain 0 0 0 0 0 0 1 1 1 0.16 0.25 0.18 0.92 0 1
+object 1000002 NorthPillar cube -5 0.95 6 0 0.25 0 1.1 1.9 1.1 0.28 0.38 0.72 0.42 0.08 1
+object 1000003 EastPillar cube 5 0.7 4 0 -0.35 0 1.0 1.4 1.0 0.56 0.36 0.72 0.48 0.1 1
+object 1000004 SouthPillar cube 3 0.85 -6 0 0.65 0 1.2 1.7 1.2 0.34 0.55 0.46 0.54 0.05 1
+object 1000005 WestPillar cube -6 0.6 -3 0 -0.15 0 1.0 1.2 1.0 0.64 0.46 0.30 0.62 0.04 1
+object 1000006 GoldenMarker cube 0 0.08 7 0 0 0 3.0 0.16 0.45 0.95 0.66 0.20 0.24 0.2 1
+object 1000007 ImportedTriangle gltf_sample 0 1.45 -4 0 0 0 1.4 1.4 1.4 0.72 0.92 1.00 0.25 0.0 1

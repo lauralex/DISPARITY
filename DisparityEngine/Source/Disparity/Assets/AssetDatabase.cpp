@@ -3,8 +3,10 @@
 #include "Disparity/Assets/MaterialAsset.h"
 #include "Disparity/Assets/SimpleJson.h"
 #include "Disparity/Core/FileSystem.h"
+#include "Disparity/Runtime/JobSystem.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <sstream>
 #include <string>
@@ -174,6 +176,8 @@ namespace Disparity
             record.SizeBytes = entry.file_size(error);
             record.LastWriteTime = entry.last_write_time(error);
             record.CookedPath = MakeCookedPath(record.Path);
+            record.ImportSettingsPath = MakeImportSettingsPath(record.Path);
+            record.HasImportSettings = std::filesystem::exists(record.ImportSettingsPath, error);
 
             if (record.Kind == AssetKind::Mesh)
             {
@@ -244,6 +248,40 @@ namespace Disparity
         }));
     }
 
+    size_t AssetDatabase::CookDirtyAssets() const
+    {
+        std::atomic_size_t cookedCount = 0;
+        for (const AssetRecord& record : m_records)
+        {
+            if (!record.Dirty || record.Kind == AssetKind::ImportSettings)
+            {
+                continue;
+            }
+
+            JobSystem::Dispatch([record, &cookedCount] {
+                std::ostringstream output;
+                output << "# DISPARITY cooked asset metadata v1\n";
+                output << "source=" << record.Path.string() << '\n';
+                output << "kind=" << AssetDatabase::KindToString(record.Kind) << '\n';
+                output << "size=" << record.SizeBytes << '\n';
+                output << "importSettings=" << record.ImportSettingsPath.string() << '\n';
+                output << "hasImportSettings=" << (record.HasImportSettings ? "true" : "false") << '\n';
+                for (const std::filesystem::path& dependency : record.Dependencies)
+                {
+                    output << "dependency=" << dependency.string() << '\n';
+                }
+
+                if (FileSystem::WriteTextFile(record.CookedPath, output.str()))
+                {
+                    ++cookedCount;
+                }
+            });
+        }
+
+        JobSystem::WaitIdle();
+        return cookedCount.load();
+    }
+
     AssetKind AssetDatabase::KindFromPath(const std::filesystem::path& path)
     {
         const std::string extension = LowerExtension(path);
@@ -279,6 +317,10 @@ namespace Disparity
         {
             return AssetKind::Audio;
         }
+        if (extension == ".dimport")
+        {
+            return AssetKind::ImportSettings;
+        }
 
         return AssetKind::Unknown;
     }
@@ -295,6 +337,7 @@ namespace Disparity
         case AssetKind::Shader: return "Shader";
         case AssetKind::Texture: return "Texture";
         case AssetKind::Audio: return "Audio";
+        case AssetKind::ImportSettings: return "Import Settings";
         default: return "Unknown";
         }
     }
@@ -316,6 +359,18 @@ namespace Disparity
         std::filesystem::path cooked = std::filesystem::path("Saved") / "CookedAssets" / path;
         cooked += ".cooked";
         return cooked.lexically_normal();
+    }
+
+    std::filesystem::path AssetDatabase::MakeImportSettingsPath(const std::filesystem::path& path) const
+    {
+        if (KindFromPath(path) == AssetKind::ImportSettings)
+        {
+            return path;
+        }
+
+        std::filesystem::path settings = std::filesystem::path("Assets") / "ImportSettings" / path;
+        settings += ".dimport";
+        return settings.lexically_normal();
     }
 
     bool AssetDatabase::IsDirty(const AssetRecord& record, const std::filesystem::path& absolutePath) const

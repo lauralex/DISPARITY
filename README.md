@@ -39,14 +39,16 @@ Controls:
 - `F6`: save the runtime scene snapshot to `Saved/PrototypeRuntime.dscene` and show status in the editor menu bar.
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
+- When the mouse is released with `Tab`, left-click the viewport to pick objects. Hold `Ctrl` while clicking or selecting in the hierarchy to multi-select.
 
 Editor UI:
 
 - `F1`: show/hide Dear ImGui editor panels.
 - Dock panels into the main viewport, or drag panels outside the main window with ImGui multi-viewport enabled.
 - `Hierarchy`: select the player or scene entities, then copy/paste/duplicate/delete scene objects.
+- `Viewport`: enable the independent editor camera, frame the player/selection, and use right-drag or arrow/Page keys to move without driving gameplay input.
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons.
-- `Assets`: reload scene/script, toggle hot reload, inspect the asset database, inspect glTF metadata, and save/apply prefabs.
+- `Assets`: reload scene/script, toggle hot reload, inspect the asset database, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, and play generated UI/SFX/spatial test tones.
 
@@ -103,12 +105,21 @@ Editor UI:
 - `RenderGraph` and `JobSystem` are added as small engine interfaces for future explicit render passes and async asset/runtime work.
 - Production hygiene now includes GitHub Actions Debug/Release builds, shader validation, packaging validation, `Tools/SmokeTestDisparity.ps1`, version reporting, and crash report files under `Saved/CrashLogs`.
 
+## Engine v5 Followups Implemented
+
+- Renderer publishes a live render-graph snapshot and draw-call counters to the profiler panel.
+- The main viewport supports click-to-select object picking and Ctrl multi-selection.
+- The editor has an independent orbit/pan camera that can frame the player or selected object without moving the player.
+- Undo/redo now carries command labels, and the profiler shows recent command history.
+- Scene files are versioned as v2 with stable object IDs while still loading older v1 scene lines.
+- `AssetDatabase` recognizes import settings, cooks dirty assets into metadata cache files through the job system, and exposes a glTF material export workflow.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Integrate the render graph into the live DirectX 11 renderer and add GPU-driven culling.
-- Add a true editor viewport with object picking, independent editor camera controls, and real 3D transform handles.
-- Replace the tiny scene/prefab formats with stable IDs, versioned serialization, variants, and dependency-aware apply/revert.
+- Turn the live render-graph snapshot into actual pass scheduling/resource barriers and add GPU-driven culling.
+- Replace the button gizmo with real 3D transform handles and add object-ID selection buffers.
+- Add prefab variants, nested prefabs, dependency-aware apply/revert, and save-game separation.
 - Add production `.glb` cooking, animation retargeting/blending, and GPU skinning palettes.
 - Replace the WinMM prototype audio backend with XAudio2 voices, sends, snapshots, streamed layers, spatial emitters, and meters.
