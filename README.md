@@ -40,14 +40,15 @@ Controls:
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 - When the mouse is released with `Tab`, left-click the viewport to pick objects. Hold `Ctrl` while clicking or selecting in the hierarchy to multi-select.
-- Left-drag the colored X/Y/Z handles at the selection pivot to move the selected object, multi-selection, or player; hold `Shift` while dragging to snap in 0.25-unit steps.
+- In editor-camera mode, right-drag to look around. While right-dragging, use `WASD` to fly, `Q`/`E` to descend/ascend, and `Shift` for faster movement.
+- Left-drag the colored X/Y/Z handles at the selection pivot to translate, rotate, or scale the selected object/multi-selection depending on the `Gizmo mode`; hold `Shift` while dragging to snap.
 
 Editor UI:
 
 - `F1`: show/hide Dear ImGui editor panels.
 - Dock panels into the main viewport, or drag panels outside the main window with ImGui multi-viewport enabled.
 - `Hierarchy`: select the player or scene entities, then copy/paste/duplicate/delete scene objects.
-- `Viewport`: enable the independent editor camera, frame the player/selection, and use right-drag or arrow/Page keys to move without driving gameplay input.
+- `Viewport`: enable the independent editor camera, frame the player/selection, choose gizmo translate/rotate/scale and world/local space, and use right-drag plus WASD/QE to move without driving gameplay input.
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw draggable colored 3D axis handles in the viewport.
 - `Assets`: reload scene/script, toggle hot reload, inspect the asset database, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, and post debug views.
@@ -129,12 +130,19 @@ Editor UI:
 - The shadow-map graph pass is now culled when shadows are disabled, so render-graph diagnostics reflect renderer settings instead of only submitted work.
 - The visible X/Y/Z transform handles are interactive: left-drag a handle to move the player, selected object, or multi-selection, with `Shift` snapping.
 
+## Engine v8 Followups Implemented
+
+- Editor-camera navigation now supports right-drag fly controls: `WASD` for planar movement, `Q`/`E` for vertical movement, and `Shift` for faster movement.
+- The visible 3D gizmo now has selectable translate, rotate, and scale modes.
+- Gizmo axes can operate in world or local space; local space follows the selected player yaw or the first selected object rotation.
+- Gizmo drags support undo labels for translate/rotate/scale operations and still work across multi-selection.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
 - Turn the scheduled render graph into the authoritative renderer execution path with real DX11 resource lifetime ownership, alias allocation decisions, async compute candidates, and GPU-driven culling.
-- Add a dedicated editor viewport render target, object-ID selection buffers, and proper 3D gizmo handles for rotate/scale/local-world modes.
+- Add a dedicated editor viewport render target, object-ID selection buffers, and proper 3D gizmo mesh/ring handles with planar drag modes.
 - Add prefab variants, nested prefabs, dependency-aware apply/revert, and save-game separation.
 - Add production `.glb` cooking, animation retargeting/blending, and GPU skinning palettes.
 - Replace the WinMM prototype audio backend with XAudio2 voices, sends, snapshots, streamed layers, spatial emitters, and meters.

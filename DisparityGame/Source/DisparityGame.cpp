@@ -51,6 +51,26 @@ namespace
         return std::sqrt(Dot(value, value));
     }
 
+    DirectX::XMFLOAT3 Normalize(const DirectX::XMFLOAT3& value)
+    {
+        const float length = Length(value);
+        if (length <= 0.0001f)
+        {
+            return {};
+        }
+
+        return { value.x / length, value.y / length, value.z / length };
+    }
+
+    DirectX::XMFLOAT3 TransformDirection(const DirectX::XMFLOAT3& direction, const DirectX::XMFLOAT3& rotation)
+    {
+        const DirectX::XMVECTOR vector = DirectX::XMLoadFloat3(&direction);
+        const DirectX::XMMATRIX matrix = DirectX::XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z);
+        DirectX::XMFLOAT3 result = {};
+        DirectX::XMStoreFloat3(&result, DirectX::XMVector3TransformNormal(vector, matrix));
+        return Normalize(result);
+    }
+
     std::string SafeFileStem(std::string value)
     {
         if (value.empty())
@@ -379,6 +399,21 @@ namespace
         {
             size_t SceneIndex = InvalidIndex;
             DirectX::XMFLOAT3 OriginalPosition = {};
+            DirectX::XMFLOAT3 OriginalRotation = {};
+            DirectX::XMFLOAT3 OriginalScale = {};
+        };
+
+        enum class GizmoMode
+        {
+            Translate,
+            Rotate,
+            Scale
+        };
+
+        enum class GizmoSpace
+        {
+            World,
+            Local
         };
 
         void InitializeMaterials()
@@ -803,9 +838,10 @@ namespace
                     m_editorCameraYaw += deltaX * 0.003f;
                     m_editorCameraPitch = std::clamp(m_editorCameraPitch - deltaY * 0.0025f, -0.95f, 1.15f);
                 }
+                const bool editorFlyActive = !editorCapturesMouse && Disparity::Input::IsMouseButtonDown(1);
                 m_editorLastMousePosition = mousePosition;
 
-                if (!editorCapturesKeyboard && dt > 0.0f)
+                if ((!editorCapturesKeyboard || editorFlyActive) && dt > 0.0f)
                 {
                     DirectX::XMFLOAT3 moveInput = {};
                     if (Disparity::Input::IsKeyDown(VK_UP)) { moveInput.z += 1.0f; }
@@ -814,6 +850,15 @@ namespace
                     if (Disparity::Input::IsKeyDown(VK_LEFT)) { moveInput.x -= 1.0f; }
                     if (Disparity::Input::IsKeyDown(VK_PRIOR)) { moveInput.y += 1.0f; }
                     if (Disparity::Input::IsKeyDown(VK_NEXT)) { moveInput.y -= 1.0f; }
+                    if (editorFlyActive)
+                    {
+                        if (Disparity::Input::IsKeyDown('W')) { moveInput.z += 1.0f; }
+                        if (Disparity::Input::IsKeyDown('S')) { moveInput.z -= 1.0f; }
+                        if (Disparity::Input::IsKeyDown('D')) { moveInput.x += 1.0f; }
+                        if (Disparity::Input::IsKeyDown('A')) { moveInput.x -= 1.0f; }
+                        if (Disparity::Input::IsKeyDown('E')) { moveInput.y += 1.0f; }
+                        if (Disparity::Input::IsKeyDown('Q')) { moveInput.y -= 1.0f; }
+                    }
 
                     const DirectX::XMFLOAT3 normalizedInput = NormalizeFlat({ moveInput.x, 0.0f, moveInput.z });
                     const DirectX::XMFLOAT3 forward = { std::sin(m_editorCameraYaw), 0.0f, std::cos(m_editorCameraYaw) };
@@ -823,7 +868,8 @@ namespace
                     if (Length(movement) > 0.0001f)
                     {
                         movement = Scale(movement, 1.0f / Length(movement));
-                        m_editorCameraTarget = Add(m_editorCameraTarget, Scale(movement, 7.5f * dt));
+                        const float speed = Disparity::Input::IsKeyDown(VK_SHIFT) ? 15.0f : 7.5f;
+                        m_editorCameraTarget = Add(m_editorCameraTarget, Scale(movement, speed * dt));
                     }
                 }
             }
@@ -938,20 +984,28 @@ namespace
             center.Scale = { 0.18f, 0.18f, 0.18f };
             renderer.DrawMesh(m_cubeMesh, center, m_gizmoCenterMaterial);
 
-            Disparity::Transform xAxis;
-            xAxis.Position = Add(pivot, { 0.75f, 0.0f, 0.0f });
-            xAxis.Scale = { 0.9f, 0.055f, 0.055f };
-            renderer.DrawMesh(m_cubeMesh, xAxis, m_gizmoXMaterial);
+            const float handleDistance = GizmoHandleDistance();
+            const float handleSize = m_gizmoMode == GizmoMode::Rotate ? 0.16f : (m_gizmoMode == GizmoMode::Scale ? 0.24f : 0.19f);
+            const std::array<std::pair<GizmoAxis, Disparity::Material*>, 3> handles = {
+                std::pair<GizmoAxis, Disparity::Material*>{ GizmoAxis::X, &m_gizmoXMaterial },
+                std::pair<GizmoAxis, Disparity::Material*>{ GizmoAxis::Y, &m_gizmoYMaterial },
+                std::pair<GizmoAxis, Disparity::Material*>{ GizmoAxis::Z, &m_gizmoZMaterial }
+            };
 
-            Disparity::Transform yAxis;
-            yAxis.Position = Add(pivot, { 0.0f, 0.75f, 0.0f });
-            yAxis.Scale = { 0.055f, 0.9f, 0.055f };
-            renderer.DrawMesh(m_cubeMesh, yAxis, m_gizmoYMaterial);
+            for (const auto& [axis, material] : handles)
+            {
+                const DirectX::XMFLOAT3 axisVector = AxisVector(axis);
 
-            Disparity::Transform zAxis;
-            zAxis.Position = Add(pivot, { 0.0f, 0.0f, 0.75f });
-            zAxis.Scale = { 0.055f, 0.055f, 0.9f };
-            renderer.DrawMesh(m_cubeMesh, zAxis, m_gizmoZMaterial);
+                Disparity::Transform marker;
+                marker.Position = Add(pivot, Scale(axisVector, handleDistance));
+                marker.Scale = { handleSize, handleSize, handleSize };
+                renderer.DrawMesh(m_cubeMesh, marker, *material);
+
+                Disparity::Transform tick;
+                tick.Position = Add(pivot, Scale(axisVector, handleDistance * 0.55f));
+                tick.Scale = { handleSize * 0.62f, handleSize * 0.62f, handleSize * 0.62f };
+                renderer.DrawMesh(m_cubeMesh, tick, *material);
+            }
         }
 
         void DrawDockspace()
@@ -1043,9 +1097,23 @@ namespace
 
             ImGui::SliderFloat("Orbit distance", &m_editorCameraDistance, 2.5f, 40.0f);
             ImGui::DragFloat3("Target", &m_editorCameraTarget.x, 0.08f);
+            const char* gizmoModes[] = { "Translate", "Rotate", "Scale" };
+            int gizmoModeIndex = static_cast<int>(m_gizmoMode);
+            if (ImGui::Combo("Gizmo mode", &gizmoModeIndex, gizmoModes, IM_ARRAYSIZE(gizmoModes)))
+            {
+                m_gizmoMode = static_cast<GizmoMode>(gizmoModeIndex);
+                m_gizmoStatus = std::string(GizmoModeName(m_gizmoMode)) + " mode";
+            }
+            const char* gizmoSpaces[] = { "World", "Local" };
+            int gizmoSpaceIndex = static_cast<int>(m_gizmoSpace);
+            if (ImGui::Combo("Gizmo space", &gizmoSpaceIndex, gizmoSpaces, IM_ARRAYSIZE(gizmoSpaces)))
+            {
+                m_gizmoSpace = static_cast<GizmoSpace>(gizmoSpaceIndex);
+                m_gizmoStatus = std::string(GizmoSpaceName(m_gizmoSpace)) + " space";
+            }
             ImGui::Text("Pick: %s", m_lastPickStatus.c_str());
             ImGui::Text("Gizmo: %s", m_gizmoStatus.c_str());
-            ImGui::TextDisabled("Tab releases mouse; left-click picks. Right-drag or arrow/Page keys move the editor camera.");
+            ImGui::TextDisabled("Tab releases mouse; left-click picks. Right-drag plus WASD/QE flies the editor camera.");
             ImGui::End();
         }
 
@@ -1847,7 +1915,35 @@ namespace
             return { screen.x, screen.y };
         }
 
-        DirectX::XMFLOAT3 AxisVector(GizmoAxis axis) const
+        const char* GizmoModeName(GizmoMode mode) const
+        {
+            switch (mode)
+            {
+            case GizmoMode::Translate:
+                return "Translate";
+            case GizmoMode::Rotate:
+                return "Rotate";
+            case GizmoMode::Scale:
+                return "Scale";
+            default:
+                return "Unknown";
+            }
+        }
+
+        const char* GizmoSpaceName(GizmoSpace space) const
+        {
+            switch (space)
+            {
+            case GizmoSpace::World:
+                return "World";
+            case GizmoSpace::Local:
+                return "Local";
+            default:
+                return "Unknown";
+            }
+        }
+
+        DirectX::XMFLOAT3 BaseAxisVector(GizmoAxis axis) const
         {
             switch (axis)
             {
@@ -1860,6 +1956,76 @@ namespace
             case GizmoAxis::None:
             default:
                 return {};
+            }
+        }
+
+        DirectX::XMFLOAT3 SelectionRotation() const
+        {
+            if (m_selectedPlayer)
+            {
+                return { 0.0f, m_playerYaw, 0.0f };
+            }
+
+            const std::vector<size_t> selectedIndices = GetSelectedSceneIndices();
+            if (!selectedIndices.empty() && selectedIndices.front() < m_scene.Count())
+            {
+                return m_scene.GetObjects()[selectedIndices.front()].Object.TransformData.Rotation;
+            }
+
+            return {};
+        }
+
+        DirectX::XMFLOAT3 AxisVector(GizmoAxis axis) const
+        {
+            const DirectX::XMFLOAT3 baseAxis = BaseAxisVector(axis);
+            if (m_gizmoSpace == GizmoSpace::Local)
+            {
+                return TransformDirection(baseAxis, SelectionRotation());
+            }
+
+            return baseAxis;
+        }
+
+        float GizmoHandleDistance() const
+        {
+            switch (m_gizmoMode)
+            {
+            case GizmoMode::Rotate:
+                return 1.25f;
+            case GizmoMode::Scale:
+                return 1.05f;
+            case GizmoMode::Translate:
+            default:
+                return 0.85f;
+            }
+        }
+
+        float GizmoHandleRadius() const
+        {
+            switch (m_gizmoMode)
+            {
+            case GizmoMode::Rotate:
+                return 0.28f;
+            case GizmoMode::Scale:
+                return 0.36f;
+            case GizmoMode::Translate:
+            default:
+                return 0.32f;
+            }
+        }
+
+        float& ComponentForAxis(DirectX::XMFLOAT3& value, GizmoAxis axis) const
+        {
+            switch (axis)
+            {
+            case GizmoAxis::Y:
+                return value.y;
+            case GizmoAxis::Z:
+                return value.z;
+            case GizmoAxis::X:
+            case GizmoAxis::None:
+            default:
+                return value.x;
             }
         }
 
@@ -1891,15 +2057,17 @@ namespace
 
             float bestDistance = FLT_MAX;
             float distance = 0.0f;
+            const float handleDistance = GizmoHandleDistance();
+            const float handleRadius = GizmoHandleRadius();
             const std::array<std::pair<GizmoAxis, DirectX::XMFLOAT3>, 3> handles = {
-                std::pair<GizmoAxis, DirectX::XMFLOAT3>{ GizmoAxis::X, Add(pivot, { 0.75f, 0.0f, 0.0f }) },
-                std::pair<GizmoAxis, DirectX::XMFLOAT3>{ GizmoAxis::Y, Add(pivot, { 0.0f, 0.75f, 0.0f }) },
-                std::pair<GizmoAxis, DirectX::XMFLOAT3>{ GizmoAxis::Z, Add(pivot, { 0.0f, 0.0f, 0.75f }) }
+                std::pair<GizmoAxis, DirectX::XMFLOAT3>{ GizmoAxis::X, Add(pivot, Scale(AxisVector(GizmoAxis::X), handleDistance)) },
+                std::pair<GizmoAxis, DirectX::XMFLOAT3>{ GizmoAxis::Y, Add(pivot, Scale(AxisVector(GizmoAxis::Y), handleDistance)) },
+                std::pair<GizmoAxis, DirectX::XMFLOAT3>{ GizmoAxis::Z, Add(pivot, Scale(AxisVector(GizmoAxis::Z), handleDistance)) }
             };
 
             for (const auto& [axis, handlePosition] : handles)
             {
-                if (IntersectRaySphere(ray.Origin, ray.Direction, handlePosition, 0.34f, distance) && distance < bestDistance)
+                if (IntersectRaySphere(ray.Origin, ray.Direction, handlePosition, handleRadius, distance) && distance < bestDistance)
                 {
                     bestDistance = distance;
                     outAxis = axis;
@@ -1922,24 +2090,44 @@ namespace
             {
                 return false;
             }
+            if (m_selectedPlayer && m_gizmoMode == GizmoMode::Scale)
+            {
+                m_gizmoStatus = "Player scale is not editable";
+                return false;
+            }
+            if (m_selectedPlayer && m_gizmoMode == GizmoMode::Rotate && pickedAxis != GizmoAxis::Y)
+            {
+                m_gizmoStatus = "Player rotates on Y only";
+                return false;
+            }
 
             m_gizmoDragging = true;
             m_gizmoDragMoved = false;
             m_gizmoDragAxis = pickedAxis;
+            m_gizmoDragMode = m_gizmoMode;
+            m_gizmoDragSpace = m_gizmoSpace;
+            m_gizmoDragAxisVector = AxisVector(pickedAxis);
             m_gizmoDragStartMouse = Disparity::Input::GetMousePosition();
             m_gizmoDragStartPivot = pivot;
             m_gizmoDragStartPlayerPosition = m_playerPosition;
+            m_gizmoDragStartPlayerYaw = m_playerYaw;
             m_gizmoDragObjects.clear();
             m_gizmoDragBeforeState = CaptureEditState();
             for (const size_t selectedIndex : GetSelectedSceneIndices())
             {
                 if (selectedIndex < m_scene.Count())
                 {
-                    m_gizmoDragObjects.push_back(GizmoDragObject{ selectedIndex, m_scene.GetObjects()[selectedIndex].Object.TransformData.Position });
+                    const Disparity::Transform& transform = m_scene.GetObjects()[selectedIndex].Object.TransformData;
+                    m_gizmoDragObjects.push_back(GizmoDragObject{
+                        selectedIndex,
+                        transform.Position,
+                        transform.Rotation,
+                        transform.Scale
+                    });
                 }
             }
 
-            m_gizmoStatus = std::string("Dragging ") + AxisName(m_gizmoDragAxis);
+            m_gizmoStatus = std::string(GizmoModeName(m_gizmoDragMode)) + " " + AxisName(m_gizmoDragAxis) + " " + GizmoSpaceName(m_gizmoDragSpace);
             return true;
         }
 
@@ -1950,7 +2138,7 @@ namespace
                 return;
             }
 
-            const DirectX::XMFLOAT3 axis = AxisVector(m_gizmoDragAxis);
+            const DirectX::XMFLOAT3 axis = m_gizmoDragAxisVector;
             const DirectX::XMFLOAT2 startScreen = ProjectWorldToScreen(m_gizmoDragStartPivot);
             const DirectX::XMFLOAT2 endScreen = ProjectWorldToScreen(Add(m_gizmoDragStartPivot, axis));
             DirectX::XMFLOAT2 axisScreen = {
@@ -1974,20 +2162,75 @@ namespace
             const float projectedPixels = mouseDelta.x * axisScreen.x + mouseDelta.y * axisScreen.y;
             const float cameraDistance = Length(Subtract(GetRenderCamera().GetPosition(), m_gizmoDragStartPivot));
             float worldDelta = projectedPixels * std::max(0.004f, cameraDistance * 0.0035f);
-            if (Disparity::Input::IsKeyDown(VK_SHIFT))
+            if (Disparity::Input::IsKeyDown(VK_SHIFT) && m_gizmoDragMode == GizmoMode::Translate)
             {
                 constexpr float Snap = 0.25f;
                 worldDelta = std::round(worldDelta / Snap) * Snap;
             }
 
-            const DirectX::XMFLOAT3 offset = Scale(axis, worldDelta);
-            if (m_selectedPlayer)
+            if (m_gizmoDragMode == GizmoMode::Translate)
             {
-                m_playerPosition = Add(m_gizmoDragStartPlayerPosition, offset);
-                m_gizmoDragMoved = m_gizmoDragMoved || std::abs(worldDelta) > 0.001f;
+                const DirectX::XMFLOAT3 offset = Scale(axis, worldDelta);
+                if (m_selectedPlayer)
+                {
+                    m_playerPosition = Add(m_gizmoDragStartPlayerPosition, offset);
+                    m_gizmoDragMoved = m_gizmoDragMoved || std::abs(worldDelta) > 0.001f;
+                }
+                else
+                {
+                    for (const GizmoDragObject& object : m_gizmoDragObjects)
+                    {
+                        if (object.SceneIndex >= m_scene.Count())
+                        {
+                            continue;
+                        }
+
+                        m_scene.GetObjects()[object.SceneIndex].Object.TransformData.Position = Add(object.OriginalPosition, offset);
+                        SyncSceneObjectToRegistry(object.SceneIndex);
+                        m_gizmoDragMoved = m_gizmoDragMoved || std::abs(worldDelta) > 0.001f;
+                    }
+                }
             }
-            else
+            else if (m_gizmoDragMode == GizmoMode::Rotate)
             {
+                float angleDelta = worldDelta * 0.85f;
+                if (Disparity::Input::IsKeyDown(VK_SHIFT))
+                {
+                    constexpr float Snap = Pi / 36.0f;
+                    angleDelta = std::round(angleDelta / Snap) * Snap;
+                }
+
+                if (m_selectedPlayer && m_gizmoDragAxis == GizmoAxis::Y)
+                {
+                    m_playerYaw = m_gizmoDragStartPlayerYaw + angleDelta;
+                    m_gizmoDragMoved = m_gizmoDragMoved || std::abs(angleDelta) > 0.001f;
+                }
+                else if (!m_selectedPlayer)
+                {
+                    for (const GizmoDragObject& object : m_gizmoDragObjects)
+                    {
+                        if (object.SceneIndex >= m_scene.Count())
+                        {
+                            continue;
+                        }
+
+                        Disparity::Transform& transform = m_scene.GetObjects()[object.SceneIndex].Object.TransformData;
+                        transform.Rotation = object.OriginalRotation;
+                        ComponentForAxis(transform.Rotation, m_gizmoDragAxis) += angleDelta;
+                        SyncSceneObjectToRegistry(object.SceneIndex);
+                        m_gizmoDragMoved = m_gizmoDragMoved || std::abs(angleDelta) > 0.001f;
+                    }
+                }
+            }
+            else if (m_gizmoDragMode == GizmoMode::Scale && !m_selectedPlayer)
+            {
+                float scaleDelta = worldDelta * 0.45f;
+                if (Disparity::Input::IsKeyDown(VK_SHIFT))
+                {
+                    constexpr float Snap = 0.05f;
+                    scaleDelta = std::round(scaleDelta / Snap) * Snap;
+                }
+
                 for (const GizmoDragObject& object : m_gizmoDragObjects)
                 {
                     if (object.SceneIndex >= m_scene.Count())
@@ -1995,13 +2238,16 @@ namespace
                         continue;
                     }
 
-                    m_scene.GetObjects()[object.SceneIndex].Object.TransformData.Position = Add(object.OriginalPosition, offset);
+                    Disparity::Transform& transform = m_scene.GetObjects()[object.SceneIndex].Object.TransformData;
+                    transform.Scale = object.OriginalScale;
+                    float& component = ComponentForAxis(transform.Scale, m_gizmoDragAxis);
+                    component = std::max(0.05f, component + scaleDelta);
                     SyncSceneObjectToRegistry(object.SceneIndex);
-                    m_gizmoDragMoved = m_gizmoDragMoved || std::abs(worldDelta) > 0.001f;
+                    m_gizmoDragMoved = m_gizmoDragMoved || std::abs(scaleDelta) > 0.001f;
                 }
             }
 
-            m_gizmoStatus = std::string("Dragging ") + AxisName(m_gizmoDragAxis) + " " + std::to_string(worldDelta);
+            m_gizmoStatus = std::string(GizmoModeName(m_gizmoDragMode)) + " " + AxisName(m_gizmoDragAxis) + " " + std::to_string(worldDelta);
         }
 
         void EndGizmoDrag()
@@ -2013,12 +2259,13 @@ namespace
 
             if (m_gizmoDragMoved && m_gizmoDragBeforeState.has_value())
             {
-                PushUndoState(*m_gizmoDragBeforeState, std::string("Drag Gizmo ") + AxisName(m_gizmoDragAxis));
+                PushUndoState(*m_gizmoDragBeforeState, std::string(GizmoModeName(m_gizmoDragMode)) + " Gizmo " + AxisName(m_gizmoDragAxis));
             }
 
             m_gizmoDragging = false;
             m_gizmoDragMoved = false;
             m_gizmoDragAxis = GizmoAxis::None;
+            m_gizmoDragAxisVector = {};
             m_gizmoDragObjects.clear();
             m_gizmoDragBeforeState.reset();
             m_gizmoStatus = "Idle";
@@ -2418,8 +2665,10 @@ namespace
         DirectX::XMFLOAT3 m_playerPosition = { 0.0f, 0.0f, 0.0f };
         DirectX::XMFLOAT3 m_gizmoDragStartPivot = {};
         DirectX::XMFLOAT3 m_gizmoDragStartPlayerPosition = {};
+        DirectX::XMFLOAT3 m_gizmoDragAxisVector = {};
         DirectX::XMFLOAT2 m_gizmoDragStartMouse = {};
         float m_playerYaw = 0.0f;
+        float m_gizmoDragStartPlayerYaw = 0.0f;
         float m_cameraYaw = Pi;
         float m_cameraPitch = 0.42f;
         float m_cameraDistance = 7.0f;
@@ -2442,6 +2691,10 @@ namespace
         bool m_gizmoDragging = false;
         bool m_gizmoDragMoved = false;
         GizmoAxis m_gizmoDragAxis = GizmoAxis::None;
+        GizmoMode m_gizmoMode = GizmoMode::Translate;
+        GizmoMode m_gizmoDragMode = GizmoMode::Translate;
+        GizmoSpace m_gizmoSpace = GizmoSpace::World;
+        GizmoSpace m_gizmoDragSpace = GizmoSpace::World;
         std::string m_statusMessage;
         std::string m_lastPickStatus = "None";
         std::string m_gizmoStatus = "Idle";
