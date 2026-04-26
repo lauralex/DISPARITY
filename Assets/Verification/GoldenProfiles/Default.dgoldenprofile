@@ -1,0 +1,8 @@
+# DISPARITY default golden tolerance profile v1
+# Profile values override per-suite .dverify tolerance values when present.
+profile_name=Default
+golden_thumbnail_width=64
+golden_thumbnail_height=36
+golden_mean_tolerance=18.0
+golden_bad_pixel_delta=42.0
+golden_bad_pixel_ratio=0.35

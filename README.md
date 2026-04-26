@@ -52,7 +52,7 @@ Editor UI:
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw draggable, camera-scaled 3D axis/ring/plane gizmo handles in the viewport.
 - `Assets`: reload scene/script, toggle hot reload, inspect the asset database, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, and post debug views.
-- `Audio Mixer`: adjust master/bus volumes, mute buses, and play generated UI/SFX/spatial test tones.
+- `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, inspect bus sends/meters, and store/recall a mixer snapshot.
 
 ## Engine v0 Features
 
@@ -186,13 +186,25 @@ Editor UI:
 - `EditorPrecision` adds a third replay/baseline/golden suite focused on editor interaction invariants.
 - Performance history rows now include editor pick and gizmo pick counts.
 
+## Engine v15 Followups Implemented
+
+- Runtime verification now records scenario coverage counters for scene reloads, runtime scene saves, post-debug view cycling, gizmo transform constraints, and audio snapshot validation.
+- The suite manifest now covers `Prototype`, `CameraSweep`, `EditorPrecision`, `PostDebug`, `AssetReload`, and `GizmoDrag`.
+- Golden comparisons support tolerance profiles under `Assets/Verification/GoldenProfiles` and write diff thumbnails for faster visual debugging.
+- Performance summaries can compare recent runs against committed suite baselines in `Assets/Verification/PerformanceBaselines.dperf`.
+- `Tools/CookDisparityAssets.ps1` writes deterministic cooked metadata manifests under `Saved/CookedAssets`.
+- `Tools/PackageDisparity.ps1` now writes a package manifest with file hashes, can include PDB symbols, and can create a zip artifact.
+- `Tools/CollectCrashReports.ps1` prepares crash upload manifests and optional local bundles.
+- Scene saving now emits schema v3 metadata with deterministic ID and save-game separation flags.
+- The current WinMM prototype audio layer gained a production-facing backend name, listener orientation, bus sends, peak/RMS meters, and mixer snapshots.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Turn the scheduled render graph into the authoritative renderer execution path with real DX11 resource lifetime ownership, alias allocation decisions, async compute candidates, and GPU-driven culling.
-- Add a dedicated editor viewport render target and a real GPU object-ID/depth selection buffer to replace the new CPU-side stable-ID picking groundwork.
-- Add prefab variants, nested prefabs, dependency-aware apply/revert, and save-game separation.
-- Add production `.glb` cooking, animation retargeting/blending, and GPU skinning palettes.
-- Replace the WinMM prototype audio backend with XAudio2 voices, sends, snapshots, streamed layers, spatial emitters, and meters.
-- Extend golden-image and performance regression gates with per-GPU tolerance profiles and commit-to-commit baselines.
+- Turn the render graph into the actual DX11 pass dispatcher with owned transient resources and alias allocation.
+- Add a GPU object-ID/depth buffer and dedicated editor viewport render target for picking and tool overlays.
+- Convert asset cook metadata into real binary cooked mesh/material/animation packages with dependency invalidation.
+- Add prefab variants, nested prefabs, override diffing, and dependency-aware apply/revert.
+- Replace the WinMM prototype backend with XAudio2 voices, sends, streamed music, spatial emitters, and live meters.
+- Add per-adapter golden profiles, historical baseline update review tooling, installer generation, and crash upload integration.

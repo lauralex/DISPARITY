@@ -22,7 +22,36 @@ namespace Disparity
         std::atomic<float> g_masterVolume = 0.8f;
         std::mutex g_audioMutex;
         std::unordered_map<std::string, AudioBus> g_buses;
+        std::unordered_map<std::string, AudioBusMeter> g_meters;
         DirectX::XMFLOAT3 g_listenerPosition = {};
+        DirectX::XMFLOAT3 g_listenerForward = { 0.0f, 0.0f, 1.0f };
+        DirectX::XMFLOAT3 g_listenerUp = { 0.0f, 1.0f, 0.0f };
+        DirectX::XMFLOAT3 g_listenerRight = { 1.0f, 0.0f, 0.0f };
+
+        float Length(const DirectX::XMFLOAT3& value)
+        {
+            return std::sqrt(value.x * value.x + value.y * value.y + value.z * value.z);
+        }
+
+        DirectX::XMFLOAT3 Normalize(const DirectX::XMFLOAT3& value, const DirectX::XMFLOAT3& fallback)
+        {
+            const float length = Length(value);
+            if (length <= 0.0001f)
+            {
+                return fallback;
+            }
+
+            return { value.x / length, value.y / length, value.z / length };
+        }
+
+        DirectX::XMFLOAT3 Cross(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b)
+        {
+            return {
+                a.y * b.z - a.z * b.y,
+                a.z * b.x - a.x * b.z,
+                a.x * b.y - a.y * b.x
+            };
+        }
 
         void EnsureDefaultBuses()
         {
@@ -37,6 +66,29 @@ namespace Disparity
             g_buses.emplace("UI", AudioBus{ "UI", 0.85f, false });
             g_buses.emplace("Music", AudioBus{ "Music", 0.7f, false });
             g_buses.emplace("Ambience", AudioBus{ "Ambience", 0.65f, false });
+        }
+
+        void BeginVoiceMeter(const std::string& busName, float peak, float rms)
+        {
+            std::scoped_lock lock(g_audioMutex);
+            AudioBusMeter& meter = g_meters[busName];
+            meter.BusName = busName;
+            meter.Peak = std::max(meter.Peak * 0.82f, std::clamp(peak, 0.0f, 1.0f));
+            meter.Rms = std::max(meter.Rms * 0.82f, std::clamp(rms, 0.0f, 1.0f));
+            ++meter.ActiveVoices;
+        }
+
+        void EndVoiceMeter(const std::string& busName)
+        {
+            std::scoped_lock lock(g_audioMutex);
+            AudioBusMeter& meter = g_meters[busName];
+            meter.BusName = busName;
+            if (meter.ActiveVoices > 0)
+            {
+                --meter.ActiveVoices;
+            }
+            meter.Peak *= 0.65f;
+            meter.Rms *= 0.65f;
         }
 
         float GetBusGainUnlocked(const std::string& busName)
@@ -79,6 +131,7 @@ namespace Disparity
                 std::clamp(volume, 0.0f, 1.0f) *
                 std::clamp(g_masterVolume.load(), 0.0f, 1.0f) *
                 GetBusGain(busName);
+            BeginVoiceMeter(busName, gain, gain * 0.707f);
             const float clampedPan = std::clamp(pan, -1.0f, 1.0f);
             const float leftGain = std::sqrt(0.5f * (1.0f - clampedPan));
             const float rightGain = std::sqrt(0.5f * (1.0f + clampedPan));
@@ -104,6 +157,7 @@ namespace Disparity
             HWAVEOUT output = nullptr;
             if (waveOutOpen(&output, WAVE_MAPPER, &format, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR)
             {
+                EndVoiceMeter(busName);
                 g_tonePlaying = false;
                 return;
             }
@@ -125,6 +179,7 @@ namespace Disparity
             }
 
             waveOutClose(output);
+            EndVoiceMeter(busName);
             g_tonePlaying = false;
         }
     }
@@ -133,6 +188,11 @@ namespace Disparity
     {
         EnsureDefaultBuses();
         return true;
+    }
+
+    const char* AudioSystem::GetBackendName()
+    {
+        return "WinMM prototype mixer";
     }
 
     void AudioSystem::Shutdown()
@@ -166,9 +226,11 @@ namespace Disparity
         EnsureDefaultBuses();
 
         DirectX::XMFLOAT3 listener = {};
+        DirectX::XMFLOAT3 listenerRight = {};
         {
             std::scoped_lock lock(g_audioMutex);
             listener = g_listenerPosition;
+            listenerRight = g_listenerRight;
         }
 
         const float dx = worldPosition.x - listener.x;
@@ -176,7 +238,8 @@ namespace Disparity
         const float dz = worldPosition.z - listener.z;
         const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
         const float attenuation = 1.0f / (1.0f + distance * 0.18f);
-        const float pan = std::clamp(dx / 8.0f, -1.0f, 1.0f);
+        const float projectedRight = dx * listenerRight.x + dy * listenerRight.y + dz * listenerRight.z;
+        const float pan = std::clamp(projectedRight / 8.0f, -1.0f, 1.0f);
 
         std::thread(PlayGeneratedTone, frequencyHz, durationSeconds, volume * attenuation, busName, pan).detach();
     }
@@ -259,6 +322,23 @@ namespace Disparity
         return found != g_buses.end() && found->second.Muted;
     }
 
+    void AudioSystem::SetBusSend(const std::string& busName, float send)
+    {
+        EnsureDefaultBuses();
+        std::scoped_lock lock(g_audioMutex);
+        AudioBus& bus = g_buses[busName];
+        bus.Name = busName;
+        bus.Send = std::clamp(send, 0.0f, 1.0f);
+    }
+
+    float AudioSystem::GetBusSend(const std::string& busName)
+    {
+        EnsureDefaultBuses();
+        std::scoped_lock lock(g_audioMutex);
+        const auto found = g_buses.find(busName);
+        return found == g_buses.end() ? 0.0f : found->second.Send;
+    }
+
     std::vector<AudioBus> AudioSystem::GetBuses()
     {
         EnsureDefaultBuses();
@@ -276,9 +356,65 @@ namespace Disparity
         return buses;
     }
 
+    std::vector<AudioBusMeter> AudioSystem::GetMeters()
+    {
+        EnsureDefaultBuses();
+        std::scoped_lock lock(g_audioMutex);
+        std::vector<AudioBusMeter> meters;
+        meters.reserve(g_buses.size());
+        for (const auto& [name, bus] : g_buses)
+        {
+            (void)bus;
+            const auto found = g_meters.find(name);
+            if (found != g_meters.end())
+            {
+                meters.push_back(found->second);
+            }
+            else
+            {
+                meters.push_back(AudioBusMeter{ name, 0.0f, 0.0f, 0 });
+            }
+        }
+        std::sort(meters.begin(), meters.end(), [](const AudioBusMeter& a, const AudioBusMeter& b) {
+            return a.BusName < b.BusName;
+        });
+        return meters;
+    }
+
+    AudioSnapshot AudioSystem::CaptureSnapshot()
+    {
+        AudioSnapshot snapshot;
+        snapshot.MasterVolume = GetMasterVolume();
+        snapshot.Buses = GetBuses();
+        return snapshot;
+    }
+
+    void AudioSystem::ApplySnapshot(const AudioSnapshot& snapshot)
+    {
+        SetMasterVolume(snapshot.MasterVolume);
+        for (const AudioBus& bus : snapshot.Buses)
+        {
+            SetBusVolume(bus.Name, bus.Volume);
+            SetBusMuted(bus.Name, bus.Muted);
+            SetBusSend(bus.Name, bus.Send);
+        }
+    }
+
     void AudioSystem::SetListenerPosition(const DirectX::XMFLOAT3& position)
     {
         std::scoped_lock lock(g_audioMutex);
         g_listenerPosition = position;
+    }
+
+    void AudioSystem::SetListenerOrientation(
+        const DirectX::XMFLOAT3& position,
+        const DirectX::XMFLOAT3& forward,
+        const DirectX::XMFLOAT3& up)
+    {
+        std::scoped_lock lock(g_audioMutex);
+        g_listenerPosition = position;
+        g_listenerForward = Normalize(forward, { 0.0f, 0.0f, 1.0f });
+        g_listenerUp = Normalize(up, { 0.0f, 1.0f, 0.0f });
+        g_listenerRight = Normalize(Cross(g_listenerUp, g_listenerForward), { 1.0f, 0.0f, 0.0f });
     }
 }

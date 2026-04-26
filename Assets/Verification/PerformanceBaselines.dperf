@@ -1,0 +1,8 @@
+# DISPARITY committed performance baselines v1
+# suite|cpu_frame_max_ms|gpu_frame_max_ms|pass_cpu_max_ms|cpu_regression_ms|gpu_regression_ms
+Prototype|120.0|50.0|60.0|8.0|8.0
+CameraSweep|120.0|50.0|60.0|8.0|8.0
+EditorPrecision|120.0|50.0|60.0|8.0|8.0
+PostDebug|120.0|50.0|60.0|8.0|8.0
+AssetReload|120.0|50.0|60.0|8.0|8.0
+GizmoDrag|120.0|50.0|60.0|8.0|8.0

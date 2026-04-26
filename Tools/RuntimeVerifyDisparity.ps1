@@ -10,6 +10,7 @@ param(
     [string]$SuiteName = "Default",
     [string]$ReplayPath = "Assets/Verification/Prototype.dreplay",
     [string]$BaselinePath = "Assets/Verification/RuntimeBaseline.dverify",
+    [string]$GoldenProfilePath = "Assets/Verification/GoldenProfiles/Default.dgoldenprofile",
     [string]$HistoryPath = "",
     [switch]$DisableCapture,
     [switch]$DisableInputPlayback,
@@ -127,11 +128,39 @@ function Get-BaselineDouble {
     return $DefaultValue
 }
 
+function Get-ProfiledInt {
+    param(
+        [hashtable]$BaselineValues,
+        [hashtable]$ProfileValues,
+        [string]$Name,
+        [int]$DefaultValue
+    )
+
+    if ($ProfileValues.ContainsKey($Name)) {
+        return [int]$ProfileValues[$Name]
+    }
+    return Get-BaselineInt -Values $BaselineValues -Name $Name -DefaultValue $DefaultValue
+}
+
+function Get-ProfiledDouble {
+    param(
+        [hashtable]$BaselineValues,
+        [hashtable]$ProfileValues,
+        [string]$Name,
+        [double]$DefaultValue
+    )
+
+    if ($ProfileValues.ContainsKey($Name)) {
+        return [double]$ProfileValues[$Name]
+    }
+    return Get-BaselineDouble -Values $BaselineValues -Name $Name -DefaultValue $DefaultValue
+}
+
 if (Test-Path -LiteralPath $reportPath) {
-    Remove-Item -LiteralPath $reportPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $reportPath -Force -ErrorAction Ignore
 }
 if (Test-Path -LiteralPath $capturePath) {
-    Remove-Item -LiteralPath $capturePath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $capturePath -Force -ErrorAction Ignore
 }
 
 $runtimeArguments = @(
@@ -184,26 +213,34 @@ if (!$DisableCapture -and !$DisableGoldenComparison) {
     }
 
     $baselineValues = Read-BaselineValues -Path $resolvedBaselinePath
+    $profileValues = @{}
+    $resolvedGoldenProfilePath = Resolve-VerificationPath -Path $GoldenProfilePath
+    if (Test-Path -LiteralPath $resolvedGoldenProfilePath) {
+        $profileValues = Read-BaselineValues -Path $resolvedGoldenProfilePath
+        Write-Host "Using golden tolerance profile $resolvedGoldenProfilePath"
+    }
     if (!$baselineValues.ContainsKey("golden_capture_path")) {
         throw "Runtime verification baseline $resolvedBaselinePath does not define golden_capture_path."
     }
 
     $goldenPath = Resolve-VerificationPath -Path $baselineValues["golden_capture_path"]
-    $thumbnailWidth = Get-BaselineInt -Values $baselineValues -Name "golden_thumbnail_width" -DefaultValue 64
-    $thumbnailHeight = Get-BaselineInt -Values $baselineValues -Name "golden_thumbnail_height" -DefaultValue 36
-    $meanTolerance = Get-BaselineDouble -Values $baselineValues -Name "golden_mean_tolerance" -DefaultValue 18.0
-    $badPixelDelta = Get-BaselineDouble -Values $baselineValues -Name "golden_bad_pixel_delta" -DefaultValue 42.0
-    $badPixelRatio = Get-BaselineDouble -Values $baselineValues -Name "golden_bad_pixel_ratio" -DefaultValue 0.35
+    $thumbnailWidth = Get-ProfiledInt -BaselineValues $baselineValues -ProfileValues $profileValues -Name "golden_thumbnail_width" -DefaultValue 64
+    $thumbnailHeight = Get-ProfiledInt -BaselineValues $baselineValues -ProfileValues $profileValues -Name "golden_thumbnail_height" -DefaultValue 36
+    $meanTolerance = Get-ProfiledDouble -BaselineValues $baselineValues -ProfileValues $profileValues -Name "golden_mean_tolerance" -DefaultValue 18.0
+    $badPixelDelta = Get-ProfiledDouble -BaselineValues $baselineValues -ProfileValues $profileValues -Name "golden_bad_pixel_delta" -DefaultValue 42.0
+    $badPixelRatio = Get-ProfiledDouble -BaselineValues $baselineValues -ProfileValues $profileValues -Name "golden_bad_pixel_ratio" -DefaultValue 0.35
     $safeSuiteName = [regex]::Replace($SuiteName.Trim(), "[^A-Za-z0-9_.-]", "_")
     if ([string]::IsNullOrWhiteSpace($safeSuiteName)) {
         $safeSuiteName = "Default"
     }
 
     $thumbnailPath = Join-Path $workingDirectory "Saved\Verification\runtime_capture_$safeSuiteName.ppm"
+    $diffPath = Join-Path $workingDirectory "Saved\Verification\runtime_capture_${safeSuiteName}_diff.ppm"
     $compareArguments = @{
         CapturePath = $capturePath
         GoldenPath = $goldenPath
         ThumbnailPath = $thumbnailPath
+        DiffPath = $diffPath
         ThumbnailWidth = $thumbnailWidth
         ThumbnailHeight = $thumbnailHeight
         MeanTolerance = $meanTolerance
@@ -230,7 +267,7 @@ if (!$DisablePerfHistory) {
         New-Item -ItemType Directory -Force -Path $historyParent | Out-Null
     }
 
-    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance,editor_pick_tests,editor_pick_failures,gizmo_pick_tests,gizmo_pick_failures"
+    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance,editor_pick_tests,editor_pick_failures,gizmo_pick_tests,gizmo_pick_failures,gizmo_drag_tests,gizmo_drag_failures,scene_reload_tests,scene_save_tests,post_debug_view_tests,audio_snapshot_tests"
     if (Test-Path -LiteralPath $HistoryPath) {
         $currentHeader = Get-Content -LiteralPath $HistoryPath -First 1
         if ($currentHeader -ne $historyHeader) {
@@ -265,7 +302,13 @@ if (!$DisablePerfHistory) {
         $metrics["editor_pick_tests"],
         $metrics["editor_pick_failures"],
         $metrics["gizmo_pick_tests"],
-        $metrics["gizmo_pick_failures"]
+        $metrics["gizmo_pick_failures"],
+        $metrics["gizmo_drag_tests"],
+        $metrics["gizmo_drag_failures"],
+        $metrics["scene_reload_tests"],
+        $metrics["scene_save_tests"],
+        $metrics["post_debug_view_tests"],
+        $metrics["audio_snapshot_tests"]
     ) | ForEach-Object {
         '"' + ([string]$_ -replace '"', '""') + '"'
     }

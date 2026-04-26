@@ -1,8 +1,11 @@
 param(
     [string]$HistoryPath = "Saved/Verification/performance_history.csv",
+    [string]$BaselinePath = "Assets/Verification/PerformanceBaselines.dperf",
     [int]$Recent = 8,
     [double]$CpuRegressionMs = 8.0,
-    [double]$GpuRegressionMs = 8.0
+    [double]$GpuRegressionMs = 8.0,
+    [switch]$DisableBaselineComparison,
+    [switch]$UpdateBaseline
 )
 
 $ErrorActionPreference = "Stop"
@@ -10,6 +13,9 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 if (![System.IO.Path]::IsPathRooted($HistoryPath)) {
     $HistoryPath = Join-Path $root $HistoryPath
+}
+if (![System.IO.Path]::IsPathRooted($BaselinePath)) {
+    $BaselinePath = Join-Path $root $BaselinePath
 }
 
 if (!(Test-Path -LiteralPath $HistoryPath)) {
@@ -24,6 +30,31 @@ if ($rows.Count -eq 0) {
 }
 
 Write-Host "Performance history: $HistoryPath"
+$baselines = @{}
+if (!$DisableBaselineComparison -and (Test-Path -LiteralPath $BaselinePath)) {
+    foreach ($line in Get-Content -LiteralPath $BaselinePath) {
+        $trimmed = $line.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith("#")) {
+            continue
+        }
+
+        $parts = $trimmed -split "\|"
+        if ($parts.Count -lt 6) {
+            throw "Invalid performance baseline line in ${BaselinePath}: $line"
+        }
+
+        $baselines[$parts[0].Trim()] = [pscustomobject]@{
+            CpuMaxMs = [double]$parts[1].Trim()
+            GpuMaxMs = [double]$parts[2].Trim()
+            PassCpuMaxMs = [double]$parts[3].Trim()
+            CpuRegressionMs = [double]$parts[4].Trim()
+            GpuRegressionMs = [double]$parts[5].Trim()
+        }
+    }
+    Write-Host "Performance baseline: $BaselinePath"
+}
+
+$latestBySuite = @{}
 $groups = $rows | Group-Object {
     $suite = $_.suite
     if ([string]::IsNullOrWhiteSpace($suite)) {
@@ -50,13 +81,31 @@ foreach ($group in $groups) {
     $label = "$suiteName :: $($latest.executable)"
     $latestCpu = [double]$latest.cpu_frame_max_ms
     $latestGpu = [double]$latest.gpu_frame_max_ms
+    $latestPassCpu = if ($latest.PSObject.Properties.Name -contains "pass_cpu_max_ms" -and ![string]::IsNullOrWhiteSpace($latest.pass_cpu_max_ms)) { [double]$latest.pass_cpu_max_ms } else { 0.0 }
     $latestLuma = [double]$latest.capture_average_luma
     $editorPicks = if ($latest.PSObject.Properties.Name -contains "editor_pick_tests" -and ![string]::IsNullOrWhiteSpace($latest.editor_pick_tests)) { [int]$latest.editor_pick_tests } else { 0 }
     $gizmoPicks = if ($latest.PSObject.Properties.Name -contains "gizmo_pick_tests" -and ![string]::IsNullOrWhiteSpace($latest.gizmo_pick_tests)) { [int]$latest.gizmo_pick_tests } else { 0 }
+    $gizmoDrags = if ($latest.PSObject.Properties.Name -contains "gizmo_drag_tests" -and ![string]::IsNullOrWhiteSpace($latest.gizmo_drag_tests)) { [int]$latest.gizmo_drag_tests } else { 0 }
+    $postDebugViews = if ($latest.PSObject.Properties.Name -contains "post_debug_view_tests" -and ![string]::IsNullOrWhiteSpace($latest.post_debug_view_tests)) { [int]$latest.post_debug_view_tests } else { 0 }
 
-    Write-Host ("{0}: latest cpu_max={1:N3}ms gpu_max={2:N3}ms luma={3:N2} editor_picks={4} gizmo_picks={5}" -f $label, $latestCpu, $latestGpu, $latestLuma, $editorPicks, $gizmoPicks)
+    Write-Host ("{0}: latest cpu_max={1:N3}ms gpu_max={2:N3}ms pass_cpu_max={3:N3}ms luma={4:N2} editor_picks={5} gizmo_picks={6} gizmo_drags={7} post_debug={8}" -f $label, $latestCpu, $latestGpu, $latestPassCpu, $latestLuma, $editorPicks, $gizmoPicks, $gizmoDrags, $postDebugViews)
+    if (!$latestBySuite.ContainsKey($suiteName)) {
+        $latestBySuite[$suiteName] = $latest
+    }
 
     if ($latestRows.Count -lt 2) {
+        if ($baselines.ContainsKey($suiteName)) {
+            $baseline = $baselines[$suiteName]
+            if ($latestCpu -gt $baseline.CpuMaxMs) {
+                throw "$label exceeded committed CPU baseline $($baseline.CpuMaxMs)ms."
+            }
+            if ($latestGpu -gt $baseline.GpuMaxMs) {
+                throw "$label exceeded committed GPU baseline $($baseline.GpuMaxMs)ms."
+            }
+            if ($latestPassCpu -gt $baseline.PassCpuMaxMs) {
+                throw "$label exceeded committed pass CPU baseline $($baseline.PassCpuMaxMs)ms."
+            }
+        }
         continue
     }
 
@@ -72,4 +121,41 @@ foreach ($group in $groups) {
     if ($gpuDelta -gt $GpuRegressionMs) {
         throw "$label regressed GPU frame max by $([Math]::Round($gpuDelta, 3))ms."
     }
+
+    if ($baselines.ContainsKey($suiteName)) {
+        $baseline = $baselines[$suiteName]
+        if ($latestCpu -gt $baseline.CpuMaxMs) {
+            throw "$label exceeded committed CPU baseline $($baseline.CpuMaxMs)ms."
+        }
+        if ($latestGpu -gt $baseline.GpuMaxMs) {
+            throw "$label exceeded committed GPU baseline $($baseline.GpuMaxMs)ms."
+        }
+        if ($latestPassCpu -gt $baseline.PassCpuMaxMs) {
+            throw "$label exceeded committed pass CPU baseline $($baseline.PassCpuMaxMs)ms."
+        }
+        if ($cpuDelta -gt $baseline.CpuRegressionMs) {
+            throw "$label regressed CPU frame max by $([Math]::Round($cpuDelta, 3))ms against committed threshold."
+        }
+        if ($gpuDelta -gt $baseline.GpuRegressionMs) {
+            throw "$label regressed GPU frame max by $([Math]::Round($gpuDelta, 3))ms against committed threshold."
+        }
+    }
+}
+
+if ($UpdateBaseline) {
+    $parent = Split-Path -Parent $BaselinePath
+    if (![string]::IsNullOrWhiteSpace($parent)) {
+        New-Item -ItemType Directory -Force -Path $parent | Out-Null
+    }
+
+    $lines = @("# suite|cpu_frame_max_ms|gpu_frame_max_ms|pass_cpu_max_ms|cpu_regression_ms|gpu_regression_ms")
+    foreach ($suite in ($latestBySuite.Keys | Sort-Object)) {
+        $row = $latestBySuite[$suite]
+        $cpu = [double]$row.cpu_frame_max_ms
+        $gpu = [double]$row.gpu_frame_max_ms
+        $passCpu = if ($row.PSObject.Properties.Name -contains "pass_cpu_max_ms" -and ![string]::IsNullOrWhiteSpace($row.pass_cpu_max_ms)) { [double]$row.pass_cpu_max_ms } else { 60.0 }
+        $lines += ("{0}|{1:N3}|{2:N3}|{3:N3}|{4:N3}|{5:N3}" -f $suite, [Math]::Max(40.0, $cpu + 8.0), [Math]::Max(20.0, $gpu + 8.0), [Math]::Max(30.0, $passCpu + 8.0), $CpuRegressionMs, $GpuRegressionMs)
+    }
+    $lines | Set-Content -LiteralPath $BaselinePath
+    Write-Host "Updated performance baseline at $BaselinePath"
 }

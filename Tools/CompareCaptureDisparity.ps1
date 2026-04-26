@@ -4,6 +4,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$GoldenPath,
     [string]$ThumbnailPath = "",
+    [string]$DiffPath = "",
     [int]$ThumbnailWidth = 64,
     [int]$ThumbnailHeight = 36,
     [double]$MeanTolerance = 18.0,
@@ -156,7 +157,8 @@ function Compare-PpmImages {
         [pscustomobject]$Expected,
         [double]$AllowedMeanDelta,
         [double]$AllowedBadPixelDelta,
-        [double]$AllowedBadPixelRatio
+        [double]$AllowedBadPixelRatio,
+        [string]$DiffPath
     )
 
     if ($Actual.Width -ne $Expected.Width -or $Actual.Height -ne $Expected.Height) {
@@ -167,6 +169,8 @@ function Compare-PpmImages {
     $pixelCount = $Actual.Width * $Actual.Height
     $totalDelta = 0.0
     $badPixels = 0
+    $maxDelta = 0.0
+    $diffPixels = if (![string]::IsNullOrWhiteSpace($DiffPath)) { New-Object byte[] $channelCount } else { $null }
 
     for ($pixel = 0; $pixel -lt $pixelCount; $pixel++) {
         $base = $pixel * 3
@@ -176,6 +180,12 @@ function Compare-PpmImages {
         $totalDelta += $redDelta + $greenDelta + $blueDelta
 
         $pixelDelta = ($redDelta + $greenDelta + $blueDelta) / 3.0
+        $maxDelta = [Math]::Max($maxDelta, $pixelDelta)
+        if ($null -ne $diffPixels) {
+            $diffPixels[$base + 0] = [byte][Math]::Min(255, $redDelta * 4)
+            $diffPixels[$base + 1] = [byte][Math]::Min(255, $greenDelta * 4)
+            $diffPixels[$base + 2] = [byte][Math]::Min(255, $blueDelta * 4)
+        }
         if ($pixelDelta -gt $AllowedBadPixelDelta) {
             $badPixels++
         }
@@ -183,13 +193,18 @@ function Compare-PpmImages {
 
     $meanDelta = $totalDelta / $channelCount
     $badRatio = $badPixels / [double]$pixelCount
+    if ($null -ne $diffPixels) {
+        Write-PpmImage -Path $DiffPath -Width $Actual.Width -Height $Actual.Height -Pixels $diffPixels
+    }
     if ($meanDelta -gt $AllowedMeanDelta -or $badRatio -gt $AllowedBadPixelRatio) {
-        throw ("Golden comparison failed: mean_delta={0:N2} allowed={1:N2}, bad_pixel_ratio={2:N4} allowed={3:N4}" -f $meanDelta, $AllowedMeanDelta, $badRatio, $AllowedBadPixelRatio)
+        throw ("Golden comparison failed: mean_delta={0:N2} allowed={1:N2}, bad_pixel_ratio={2:N4} allowed={3:N4}, max_delta={4:N2}, bad_pixels={5}, diff={6}" -f $meanDelta, $AllowedMeanDelta, $badRatio, $AllowedBadPixelRatio, $maxDelta, $badPixels, $DiffPath)
     }
 
     return [pscustomobject]@{
         MeanDelta = $meanDelta
         BadPixelRatio = $badRatio
+        MaxDelta = $maxDelta
+        BadPixels = $badPixels
     }
 }
 
@@ -209,5 +224,8 @@ if ($UpdateGolden) {
 }
 
 $golden = Read-PpmImage -Path $GoldenPath
-$comparison = Compare-PpmImages -Actual $thumbnail -Expected $golden -AllowedMeanDelta $MeanTolerance -AllowedBadPixelDelta $BadPixelDelta -AllowedBadPixelRatio $BadPixelRatio
-Write-Host ("Golden comparison passed: mean_delta={0:N2}, bad_pixel_ratio={1:N4}, thumbnail={2}" -f $comparison.MeanDelta, $comparison.BadPixelRatio, $ThumbnailPath)
+$comparison = Compare-PpmImages -Actual $thumbnail -Expected $golden -AllowedMeanDelta $MeanTolerance -AllowedBadPixelDelta $BadPixelDelta -AllowedBadPixelRatio $BadPixelRatio -DiffPath $DiffPath
+Write-Host ("Golden comparison passed: mean_delta={0:N2}, bad_pixel_ratio={1:N4}, max_delta={2:N2}, bad_pixels={3}, thumbnail={4}" -f $comparison.MeanDelta, $comparison.BadPixelRatio, $comparison.MaxDelta, $comparison.BadPixels, $ThumbnailPath)
+if (![string]::IsNullOrWhiteSpace($DiffPath)) {
+    Write-Host "Golden diff thumbnail written to $DiffPath"
+}

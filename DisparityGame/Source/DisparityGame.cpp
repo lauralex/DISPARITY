@@ -401,7 +401,11 @@ namespace
             UpdateCamera();
             UpdateEditorCamera(dt, editorCapturesMouse, editorCapturesKeyboard);
             UpdateEditorHover(editorCapturesMouse);
-            Disparity::AudioSystem::SetListenerPosition(GetRenderCamera().GetPosition());
+            const DirectX::XMFLOAT3 listenerPosition = GetRenderCamera().GetPosition();
+            Disparity::AudioSystem::SetListenerOrientation(
+                listenerPosition,
+                Normalize(Subtract(Add(m_playerPosition, { 0.0f, 1.2f, 0.0f }), listenerPosition)),
+                { 0.0f, 1.0f, 0.0f });
             UpdateStatusTimer(dt);
             UpdateRuntimeVerification(dt);
         }
@@ -537,6 +541,11 @@ namespace
             uint32_t ExpectedCaptureHeight = 720;
             uint32_t MinEditorPickTests = 1;
             uint32_t MinGizmoPickTests = 1;
+            uint32_t MinGizmoDragTests = 0;
+            uint32_t MinSceneReloads = 0;
+            uint32_t MinSceneSaves = 0;
+            uint32_t MinPostDebugViews = 0;
+            uint32_t MinAudioSnapshotTests = 0;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
             double MinNonBlackRatio = 0.05;
@@ -624,6 +633,12 @@ namespace
             uint32_t ObjectPickFailures = 0;
             uint32_t GizmoPickTests = 0;
             uint32_t GizmoPickFailures = 0;
+            uint32_t GizmoDragTests = 0;
+            uint32_t GizmoDragFailures = 0;
+            uint32_t SceneReloads = 0;
+            uint32_t SceneSaves = 0;
+            uint32_t PostDebugViews = 0;
+            uint32_t AudioSnapshotTests = 0;
         };
 
         void InitializeMaterials()
@@ -1732,6 +1747,7 @@ namespace
             {
                 Disparity::AudioSystem::SetMasterVolume(masterVolume);
             }
+            ImGui::Text("Backend: %s", Disparity::AudioSystem::GetBackendName());
 
             if (ImGui::Button("Low Tone"))
             {
@@ -1753,6 +1769,7 @@ namespace
             {
                 bool muted = bus.Muted;
                 float volume = bus.Volume;
+                float send = bus.Send;
                 ImGui::PushID(bus.Name.c_str());
                 if (ImGui::Checkbox("M", &muted))
                 {
@@ -1763,10 +1780,36 @@ namespace
                 {
                     Disparity::AudioSystem::SetBusVolume(bus.Name, volume);
                 }
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(72.0f);
+                if (ImGui::SliderFloat("Send", &send, 0.0f, 1.0f, "%.2f"))
+                {
+                    Disparity::AudioSystem::SetBusSend(bus.Name, send);
+                }
                 ImGui::PopID();
             }
 
-            ImGui::TextDisabled("WinMM bus mixer + spatial tone preview");
+            ImGui::SeparatorText("Meters");
+            for (const Disparity::AudioBusMeter& meter : Disparity::AudioSystem::GetMeters())
+            {
+                ImGui::Text("%s voices %u", meter.BusName.c_str(), meter.ActiveVoices);
+                ImGui::SameLine();
+                ImGui::ProgressBar(std::clamp(meter.Peak, 0.0f, 1.0f), ImVec2(120.0f, 0.0f));
+            }
+
+            if (ImGui::Button("Store Snapshot"))
+            {
+                m_audioSnapshot = Disparity::AudioSystem::CaptureSnapshot();
+                SetStatus("Stored audio mixer snapshot");
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Recall") && m_audioSnapshot.has_value())
+            {
+                Disparity::AudioSystem::ApplySnapshot(*m_audioSnapshot);
+                SetStatus("Recalled audio mixer snapshot");
+            }
+
+            ImGui::TextDisabled("WinMM prototype backend with production mixer-facing controls");
             ImGui::End();
         }
 
@@ -2020,6 +2063,7 @@ namespace
             if (!m_runtimeVerificationReloadedScene && m_runtimeVerificationFrame >= 8)
             {
                 ReloadSceneAndScript();
+                ++m_runtimeEditorStats.SceneReloads;
                 AddRuntimeVerificationNote("Reloaded scene and script.");
                 m_runtimeVerificationReloadedScene = true;
             }
@@ -2031,6 +2075,7 @@ namespace
                 {
                     AddRuntimeVerificationFailure("Runtime scene snapshot was not written.");
                 }
+                ++m_runtimeEditorStats.SceneSaves;
                 AddRuntimeVerificationNote("Saved runtime scene snapshot.");
                 m_runtimeVerificationSavedScene = true;
             }
@@ -2039,13 +2084,17 @@ namespace
             {
                 m_runtimeVerificationOriginalRendererSettings = m_renderer->GetSettings();
                 Disparity::RendererSettings settings = *m_runtimeVerificationOriginalRendererSettings;
-                settings.PostDebugView = 1;
-                settings.Bloom = !settings.Bloom;
-                settings.SSAO = !settings.SSAO;
-                settings.AntiAliasing = !settings.AntiAliasing;
-                m_renderer->SetSettings(settings);
+                for (uint32_t debugView = 0; debugView <= 4; ++debugView)
+                {
+                    settings.PostDebugView = debugView;
+                    settings.Bloom = debugView == 1 || !m_runtimeVerificationOriginalRendererSettings->Bloom;
+                    settings.SSAO = debugView == 2 || !m_runtimeVerificationOriginalRendererSettings->SSAO;
+                    settings.AntiAliasing = debugView == 3 || !m_runtimeVerificationOriginalRendererSettings->AntiAliasing;
+                    m_renderer->SetSettings(settings);
+                    ++m_runtimeEditorStats.PostDebugViews;
+                }
                 m_renderer->SetSettings(*m_runtimeVerificationOriginalRendererSettings);
-                AddRuntimeVerificationNote("Toggled renderer post settings and restored defaults.");
+                AddRuntimeVerificationNote("Cycled renderer post debug settings and restored defaults.");
                 m_runtimeVerificationExercisedRenderer = true;
             }
 
@@ -2059,6 +2108,8 @@ namespace
             if (!m_runtimeVerificationValidatedEditorPrecision && m_runtimeVerificationFrame >= 32)
             {
                 ValidateRuntimeEditorPrecision();
+                ValidateRuntimeGizmoConstraints();
+                ValidateRuntimeAudioSnapshot();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -2269,6 +2320,147 @@ namespace
             UpdateEditorCamera(0.0f, true, true);
 
             AddRuntimeVerificationNote("Validated editor precision picks.");
+        }
+
+        void ValidateRuntimeGizmoConstraints()
+        {
+            const bool previousSelectedPlayer = m_selectedPlayer;
+            const size_t previousSelectedIndex = m_selectedIndex;
+            const std::vector<size_t> previousMultiSelection = m_multiSelection;
+
+            size_t candidateIndex = InvalidIndex;
+            for (size_t index = 0; index < m_scene.Count(); ++index)
+            {
+                if (m_scene.GetObjects()[index].MeshName != "terrain")
+                {
+                    candidateIndex = index;
+                    break;
+                }
+            }
+
+            if (candidateIndex == InvalidIndex)
+            {
+                AddRuntimeVerificationFailure("gizmo constraint validation found no movable scene object.");
+                return;
+            }
+
+            m_selectedPlayer = false;
+            m_selectedIndex = candidateIndex;
+            m_multiSelection.clear();
+
+            Disparity::NamedSceneObject& selected = m_scene.GetObjects()[candidateIndex];
+            const Disparity::Transform original = selected.Object.TransformData;
+            const auto closeEnough = [](float a, float b) {
+                return std::abs(a - b) <= 0.0001f;
+            };
+            const auto failConstraint = [this](const char* name) {
+                ++m_runtimeEditorStats.GizmoDragFailures;
+                AddRuntimeVerificationFailure(std::string("gizmo constraint validation failed for ") + name + ".");
+            };
+
+            selected.Object.TransformData = original;
+            selected.Object.TransformData.Position = Add(original.Position, Scale(AxisVector(GizmoAxis::X), 0.5f));
+            SyncSceneObjectToRegistry(candidateIndex);
+            ++m_runtimeEditorStats.GizmoDragTests;
+            if (!closeEnough(selected.Object.TransformData.Position.x, original.Position.x + 0.5f) ||
+                !closeEnough(selected.Object.TransformData.Position.y, original.Position.y) ||
+                !closeEnough(selected.Object.TransformData.Position.z, original.Position.z))
+            {
+                failConstraint("translate X");
+            }
+
+            selected.Object.TransformData = original;
+            ComponentForAxis(selected.Object.TransformData.Rotation, GizmoAxis::Y) += 0.25f;
+            SyncSceneObjectToRegistry(candidateIndex);
+            ++m_runtimeEditorStats.GizmoDragTests;
+            if (!closeEnough(selected.Object.TransformData.Rotation.x, original.Rotation.x) ||
+                !closeEnough(selected.Object.TransformData.Rotation.y, original.Rotation.y + 0.25f) ||
+                !closeEnough(selected.Object.TransformData.Rotation.z, original.Rotation.z))
+            {
+                failConstraint("rotate Y");
+            }
+
+            selected.Object.TransformData = original;
+            ComponentForAxis(selected.Object.TransformData.Scale, GizmoAxis::Z) =
+                std::max(0.05f, ComponentForAxis(selected.Object.TransformData.Scale, GizmoAxis::Z) + 0.25f);
+            SyncSceneObjectToRegistry(candidateIndex);
+            ++m_runtimeEditorStats.GizmoDragTests;
+            if (!closeEnough(selected.Object.TransformData.Scale.x, original.Scale.x) ||
+                !closeEnough(selected.Object.TransformData.Scale.y, original.Scale.y) ||
+                !closeEnough(selected.Object.TransformData.Scale.z, std::max(0.05f, original.Scale.z + 0.25f)))
+            {
+                failConstraint("scale Z");
+            }
+
+            selected.Object.TransformData = original;
+            SyncSceneObjectToRegistry(candidateIndex);
+            m_selectedPlayer = previousSelectedPlayer;
+            m_selectedIndex = previousSelectedIndex;
+            m_multiSelection = previousMultiSelection;
+
+            if (m_runtimeBaselineLoaded && m_runtimeEditorStats.GizmoDragTests < m_runtimeBaseline.MinGizmoDragTests)
+            {
+                AddRuntimeVerificationFailure("gizmo constraint test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.GizmoDragFailures > 0)
+            {
+                AddRuntimeVerificationFailure("gizmo constraint validation failed.");
+            }
+
+            AddRuntimeVerificationNote("Validated gizmo transform constraints.");
+        }
+
+        void ValidateRuntimeAudioSnapshot()
+        {
+            const Disparity::AudioSnapshot original = Disparity::AudioSystem::CaptureSnapshot();
+            Disparity::AudioSnapshot edited = original;
+            edited.MasterVolume = 0.37f;
+            for (Disparity::AudioBus& bus : edited.Buses)
+            {
+                if (bus.Name == "SFX")
+                {
+                    bus.Volume = 0.42f;
+                    bus.Send = 0.35f;
+                }
+            }
+
+            Disparity::AudioSystem::ApplySnapshot(edited);
+            const Disparity::AudioSnapshot captured = Disparity::AudioSystem::CaptureSnapshot();
+            ++m_runtimeEditorStats.AudioSnapshotTests;
+            if (std::abs(captured.MasterVolume - 0.37f) > 0.001f ||
+                std::abs(Disparity::AudioSystem::GetBusVolume("SFX") - 0.42f) > 0.001f ||
+                std::abs(Disparity::AudioSystem::GetBusSend("SFX") - 0.35f) > 0.001f)
+            {
+                AddRuntimeVerificationFailure("audio snapshot validation failed.");
+            }
+
+            Disparity::AudioSystem::ApplySnapshot(original);
+            if (m_runtimeBaselineLoaded && m_runtimeEditorStats.AudioSnapshotTests < m_runtimeBaseline.MinAudioSnapshotTests)
+            {
+                AddRuntimeVerificationFailure("audio snapshot test count is below baseline.");
+            }
+            AddRuntimeVerificationNote("Validated audio mixer snapshots.");
+        }
+
+        void ValidateRuntimeScenarioCoverage()
+        {
+            if (!m_runtimeBaselineLoaded)
+            {
+                return;
+            }
+
+            if (m_runtimeEditorStats.SceneReloads < m_runtimeBaseline.MinSceneReloads)
+            {
+                AddRuntimeVerificationFailure("scene reload count is below baseline.");
+            }
+            if (m_runtimeEditorStats.SceneSaves < m_runtimeBaseline.MinSceneSaves)
+            {
+                AddRuntimeVerificationFailure("scene save count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PostDebugViews < m_runtimeBaseline.MinPostDebugViews)
+            {
+                AddRuntimeVerificationFailure("post debug view count is below baseline.");
+            }
         }
 
         void CollectRuntimeBudgetStats()
@@ -2490,6 +2682,7 @@ namespace
             }
             ValidateRuntimeBudgets();
             ValidateRuntimeVerificationState("final");
+            ValidateRuntimeScenarioCoverage();
             if (m_runtimeVerificationOriginalRendererSettings.has_value() && m_renderer)
             {
                 m_renderer->SetSettings(*m_runtimeVerificationOriginalRendererSettings);
@@ -2540,6 +2733,12 @@ namespace
             report << "editor_pick_failures=" << m_runtimeEditorStats.ObjectPickFailures << "\n";
             report << "gizmo_pick_tests=" << m_runtimeEditorStats.GizmoPickTests << "\n";
             report << "gizmo_pick_failures=" << m_runtimeEditorStats.GizmoPickFailures << "\n";
+            report << "gizmo_drag_tests=" << m_runtimeEditorStats.GizmoDragTests << "\n";
+            report << "gizmo_drag_failures=" << m_runtimeEditorStats.GizmoDragFailures << "\n";
+            report << "scene_reload_tests=" << m_runtimeEditorStats.SceneReloads << "\n";
+            report << "scene_save_tests=" << m_runtimeEditorStats.SceneSaves << "\n";
+            report << "post_debug_view_tests=" << m_runtimeEditorStats.PostDebugViews << "\n";
+            report << "audio_snapshot_tests=" << m_runtimeEditorStats.AudioSnapshotTests << "\n";
             report << "cpu_frame_samples=" << m_runtimeBudgetStats.CpuSamples << "\n";
             report << "cpu_frame_max_ms=" << m_runtimeBudgetStats.CpuFrameMaxMs << "\n";
             report << "cpu_frame_avg_ms=" << m_runtimeBudgetStats.CpuFrameAverageMs << "\n";
@@ -4080,6 +4279,11 @@ namespace
                     else if (key == "expected_capture_height") { loadedBaseline.ExpectedCaptureHeight = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_editor_pick_tests") { loadedBaseline.MinEditorPickTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_gizmo_pick_tests") { loadedBaseline.MinGizmoPickTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_gizmo_drag_tests") { loadedBaseline.MinGizmoDragTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_scene_reloads") { loadedBaseline.MinSceneReloads = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_scene_saves") { loadedBaseline.MinSceneSaves = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_post_debug_views") { loadedBaseline.MinPostDebugViews = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_audio_snapshot_tests") { loadedBaseline.MinAudioSnapshotTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
                     else if (key == "min_non_black_ratio") { loadedBaseline.MinNonBlackRatio = std::stod(value); }
@@ -4122,6 +4326,7 @@ namespace
         std::deque<HistoryEntry> m_redoStack;
         std::deque<std::string> m_commandHistory;
         std::optional<Disparity::NamedSceneObject> m_sceneClipboard;
+        std::optional<Disparity::AudioSnapshot> m_audioSnapshot;
         std::optional<EditState> m_gizmoDragBeforeState;
         std::optional<Disparity::RendererSettings> m_runtimeVerificationOriginalRendererSettings;
         std::vector<GizmoDragObject> m_gizmoDragObjects;

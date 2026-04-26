@@ -2,3 +2,6 @@
 Prototype|90|Assets/Verification/Prototype.dreplay|Assets/Verification/RuntimeBaseline.dverify
 CameraSweep|90|Assets/Verification/CameraSweep.dreplay|Assets/Verification/CameraSweepBaseline.dverify
 EditorPrecision|96|Assets/Verification/EditorPrecision.dreplay|Assets/Verification/EditorPrecisionBaseline.dverify
+PostDebug|96|Assets/Verification/PostDebug.dreplay|Assets/Verification/PostDebugBaseline.dverify
+AssetReload|96|Assets/Verification/AssetReload.dreplay|Assets/Verification/AssetReloadBaseline.dverify
+GizmoDrag|96|Assets/Verification/GizmoDrag.dreplay|Assets/Verification/GizmoDragBaseline.dverify

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DirectXMath.h>
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -12,6 +13,21 @@ namespace Disparity
         std::string Name;
         float Volume = 1.0f;
         bool Muted = false;
+        float Send = 0.0f;
+    };
+
+    struct AudioBusMeter
+    {
+        std::string BusName;
+        float Peak = 0.0f;
+        float Rms = 0.0f;
+        uint32_t ActiveVoices = 0;
+    };
+
+    struct AudioSnapshot
+    {
+        float MasterVolume = 1.0f;
+        std::vector<AudioBus> Buses;
     };
 
     class AudioSystem
@@ -19,6 +35,7 @@ namespace Disparity
     public:
         static bool Initialize();
         static void Shutdown();
+        [[nodiscard]] static const char* GetBackendName();
         static void PlayNotification();
         static void PlayTone(float frequencyHz, float durationSeconds, float volume);
         static void PlayToneOnBus(const std::string& busName, float frequencyHz, float durationSeconds, float volume);
@@ -37,7 +54,16 @@ namespace Disparity
         [[nodiscard]] static float GetBusVolume(const std::string& busName);
         static void SetBusMuted(const std::string& busName, bool muted);
         [[nodiscard]] static bool IsBusMuted(const std::string& busName);
+        static void SetBusSend(const std::string& busName, float send);
+        [[nodiscard]] static float GetBusSend(const std::string& busName);
         [[nodiscard]] static std::vector<AudioBus> GetBuses();
+        [[nodiscard]] static std::vector<AudioBusMeter> GetMeters();
+        [[nodiscard]] static AudioSnapshot CaptureSnapshot();
+        static void ApplySnapshot(const AudioSnapshot& snapshot);
         static void SetListenerPosition(const DirectX::XMFLOAT3& position);
+        static void SetListenerOrientation(
+            const DirectX::XMFLOAT3& position,
+            const DirectX::XMFLOAT3& forward,
+            const DirectX::XMFLOAT3& up);
     };
 }

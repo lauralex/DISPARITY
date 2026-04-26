@@ -88,7 +88,8 @@ namespace Disparity
     bool Scene::Save(const std::filesystem::path& path) const
     {
         std::ostringstream output;
-        output << "# DISPARITY scene v2\n";
+        output << "# DISPARITY scene v" << Scene::SchemaVersion << "\n";
+        output << "schema scene " << Scene::SchemaVersion << " deterministic_ids true save_game false\n";
 
         for (size_t index = 0; index < m_objects.size(); ++index)
         {

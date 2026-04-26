@@ -47,17 +47,37 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - The `Audio Mixer` panel exposes Master/SFX/UI/Music/Ambience buses.
 - Use `Low Tone`, `High Tone`, and `Spatial` to test generated bus-routed tones.
 - `F2` plays the UI notification tone.
-- `AudioSystem::StreamMusic` and `PlayWaveFileAsync` provide WinMM-backed async/looped wave playback hooks for future content.
+- The mixer shows the active backend, per-bus send values, simple peak meters, and active generated voice counts.
+- Use `Store Snapshot` and `Recall` to test mixer snapshot capture/restore without playing content.
+- `AudioSystem::StreamMusic` and `PlayWaveFileAsync` provide WinMM-backed async/looped wave playback hooks for future content, while the public surface now has listener orientation and production-style snapshot/meter APIs for the future XAudio2 backend.
+
+## Asset Cooking
+
+Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Tools\CookDisparityAssets.ps1 -Configuration Debug
+```
+
+The cook writes per-source metadata plus `Saved/CookedAssets/manifest.dcook`. It is still a metadata cook, not a binary mesh/material cooker, but it establishes deterministic source hashes, import-setting dependencies, and manifest output for the real `.glb` pipeline.
 
 ## Packaging
 
 Run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Tools\PackageDisparity.ps1 -Configuration Release
+powershell -ExecutionPolicy Bypass -File .\Tools\PackageDisparity.ps1 -Configuration Release -IncludeSymbols -CreateArchive
 ```
 
-The packaged build is written to `dist/DISPARITY-Release`.
+The packaged build is written to `dist/DISPARITY-Release`. Packages include `package_manifest.json`; passing `-IncludeSymbols` copies PDBs under `Symbols`, and `-CreateArchive` writes a zip artifact under `dist`.
+
+Crash upload staging is local for now:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Tools\CollectCrashReports.ps1 -CreateArchive
+```
+
+The script scans `Saved/CrashLogs`, writes `Saved/CrashUploads/crash_upload_manifest.json`, and can bundle the staged reports for a future uploader service.
 
 ## Verification
 
@@ -67,7 +87,7 @@ Use the full local gate before calling the repository healthy:
 powershell -ExecutionPolicy Bypass -File .\Tools\VerifyDisparity.ps1
 ```
 
-The verification script runs `git diff --check`, warning-free Debug and Release builds, MSVC static analysis, all shader entry-point compiles, Debug window smoke, every runtime verification suite, Release packaging, packaged window smoke, every packaged runtime verification suite, and a performance-history summary.
+The verification script runs `git diff --check`, warning-free Debug and Release builds, MSVC static analysis, all shader entry-point compiles, asset cook manifest generation, crash upload manifest dry run, Debug window smoke, every runtime verification suite, Release packaging with symbols/archive, packaged window smoke, every packaged runtime verification suite, and a performance-history summary against committed baselines.
 
 Targeted checks are still useful while iterating:
 
@@ -77,18 +97,21 @@ powershell -ExecutionPolicy Bypass -File .\Tools\RuntimeVerifyDisparity.ps1 -Con
 .\bin\x64\Debug\DisparityGame.exe --verify-runtime --verify-frames=90
 ```
 
-Runtime verification writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, runs deterministic input playback, validates capture dimensions/luminance/checksum/nonblank pixels, checks CPU/GPU frame budgets and per-pass render-graph budgets, downsamples the frame into a thumbnail, compares it against a suite-specific golden PPM, and exits non-zero if an invariant fails. Budget defaults can be overridden through `RuntimeVerifyDisparity.ps1` or direct flags such as `--verify-cpu-budget-ms=120`, `--verify-gpu-budget-ms=50`, and `--verify-pass-budget-ms=60`.
+Runtime verification writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, runs deterministic input playback, validates capture dimensions/luminance/checksum/nonblank pixels, checks CPU/GPU frame budgets and per-pass render-graph budgets, cycles post-debug views, validates editor pick/gizmo pick coverage, runs gizmo transform constraint checks, validates audio snapshot capture/restore, downsamples the frame into a thumbnail, compares it against a suite-specific golden PPM, writes a golden diff thumbnail, and exits non-zero if an invariant fails. Budget defaults can be overridden through `RuntimeVerifyDisparity.ps1` or direct flags such as `--verify-cpu-budget-ms=120`, `--verify-gpu-budget-ms=50`, and `--verify-pass-budget-ms=60`.
 
 Runtime replay and baseline expectations are assetized:
 
-- `Assets/Verification/RuntimeSuites.dverify` defines named runtime suites. The current suites are `Prototype`, `CameraSweep`, and `EditorPrecision`.
+- `Assets/Verification/RuntimeSuites.dverify` defines named runtime suites. The current suites are `Prototype`, `CameraSweep`, `EditorPrecision`, `PostDebug`, `AssetReload`, and `GizmoDrag`.
 - `Assets/Verification/Prototype.dreplay` defines frame ranges, movement vectors, and camera drift for deterministic playback.
 - `Assets/Verification/CameraSweep.dreplay` adds a camera-heavy deterministic playback path.
 - `Assets/Verification/EditorPrecision.dreplay` adds editor-picking coverage for stable-ID object picks and gizmo handle picks.
+- `Assets/Verification/PostDebug.dreplay`, `AssetReload.dreplay`, and `GizmoDrag.dreplay` add scenario labels and replay paths for production-style verification coverage.
 - `Assets/Verification/*Baseline.dverify` files define expected capture dimensions, average luminance tolerance, nonblack pixel ratio, minimum replay distance, editor pick counts, gizmo pick counts, performance budgets, and golden thumbnail tolerances.
 - `Assets/Verification/Goldens/*.ppm` stores suite-specific 64x36 golden thumbnails.
-- `Tools/CompareCaptureDisparity.ps1` creates or compares capture thumbnails against goldens.
-- `Tools/SummarizePerformanceHistory.ps1` groups recent local runs by suite/executable and reports CPU/GPU deltas plus editor/gizmo pick counts.
+- `Assets/Verification/GoldenProfiles/*.dgoldenprofile` stores per-machine or per-adapter golden tolerance defaults; the default profile is used by the runtime verification wrapper.
+- `Assets/Verification/PerformanceBaselines.dperf` stores committed CPU/GPU/pass thresholds per suite for trend comparison.
+- `Tools/CompareCaptureDisparity.ps1` creates or compares capture thumbnails against goldens and writes diff thumbnails.
+- `Tools/SummarizePerformanceHistory.ps1` groups recent local runs by suite/executable and reports CPU/GPU deltas plus editor/gizmo scenario counters, then compares them against committed performance baselines when available.
 - `Saved/Verification/performance_history.csv` is appended by `RuntimeVerifyDisparity.ps1` so repeated local runs leave a trend trail without committing generated data.
 
 Crashes write a small report to `Saved/CrashLogs`. GitHub Actions runs the static side of `Tools/VerifyDisparity.ps1` on push and pull request; an opt-in `workflow_dispatch` input can run the runtime gate when a runner has an interactive desktop.

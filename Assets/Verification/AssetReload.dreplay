@@ -1,0 +1,5 @@
+# DISPARITY deterministic runtime replay v1
+# move start_frame end_frame move_x move_z camera_yaw_delta camera_pitch_delta
+move 4 16 0.0 1.0 0.0015 0.0005
+move 17 30 -1.0 0.0 -0.0010 0.0005
+move 31 44 1.0 0.0 0.0015 -0.0005

@@ -9,6 +9,8 @@ param(
     [string]$RuntimeReplayPath = "Assets/Verification/Prototype.dreplay",
     [string]$RuntimeBaselinePath = "Assets/Verification/RuntimeBaseline.dverify",
     [string]$RuntimeSuiteFile = "Assets/Verification/RuntimeSuites.dverify",
+    [string]$GoldenProfilePath = "Assets/Verification/GoldenProfiles/Default.dgoldenprofile",
+    [string]$PerformanceBaselinePath = "Assets/Verification/PerformanceBaselines.dperf",
     [switch]$DisableGoldenComparison
 )
 
@@ -202,6 +204,14 @@ Invoke-Step "HLSL shader compilation" {
     if ($LASTEXITCODE -ne 0) { throw "PostProcess.hlsl PSMain failed." }
 }
 
+Invoke-Step "Asset cook manifest" {
+    & (Join-Path $PSScriptRoot "CookDisparityAssets.ps1") -Configuration Debug
+}
+
+Invoke-Step "Crash upload manifest dry run" {
+    & (Join-Path $PSScriptRoot "CollectCrashReports.ps1") -DryRun
+}
+
 if (!$SkipRuntime) {
     $runtimeSuites = Get-RuntimeSuites
     Invoke-Step "Debug runtime window smoke" {
@@ -219,6 +229,7 @@ if (!$SkipRuntime) {
                 SuiteName = $suite.Name
                 ReplayPath = $suite.ReplayPath
                 BaselinePath = $suite.BaselinePath
+                GoldenProfilePath = $GoldenProfilePath
                 HistoryPath = (Join-Path $root "Saved\Verification\performance_history.csv")
             }
             if ($DisableGoldenComparison) {
@@ -232,7 +243,7 @@ if (!$SkipRuntime) {
 
 if (!$SkipPackage) {
     Invoke-Step "Release package" {
-        & (Join-Path $PSScriptRoot "PackageDisparity.ps1") -Configuration Release
+        & (Join-Path $PSScriptRoot "PackageDisparity.ps1") -Configuration Release -IncludeSymbols -CreateArchive
     }
 
     if (!$SkipRuntime) {
@@ -256,6 +267,7 @@ if (!$SkipPackage) {
                     SuiteName = $suite.Name
                     ReplayPath = $suite.ReplayPath
                     BaselinePath = $suite.BaselinePath
+                    GoldenProfilePath = $GoldenProfilePath
                     HistoryPath = (Join-Path $root "Saved\Verification\performance_history.csv")
                 }
                 if ($DisableGoldenComparison) {
@@ -270,7 +282,7 @@ if (!$SkipPackage) {
 
 if (!$SkipRuntime) {
     Invoke-Step "Performance history summary" {
-        & (Join-Path $PSScriptRoot "SummarizePerformanceHistory.ps1") -HistoryPath (Join-Path $root "Saved\Verification\performance_history.csv")
+        & (Join-Path $PSScriptRoot "SummarizePerformanceHistory.ps1") -HistoryPath (Join-Path $root "Saved\Verification\performance_history.csv") -BaselinePath $PerformanceBaselinePath
     }
 }
 
