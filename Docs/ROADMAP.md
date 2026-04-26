@@ -1,11 +1,12 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v8 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
+The current engine now has functional v9 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
 
 ## Editor
 
-- Replace the main-window picking/editor camera path with a dedicated scene viewport render target and object-ID selection buffer.
-- Replace the current cube-marker gizmo handles with proper mesh/ring handles, object-ID handle picking, planar drag modes, and screen-space scale stabilization.
+- Build a dedicated editor viewport render target that owns camera state, scene picking, and tool overlays.
+- Add object-ID selection and object-ID gizmo handle picking to replace the current ray-test approximations.
+- Expand the current mesh/ring/plane gizmo handles with depth-aware hover states, constraint previews, numerical transform entry, and pivot/orientation controls.
 - Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command filters, and visible command history.
 - Add prefab override visualization, nested prefabs, prefab variants, and dependency-aware apply/revert.
 

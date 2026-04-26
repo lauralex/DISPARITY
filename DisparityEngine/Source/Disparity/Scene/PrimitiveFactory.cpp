@@ -1,11 +1,14 @@
 #include "Disparity/Scene/PrimitiveFactory.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace Disparity::PrimitiveFactory
 {
     namespace
     {
+        constexpr float Pi = 3.1415926535f;
+
         float HeightAt(float x, float z, float heightScale)
         {
             return (std::sin(x * 0.35f) * std::cos(z * 0.27f) + std::sin((x + z) * 0.18f) * 0.5f) * heightScale;
@@ -78,6 +81,63 @@ namespace Disparity::PrimitiveFactory
         };
 
         mesh.Indices = { 0, 1, 2, 0, 2, 3 };
+        return mesh;
+    }
+
+    MeshData CreateTorus(float majorRadius, float minorRadius, unsigned int majorSegments, unsigned int minorSegments)
+    {
+        majorSegments = std::max(majorSegments, 8u);
+        minorSegments = std::max(minorSegments, 4u);
+        majorRadius = std::max(majorRadius, 0.01f);
+        minorRadius = std::max(minorRadius, 0.002f);
+
+        MeshData mesh;
+        mesh.Vertices.reserve(static_cast<size_t>(majorSegments) * static_cast<size_t>(minorSegments));
+        mesh.Indices.reserve(static_cast<size_t>(majorSegments) * static_cast<size_t>(minorSegments) * 6u);
+
+        for (unsigned int major = 0; major < majorSegments; ++major)
+        {
+            const float u = static_cast<float>(major) / static_cast<float>(majorSegments);
+            const float theta = u * Pi * 2.0f;
+            const float cosTheta = std::cos(theta);
+            const float sinTheta = std::sin(theta);
+
+            for (unsigned int minor = 0; minor < minorSegments; ++minor)
+            {
+                const float v = static_cast<float>(minor) / static_cast<float>(minorSegments);
+                const float phi = v * Pi * 2.0f;
+                const float cosPhi = std::cos(phi);
+                const float sinPhi = std::sin(phi);
+                const float ringRadius = majorRadius + minorRadius * cosPhi;
+
+                mesh.Vertices.push_back({
+                    { ringRadius * cosTheta, ringRadius * sinTheta, minorRadius * sinPhi },
+                    { cosTheta * cosPhi, sinTheta * cosPhi, sinPhi },
+                    { u, v }
+                });
+            }
+        }
+
+        for (unsigned int major = 0; major < majorSegments; ++major)
+        {
+            const unsigned int nextMajor = (major + 1u) % majorSegments;
+            for (unsigned int minor = 0; minor < minorSegments; ++minor)
+            {
+                const unsigned int nextMinor = (minor + 1u) % minorSegments;
+                const uint32_t a = major * minorSegments + minor;
+                const uint32_t b = nextMajor * minorSegments + minor;
+                const uint32_t c = nextMajor * minorSegments + nextMinor;
+                const uint32_t d = major * minorSegments + nextMinor;
+
+                mesh.Indices.push_back(a);
+                mesh.Indices.push_back(b);
+                mesh.Indices.push_back(c);
+                mesh.Indices.push_back(a);
+                mesh.Indices.push_back(c);
+                mesh.Indices.push_back(d);
+            }
+        }
+
         return mesh;
     }
 

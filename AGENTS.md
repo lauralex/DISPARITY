@@ -14,7 +14,7 @@ Current shape:
 - Renderer backend is DirectX 11.
 - Dependency policy now allows the vendored Dear ImGui docking branch in `ThirdParty/imgui`; otherwise prefer Win32, DirectX 11, DirectXMath, WIC/WinMM, and the Windows SDK.
 - Geometry includes procedural primitives, procedural terrain, and a glTF 2.0 scene loader path for static mesh primitives, material texture binding, node instancing, skin metadata, joint/weight attributes, and animation sampler data.
-- Editor/runtime v8 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, copy/paste/duplicate/delete scene-object workflows, an independent editor camera with right-drag WASD/QE fly controls, simple transform gizmo buttons plus draggable 3D translate/rotate/scale handles with snapping and world/local space, prefab apply/save workflows, visibly stronger post effects with debug views, bus-based audio controls, spatial tone preview, an asset database with import settings and cooked metadata files, a compiled render graph schedule with pass CPU/GPU timings, culled passes, transition diagnostics, alias candidates, resource lifetimes, job system, version reporting, crash logs, and CI/package verification scripts.
+- Editor/runtime v9 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, copy/paste/duplicate/delete scene-object workflows, an independent editor camera with right-drag WASD/QE fly controls, simple transform gizmo buttons plus camera-scaled 3D translate/rotate/scale handles, torus rotate rings, translucent XY/XZ/YZ translate-plane handles, snapping and world/local space, prefab apply/save workflows, visibly stronger post effects with debug views, bus-based audio controls, spatial tone preview, an asset database with import settings and cooked metadata files, a compiled render graph schedule with pass CPU/GPU timings, culled passes, transition diagnostics, alias candidates, resource lifetimes, job system, version reporting, crash logs, and CI/package verification scripts.
 
 ## Important Paths
 
@@ -30,7 +30,7 @@ Current shape:
 - `DisparityEngine/Source/Disparity/Audio/`: basic Windows audio hooks.
 - `DisparityEngine/Source/Disparity/Scripting/`: tiny scene script runner.
 - `DisparityEngine/Source/Disparity/Runtime/`: job system scaffold.
-- `DisparityEngine/Source/Disparity/Scene/`: camera, material, mesh, procedural primitive factory, scene object types.
+- `DisparityEngine/Source/Disparity/Scene/`: camera, material, mesh, procedural primitive factory including cube/plane/terrain/torus helpers, scene object types.
 - `DisparityGame/Source/DisparityGame.cpp`: first third-person walking prototype.
 - `Assets/Shaders/Basic.hlsl`: runtime-compiled scene shader.
 - `Assets/Shaders/PostProcess.hlsl`: runtime-compiled HDR tone-mapping pass.
@@ -77,7 +77,7 @@ The Visual Studio debugger working directory is set to the solution directory so
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 - When mouse capture is released with `Tab`, left-click the main viewport to pick objects. Hold `Ctrl` while picking or selecting in Hierarchy for multi-selection.
 - The `Viewport` panel can enable the independent editor camera; right-drag plus `WASD`/`Q`/`E`, or arrow/Page keys, moves that camera without moving the player.
-- Selected objects and the player draw colored 3D transform handles at the active selection pivot. Choose translate/rotate/scale and world/local space in `Viewport`, then left-drag an X/Y/Z handle; hold `Shift` while dragging to snap.
+- Selected objects and the player draw colored, camera-scaled 3D transform handles at the active selection pivot. Choose translate/rotate/scale and world/local space in `Viewport`, then left-drag an X/Y/Z axis marker, rotate ring, or scene-object translate plane; hold `Shift` while dragging to snap.
 
 ## Coding Conventions
 
@@ -91,7 +91,7 @@ The Visual Studio debugger working directory is set to the solution directory so
 
 ## Verified Baseline
 
-On 2026-04-26 after the v8 editor-camera/gizmo-mode followup pass:
+On 2026-04-26 after the v9 screen-stable gizmo followup pass:
 
 - `Debug|x64` built successfully with 0 warnings and 0 errors.
 - `Release|x64` built successfully with 0 warnings and 0 errors.
@@ -99,7 +99,7 @@ On 2026-04-26 after the v8 editor-camera/gizmo-mode followup pass:
 - `Tools/SmokeTestDisparity.ps1 -Configuration Debug` launched `DisparityGame.exe`, kept it alive for 3 seconds, and closed it cleanly.
 - `Tools/PackageDisparity.ps1 -Configuration Release` produced `dist/DISPARITY-Release`.
 - `Tools/SmokeTestDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe` launched the packaged build for 3 seconds and closed it cleanly.
-- The v8 pass was committed only after the above checks and `git status --short` review.
+- The v9 pass was committed only after the above checks and `git status --short` review.
 
 After feature work, re-run Debug/Release builds, shader compiles for both HLSL files, runtime smoke, package script, packaged runtime smoke, and `git status --short` before declaring the repo healthy.
 
@@ -108,7 +108,7 @@ After feature work, re-run Debug/Release builds, shader compiles for both HLSL f
 Good next steps for making the engine more modern and AAA-like:
 
 - Move renderer execution onto the compiled render graph with real DX11 resource ownership, alias allocation decisions, async compute candidates, and GPU-driven culling.
-- Add a dedicated editor viewport render target, object-ID selection buffer, and proper mesh/ring gizmo handles with planar drag modes.
+- Add a dedicated editor viewport render target, object-ID selection buffer, object-ID gizmo handle picking, depth-aware hover states, and stronger transform constraints.
 - Upgrade serialization to stable deterministic IDs, schema versions, undo grouping, prefab variants, dependency-aware apply/revert, and save-game separation.
 - Replace prototype glTF runtime loading and metadata cooking with true cooked `.glb` import, animation blending, retargeting, and GPU skinning palette upload.
 - Replace WinMM with XAudio2 or another production backend for voices, sends, snapshots, streamed music, spatial emitters, listener orientation, attenuation curves, and meters.

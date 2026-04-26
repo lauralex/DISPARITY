@@ -11,7 +11,7 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - Press `Tab` to release the mouse, then left-click the main viewport to pick objects. Hold `Ctrl` while picking or selecting in `Hierarchy` to multi-select.
 - Use `Copy`, `Paste`, `Duplicate`, and `Delete` in the `Hierarchy` panel or `Edit` menu. Keyboard shortcuts are `Ctrl+C`, `Ctrl+V`, `Ctrl+D`, and `Delete`.
 - The `Viewport` panel enables an editor camera. Use `Frame Selection`, `Frame Player`, right-drag look, arrow/Page keys, or right-drag plus `WASD`/`Q`/`E` to inspect the scene without moving the player.
-- Use `Inspector` to edit transforms/materials. The `Transform Gizmo` section provides small move, scale, and yaw buttons without adding another third-party dependency, and the viewport draws colored 3D axis handles at the current selection pivot. Choose translate/rotate/scale and world/local space in `Viewport`, then left-drag an axis handle; hold `Shift` while dragging for snapping.
+- Use `Inspector` to edit transforms/materials. The `Transform Gizmo` section provides small move, scale, and yaw buttons without adding another third-party dependency, and the viewport draws camera-scaled 3D gizmo handles at the current selection pivot. Choose translate/rotate/scale and world/local space in `Viewport`, then left-drag an axis marker, rotate ring, or translucent translate-plane handle; hold `Shift` while dragging for snapping.
 - Use `Ctrl+Z` and `Ctrl+Y`, or the `DISPARITY` menu, to test undo/redo. The profiler shows recent command labels.
 
 ## Assets And Prefabs
