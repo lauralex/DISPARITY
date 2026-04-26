@@ -320,6 +320,7 @@ namespace
             const ImGuiIO& io = ImGui::GetIO();
             const bool editorCapturesMouse = m_editorVisible && io.WantCaptureMouse;
             const bool editorCapturesKeyboard = m_editorVisible && io.WantCaptureKeyboard;
+            RefreshEditorViewportState();
 
             if (Disparity::Input::WasKeyPressed(VK_F1))
             {
@@ -399,6 +400,7 @@ namespace
             AnimateScene(dt);
             UpdateCamera();
             UpdateEditorCamera(dt, editorCapturesMouse, editorCapturesKeyboard);
+            UpdateEditorHover(editorCapturesMouse);
             Disparity::AudioSystem::SetListenerPosition(GetRenderCamera().GetPosition());
             UpdateStatusTimer(dt);
             UpdateRuntimeVerification(dt);
@@ -533,6 +535,8 @@ namespace
         {
             uint32_t ExpectedCaptureWidth = 1280;
             uint32_t ExpectedCaptureHeight = 720;
+            uint32_t MinEditorPickTests = 1;
+            uint32_t MinGizmoPickTests = 1;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
             double MinNonBlackRatio = 0.05;
@@ -564,6 +568,15 @@ namespace
             DirectX::XMFLOAT3 Direction = {};
         };
 
+        struct EditorViewportState
+        {
+            float X = 0.0f;
+            float Y = 0.0f;
+            float Width = 1.0f;
+            float Height = 1.0f;
+            bool MouseInside = false;
+        };
+
         struct GizmoDragObject
         {
             size_t SceneIndex = InvalidIndex;
@@ -583,6 +596,34 @@ namespace
         {
             World,
             Local
+        };
+
+        enum class EditorPickKind
+        {
+            None,
+            Player,
+            SceneObject,
+            GizmoAxis,
+            GizmoPlane
+        };
+
+        struct EditorPickResult
+        {
+            EditorPickKind Kind = EditorPickKind::None;
+            size_t SceneIndex = InvalidIndex;
+            uint64_t StableId = 0;
+            float Distance = FLT_MAX;
+            GizmoAxis Axis = GizmoAxis::None;
+            GizmoPlane Plane = GizmoPlane::None;
+            std::string Name;
+        };
+
+        struct EditorVerificationStats
+        {
+            uint32_t ObjectPickTests = 0;
+            uint32_t ObjectPickFailures = 0;
+            uint32_t GizmoPickTests = 0;
+            uint32_t GizmoPickFailures = 0;
         };
 
         void InitializeMaterials()
@@ -1183,17 +1224,18 @@ namespace
             {
                 for (const auto& [axis, material] : handles)
                 {
+                    Disparity::Material drawMaterial = IsGizmoAxisHighlighted(axis) ? HighlightGizmoMaterial(*material) : *material;
                     Disparity::Transform ring;
                     ring.Position = pivot;
                     ring.Rotation = GizmoRingRotation(axis);
                     ring.Scale = { handleDistance, handleDistance, handleDistance };
-                    renderer.DrawMesh(m_gizmoRingMesh, ring, *material);
+                    renderer.DrawMesh(m_gizmoRingMesh, ring, drawMaterial);
 
                     const DirectX::XMFLOAT3 axisVector = AxisVector(axis);
                     Disparity::Transform marker;
                     marker.Position = Add(pivot, Scale(axisVector, handleDistance));
                     marker.Scale = { handleSize * 0.8f, handleSize * 0.8f, handleSize * 0.8f };
-                    renderer.DrawMesh(m_cubeMesh, marker, *material);
+                    renderer.DrawMesh(m_cubeMesh, marker, drawMaterial);
                 }
                 return;
             }
@@ -1208,28 +1250,30 @@ namespace
 
                 for (const auto& [plane, material] : planes)
                 {
+                    Disparity::Material drawMaterial = IsGizmoPlaneHighlighted(plane) ? HighlightGizmoMaterial(*material) : *material;
                     Disparity::Transform planeHandle;
                     planeHandle.Position = GizmoPlaneCenter(pivot, plane);
                     planeHandle.Rotation = GizmoPlaneRotation(plane);
                     const float planeSize = screenScale * 0.34f;
                     planeHandle.Scale = { planeSize, planeSize, planeSize };
-                    renderer.DrawMesh(m_gizmoPlaneHandleMesh, planeHandle, *material);
+                    renderer.DrawMesh(m_gizmoPlaneHandleMesh, planeHandle, drawMaterial);
                 }
             }
 
             for (const auto& [axis, material] : handles)
             {
                 const DirectX::XMFLOAT3 axisVector = AxisVector(axis);
+                Disparity::Material drawMaterial = IsGizmoAxisHighlighted(axis) ? HighlightGizmoMaterial(*material) : *material;
 
                 Disparity::Transform marker;
                 marker.Position = Add(pivot, Scale(axisVector, handleDistance));
                 marker.Scale = { handleSize, handleSize, handleSize };
-                renderer.DrawMesh(m_cubeMesh, marker, *material);
+                renderer.DrawMesh(m_cubeMesh, marker, drawMaterial);
 
                 Disparity::Transform tick;
                 tick.Position = Add(pivot, Scale(axisVector, handleDistance * 0.55f));
                 tick.Scale = { handleSize * 0.62f, handleSize * 0.62f, handleSize * 0.62f };
-                renderer.DrawMesh(m_cubeMesh, tick, *material);
+                renderer.DrawMesh(m_cubeMesh, tick, drawMaterial);
             }
         }
 
@@ -1337,6 +1381,8 @@ namespace
                 m_gizmoStatus = std::string(GizmoSpaceName(m_gizmoSpace)) + " space";
             }
             ImGui::Text("Pick: %s", m_lastPickStatus.c_str());
+            ImGui::Text("Hover: %s", DescribeEditorPick(m_hoverPick).c_str());
+            ImGui::Text("Viewport: %.0fx%.0f", m_editorViewport.Width, m_editorViewport.Height);
             ImGui::Text("Gizmo: %s", m_gizmoStatus.c_str());
             ImGui::TextDisabled("Tab releases mouse; left-click picks. Right-drag plus WASD/QE flies the editor camera.");
             ImGui::End();
@@ -2010,6 +2056,12 @@ namespace
                 m_runtimeVerificationCycledSelection = true;
             }
 
+            if (!m_runtimeVerificationValidatedEditorPrecision && m_runtimeVerificationFrame >= 32)
+            {
+                ValidateRuntimeEditorPrecision();
+                m_runtimeVerificationValidatedEditorPrecision = true;
+            }
+
             const uint32_t captureRequestFrame = m_runtimeVerification.TargetFrames > 6u ? m_runtimeVerification.TargetFrames - 4u : m_runtimeVerification.TargetFrames;
             if (m_runtimeVerification.CaptureFrame && !m_runtimeVerificationCaptureRequested && m_runtimeVerificationFrame >= captureRequestFrame && m_renderer)
             {
@@ -2095,6 +2147,128 @@ namespace
                 AddRuntimeVerificationFailure("input replay moved the player less than expected.");
             }
             AddRuntimeVerificationNote("Finished deterministic input replay.");
+        }
+
+        void ValidateRuntimeEditorPrecision()
+        {
+            RefreshEditorViewportState();
+            const bool previousEditorCameraEnabled = m_editorCameraEnabled;
+            const bool previousSelectedPlayer = m_selectedPlayer;
+            const size_t previousSelectedIndex = m_selectedIndex;
+            const std::vector<size_t> previousMultiSelection = m_multiSelection;
+            const float previousEditorDistance = m_editorCameraDistance;
+            const DirectX::XMFLOAT3 previousEditorTarget = m_editorCameraTarget;
+            const GizmoMode previousGizmoMode = m_gizmoMode;
+
+            m_editorCameraEnabled = true;
+            m_editorCameraDistance = 10.0f;
+            m_editorCameraTarget = Add(m_playerPosition, { 0.0f, 1.1f, 0.0f });
+            UpdateEditorCamera(0.0f, true, true);
+
+            auto testPickAt = [this](const DirectX::XMFLOAT2& screen, EditorPickResult& outPick) {
+                MouseRay ray;
+                if (!BuildScreenRay(screen, ray))
+                {
+                    return false;
+                }
+
+                return PickEditorTarget(ray, outPick);
+            };
+
+            EditorPickResult pick;
+            DirectX::XMFLOAT2 playerScreen = ProjectWorldToScreen(Add(m_playerPosition, { 0.0f, 1.1f, 0.0f }));
+            if (IsScreenPointInsideViewport(playerScreen) && testPickAt(playerScreen, pick))
+            {
+                if (pick.Kind == EditorPickKind::Player)
+                {
+                    ++m_runtimeEditorStats.ObjectPickTests;
+                }
+            }
+
+            const auto& objects = m_scene.GetObjects();
+            for (size_t index = 0; index < objects.size() && m_runtimeEditorStats.ObjectPickTests < 4; ++index)
+            {
+                if (objects[index].MeshName == "terrain")
+                {
+                    continue;
+                }
+
+                const DirectX::XMFLOAT2 screen = ProjectWorldToScreen(objects[index].Object.TransformData.Position);
+                if (!IsScreenPointInsideViewport(screen))
+                {
+                    continue;
+                }
+
+                if (!testPickAt(screen, pick))
+                {
+                    continue;
+                }
+
+                if (pick.Kind == EditorPickKind::SceneObject && pick.SceneIndex == index && pick.StableId == PickStableIdForSceneObject(index))
+                {
+                    ++m_runtimeEditorStats.ObjectPickTests;
+                }
+            }
+
+            m_selectedPlayer = true;
+            m_multiSelection.clear();
+            m_gizmoMode = GizmoMode::Translate;
+            DirectX::XMFLOAT3 pivot = {};
+            if (TryGetSelectionPivot(pivot))
+            {
+                const float handleDistance = GizmoHandleDistance(pivot);
+                const std::array<GizmoAxis, 3> axes = { GizmoAxis::X, GizmoAxis::Y, GizmoAxis::Z };
+                for (const GizmoAxis axis : axes)
+                {
+                    const DirectX::XMFLOAT2 screen = ProjectWorldToScreen(Add(pivot, Scale(AxisVector(axis), handleDistance)));
+                    if (!IsScreenPointInsideViewport(screen))
+                    {
+                        continue;
+                    }
+
+                    MouseRay ray;
+                    GizmoAxis pickedAxis = GizmoAxis::None;
+                    GizmoPlane pickedPlane = GizmoPlane::None;
+                    if (!BuildScreenRay(screen, ray) || !TryPickGizmoHandle(ray, pickedAxis, pickedPlane))
+                    {
+                        continue;
+                    }
+
+                    ++m_runtimeEditorStats.GizmoPickTests;
+                    if (pickedPlane != GizmoPlane::None || pickedAxis != axis)
+                    {
+                        ++m_runtimeEditorStats.GizmoPickFailures;
+                        AddRuntimeVerificationFailure("editor precision gizmo pick mismatch.");
+                    }
+                }
+            }
+
+            if (m_runtimeBaselineLoaded)
+            {
+                if (m_runtimeEditorStats.ObjectPickTests < m_runtimeBaseline.MinEditorPickTests)
+                {
+                    AddRuntimeVerificationFailure("editor precision object pick count is below baseline.");
+                }
+                if (m_runtimeEditorStats.GizmoPickTests < m_runtimeBaseline.MinGizmoPickTests)
+                {
+                    AddRuntimeVerificationFailure("editor precision gizmo pick count is below baseline.");
+                }
+            }
+            if (m_runtimeEditorStats.ObjectPickFailures > 0 || m_runtimeEditorStats.GizmoPickFailures > 0)
+            {
+                AddRuntimeVerificationFailure("editor precision pick validation failed.");
+            }
+
+            m_editorCameraEnabled = previousEditorCameraEnabled;
+            m_selectedPlayer = previousSelectedPlayer;
+            m_selectedIndex = previousSelectedIndex;
+            m_multiSelection = previousMultiSelection;
+            m_editorCameraDistance = previousEditorDistance;
+            m_editorCameraTarget = previousEditorTarget;
+            m_gizmoMode = previousGizmoMode;
+            UpdateEditorCamera(0.0f, true, true);
+
+            AddRuntimeVerificationNote("Validated editor precision picks.");
         }
 
         void CollectRuntimeBudgetStats()
@@ -2362,6 +2536,10 @@ namespace
             }
             report << "playback_steps=" << m_runtimePlayback.Steps << "\n";
             report << "playback_distance=" << m_runtimePlayback.Distance << "\n";
+            report << "editor_pick_tests=" << m_runtimeEditorStats.ObjectPickTests << "\n";
+            report << "editor_pick_failures=" << m_runtimeEditorStats.ObjectPickFailures << "\n";
+            report << "gizmo_pick_tests=" << m_runtimeEditorStats.GizmoPickTests << "\n";
+            report << "gizmo_pick_failures=" << m_runtimeEditorStats.GizmoPickFailures << "\n";
             report << "cpu_frame_samples=" << m_runtimeBudgetStats.CpuSamples << "\n";
             report << "cpu_frame_max_ms=" << m_runtimeBudgetStats.CpuFrameMaxMs << "\n";
             report << "cpu_frame_avg_ms=" << m_runtimeBudgetStats.CpuFrameAverageMs << "\n";
@@ -2547,31 +2725,66 @@ namespace
             return true;
         }
 
-        float PickRadiusForTransform(const Disparity::Transform& transform) const
+        uint64_t PickStableIdForSceneObject(size_t index) const
         {
-            return std::max(0.45f, Length(transform.Scale) * 0.62f);
+            if (index >= m_scene.Count())
+            {
+                return 0;
+            }
+
+            const uint64_t stableId = m_scene.GetObjects()[index].StableId;
+            return stableId != 0 ? stableId : 100000000ull + static_cast<uint64_t>(index);
         }
 
-        bool BuildMouseRay(MouseRay& outRay) const
+        void RefreshEditorViewportState()
+        {
+            if (!m_application)
+            {
+                m_editorViewport = {};
+                return;
+            }
+
+            m_editorViewport.X = 0.0f;
+            m_editorViewport.Y = 0.0f;
+            m_editorViewport.Width = static_cast<float>(std::max(1u, m_application->GetWidth()));
+            m_editorViewport.Height = static_cast<float>(std::max(1u, m_application->GetHeight()));
+            const DirectX::XMFLOAT2 mouse = Disparity::Input::GetMousePosition();
+            m_editorViewport.MouseInside =
+                mouse.x >= m_editorViewport.X &&
+                mouse.y >= m_editorViewport.Y &&
+                mouse.x <= m_editorViewport.X + m_editorViewport.Width &&
+                mouse.y <= m_editorViewport.Y + m_editorViewport.Height;
+        }
+
+        bool IsScreenPointInsideViewport(const DirectX::XMFLOAT2& screen) const
+        {
+            return screen.x >= m_editorViewport.X &&
+                screen.y >= m_editorViewport.Y &&
+                screen.x <= m_editorViewport.X + m_editorViewport.Width &&
+                screen.y <= m_editorViewport.Y + m_editorViewport.Height;
+        }
+
+        bool BuildScreenRay(const DirectX::XMFLOAT2& screen, MouseRay& outRay) const
         {
             if (!m_application)
             {
                 return false;
             }
 
-            const DirectX::XMFLOAT2 mouse = Disparity::Input::GetMousePosition();
-            const float width = static_cast<float>(std::max(1u, m_application->GetWidth()));
-            const float height = static_cast<float>(std::max(1u, m_application->GetHeight()));
-            if (mouse.x < 0.0f || mouse.y < 0.0f || mouse.x > width || mouse.y > height)
+            const float width = std::max(1.0f, m_editorViewport.Width);
+            const float height = std::max(1.0f, m_editorViewport.Height);
+            if (!IsScreenPointInsideViewport(screen))
             {
                 return false;
             }
 
+            const float localX = screen.x - m_editorViewport.X;
+            const float localY = screen.y - m_editorViewport.Y;
             const DirectX::XMMATRIX identity = DirectX::XMMatrixIdentity();
             const DirectX::XMMATRIX view = GetRenderCamera().GetViewMatrix();
             const DirectX::XMMATRIX projection = GetRenderCamera().GetProjectionMatrix();
             const DirectX::XMVECTOR nearPoint = DirectX::XMVector3Unproject(
-                DirectX::XMVectorSet(mouse.x, mouse.y, 0.0f, 1.0f),
+                DirectX::XMVectorSet(localX, localY, 0.0f, 1.0f),
                 0.0f,
                 0.0f,
                 width,
@@ -2582,7 +2795,7 @@ namespace
                 view,
                 identity);
             const DirectX::XMVECTOR farPoint = DirectX::XMVector3Unproject(
-                DirectX::XMVectorSet(mouse.x, mouse.y, 1.0f, 1.0f),
+                DirectX::XMVectorSet(localX, localY, 1.0f, 1.0f),
                 0.0f,
                 0.0f,
                 width,
@@ -2597,10 +2810,15 @@ namespace
             return true;
         }
 
+        bool BuildMouseRay(MouseRay& outRay) const
+        {
+            return BuildScreenRay(Disparity::Input::GetMousePosition(), outRay);
+        }
+
         DirectX::XMFLOAT2 ProjectWorldToScreen(const DirectX::XMFLOAT3& worldPosition) const
         {
-            const float width = m_application ? static_cast<float>(std::max(1u, m_application->GetWidth())) : 1.0f;
-            const float height = m_application ? static_cast<float>(std::max(1u, m_application->GetHeight())) : 1.0f;
+            const float width = std::max(1.0f, m_editorViewport.Width);
+            const float height = std::max(1.0f, m_editorViewport.Height);
             const DirectX::XMVECTOR projected = DirectX::XMVector3Project(
                 DirectX::XMLoadFloat3(&worldPosition),
                 0.0f,
@@ -2615,7 +2833,177 @@ namespace
 
             DirectX::XMFLOAT3 screen = {};
             DirectX::XMStoreFloat3(&screen, projected);
-            return { screen.x, screen.y };
+            return { screen.x + m_editorViewport.X, screen.y + m_editorViewport.Y };
+        }
+
+        DirectX::XMFLOAT3 PickHalfExtentsForObject(const Disparity::NamedSceneObject& object) const
+        {
+            if (object.MeshName == "terrain")
+            {
+                return { 28.0f, 0.05f, 28.0f };
+            }
+            if (object.MeshName == "plane")
+            {
+                return { 24.0f, 0.08f, 24.0f };
+            }
+            if (object.MeshName == "gltf_sample")
+            {
+                return { 0.8f, 0.8f, 0.8f };
+            }
+
+            return { 0.5f, 0.5f, 0.5f };
+        }
+
+        bool IntersectRayObb(
+            const DirectX::XMFLOAT3& origin,
+            const DirectX::XMFLOAT3& direction,
+            const Disparity::Transform& transform,
+            const DirectX::XMFLOAT3& halfExtents,
+            float& outDistance) const
+        {
+            const DirectX::XMMATRIX world = transform.ToMatrix();
+            const DirectX::XMMATRIX inverseWorld = DirectX::XMMatrixInverse(nullptr, world);
+            DirectX::XMFLOAT3 localOrigin = {};
+            DirectX::XMFLOAT3 localDirection = {};
+            DirectX::XMStoreFloat3(&localOrigin, DirectX::XMVector3TransformCoord(DirectX::XMLoadFloat3(&origin), inverseWorld));
+            DirectX::XMStoreFloat3(&localDirection, DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(DirectX::XMLoadFloat3(&direction), inverseWorld)));
+
+            float minimumDistance = 0.0f;
+            float maximumDistance = FLT_MAX;
+            const std::array<std::pair<float, float>, 3> slabs = {
+                std::pair<float, float>{ localOrigin.x, localDirection.x },
+                std::pair<float, float>{ localOrigin.y, localDirection.y },
+                std::pair<float, float>{ localOrigin.z, localDirection.z }
+            };
+            const std::array<float, 3> extents = {
+                std::max(0.001f, halfExtents.x),
+                std::max(0.001f, halfExtents.y),
+                std::max(0.001f, halfExtents.z)
+            };
+
+            for (size_t axis = 0; axis < slabs.size(); ++axis)
+            {
+                const float slabOrigin = slabs[axis].first;
+                const float slabDirection = slabs[axis].second;
+                const float extent = extents[axis];
+                if (std::abs(slabDirection) < 0.0001f)
+                {
+                    if (slabOrigin < -extent || slabOrigin > extent)
+                    {
+                        return false;
+                    }
+                    continue;
+                }
+
+                float nearDistance = (-extent - slabOrigin) / slabDirection;
+                float farDistance = (extent - slabOrigin) / slabDirection;
+                if (nearDistance > farDistance)
+                {
+                    std::swap(nearDistance, farDistance);
+                }
+
+                minimumDistance = std::max(minimumDistance, nearDistance);
+                maximumDistance = std::min(maximumDistance, farDistance);
+                if (minimumDistance > maximumDistance)
+                {
+                    return false;
+                }
+            }
+
+            if (maximumDistance < 0.0f)
+            {
+                return false;
+            }
+
+            outDistance = minimumDistance >= 0.0f ? minimumDistance : maximumDistance;
+            return true;
+        }
+
+        bool PickEditorTarget(const MouseRay& ray, EditorPickResult& outPick) const
+        {
+            outPick = {};
+            float bestDistance = FLT_MAX;
+            float distance = 0.0f;
+
+            Disparity::Transform playerBody = PlayerBodyTransform();
+            if (IntersectRayObb(ray.Origin, ray.Direction, playerBody, { 0.5f, 0.5f, 0.5f }, distance) && distance < bestDistance)
+            {
+                bestDistance = distance;
+                outPick.Kind = EditorPickKind::Player;
+                outPick.StableId = 1;
+                outPick.Distance = distance;
+                outPick.Name = "Player";
+            }
+
+            Disparity::Transform playerHead;
+            playerHead.Position = Add(m_playerPosition, { 0.0f, 1.85f + m_playerBobOffset, 0.0f });
+            playerHead.Rotation = { 0.0f, m_playerYaw, 0.0f };
+            playerHead.Scale = { 0.55f, 0.45f, 0.55f };
+            if (IntersectRayObb(ray.Origin, ray.Direction, playerHead, { 0.5f, 0.5f, 0.5f }, distance) && distance < bestDistance)
+            {
+                bestDistance = distance;
+                outPick.Kind = EditorPickKind::Player;
+                outPick.StableId = 1;
+                outPick.Distance = distance;
+                outPick.Name = "Player";
+            }
+
+            const auto& objects = m_scene.GetObjects();
+            for (size_t index = 0; index < objects.size(); ++index)
+            {
+                const Disparity::NamedSceneObject& object = objects[index];
+                if (IntersectRayObb(ray.Origin, ray.Direction, object.Object.TransformData, PickHalfExtentsForObject(object), distance) && distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    outPick.Kind = EditorPickKind::SceneObject;
+                    outPick.SceneIndex = index;
+                    outPick.StableId = PickStableIdForSceneObject(index);
+                    outPick.Distance = distance;
+                    outPick.Name = object.Name;
+                }
+            }
+
+            return outPick.Kind != EditorPickKind::None;
+        }
+
+        std::string DescribeEditorPick(const EditorPickResult& pick) const
+        {
+            switch (pick.Kind)
+            {
+            case EditorPickKind::Player:
+                return "Player id=1";
+            case EditorPickKind::SceneObject:
+                return pick.Name + " id=" + std::to_string(pick.StableId);
+            case EditorPickKind::GizmoAxis:
+                return std::string("Gizmo ") + AxisName(pick.Axis);
+            case EditorPickKind::GizmoPlane:
+                return std::string("Gizmo ") + PlaneName(pick.Plane);
+            case EditorPickKind::None:
+            default:
+                return "None";
+            }
+        }
+
+        void ApplyEditorPick(const EditorPickResult& pick, bool additive)
+        {
+            if (pick.Kind == EditorPickKind::Player)
+            {
+                m_selectedPlayer = true;
+                m_multiSelection.clear();
+                m_lastPickStatus = DescribeEditorPick(pick);
+                SetStatus("Picked Player");
+                return;
+            }
+
+            if (pick.Kind == EditorPickKind::SceneObject && pick.SceneIndex < m_scene.Count())
+            {
+                SelectSceneObject(pick.SceneIndex, additive);
+                m_lastPickStatus = DescribeEditorPick(pick);
+                SetStatus("Picked " + pick.Name);
+                return;
+            }
+
+            m_lastPickStatus = "None";
         }
 
         const char* GizmoModeName(GizmoMode mode) const
@@ -2867,13 +3255,32 @@ namespace
             return true;
         }
 
-        bool TryPickGizmoAxis(GizmoAxis& outAxis, GizmoPlane& outPlane) const
+        bool IsGizmoAxisHighlighted(GizmoAxis axis) const
+        {
+            return (m_hoverPick.Kind == EditorPickKind::GizmoAxis && m_hoverPick.Axis == axis) ||
+                (m_gizmoDragging && m_gizmoDragAxis == axis && m_gizmoDragPlane == GizmoPlane::None);
+        }
+
+        bool IsGizmoPlaneHighlighted(GizmoPlane plane) const
+        {
+            return (m_hoverPick.Kind == EditorPickKind::GizmoPlane && m_hoverPick.Plane == plane) ||
+                (m_gizmoDragging && m_gizmoDragPlane == plane);
+        }
+
+        Disparity::Material HighlightGizmoMaterial(Disparity::Material material) const
+        {
+            material.Albedo = Add(Scale(material.Albedo, 1.25f), { 0.18f, 0.18f, 0.18f });
+            material.Roughness = std::max(0.05f, material.Roughness * 0.65f);
+            material.Alpha = std::min(1.0f, std::max(material.Alpha, 0.68f));
+            return material;
+        }
+
+        bool TryPickGizmoHandle(const MouseRay& ray, GizmoAxis& outAxis, GizmoPlane& outPlane, float* outDistance = nullptr) const
         {
             outAxis = GizmoAxis::None;
             outPlane = GizmoPlane::None;
             DirectX::XMFLOAT3 pivot = {};
-            MouseRay ray;
-            if (!TryGetSelectionPivot(pivot) || !BuildMouseRay(ray))
+            if (!TryGetSelectionPivot(pivot))
             {
                 return false;
             }
@@ -2924,7 +3331,25 @@ namespace
                 }
             }
 
-            return outAxis != GizmoAxis::None || outPlane != GizmoPlane::None;
+            const bool picked = outAxis != GizmoAxis::None || outPlane != GizmoPlane::None;
+            if (picked && outDistance)
+            {
+                *outDistance = bestDistance;
+            }
+            return picked;
+        }
+
+        bool TryPickGizmoAxis(GizmoAxis& outAxis, GizmoPlane& outPlane) const
+        {
+            MouseRay ray;
+            if (!BuildMouseRay(ray))
+            {
+                outAxis = GizmoAxis::None;
+                outPlane = GizmoPlane::None;
+                return false;
+            }
+
+            return TryPickGizmoHandle(ray, outAxis, outPlane);
         }
 
         bool TryBeginGizmoDrag()
@@ -3183,6 +3608,36 @@ namespace
             m_gizmoStatus = "Idle";
         }
 
+        void UpdateEditorHover(bool editorCapturesMouse)
+        {
+            m_hoverPick = {};
+            if (!m_editorVisible || editorCapturesMouse || Disparity::Input::IsMouseCaptured() || m_gizmoDragging)
+            {
+                return;
+            }
+
+            MouseRay ray;
+            if (!BuildMouseRay(ray))
+            {
+                return;
+            }
+
+            GizmoAxis axis = GizmoAxis::None;
+            GizmoPlane plane = GizmoPlane::None;
+            float distance = 0.0f;
+            if (TryPickGizmoHandle(ray, axis, plane, &distance))
+            {
+                m_hoverPick.Kind = plane != GizmoPlane::None ? EditorPickKind::GizmoPlane : EditorPickKind::GizmoAxis;
+                m_hoverPick.Axis = axis;
+                m_hoverPick.Plane = plane;
+                m_hoverPick.Distance = distance;
+                m_hoverPick.Name = DescribeEditorPick(m_hoverPick);
+                return;
+            }
+
+            (void)PickEditorTarget(ray, m_hoverPick);
+        }
+
         void PickSceneObjectAtMouse()
         {
             MouseRay ray;
@@ -3191,42 +3646,10 @@ namespace
                 return;
             }
 
-            float bestDistance = FLT_MAX;
-            bool hitPlayer = false;
-            size_t hitIndex = InvalidIndex;
-            float distance = 0.0f;
-            if (IntersectRaySphere(ray.Origin, ray.Direction, Add(m_playerPosition, { 0.0f, 1.1f, 0.0f }), 1.2f, distance))
+            EditorPickResult pick;
+            if (PickEditorTarget(ray, pick))
             {
-                bestDistance = distance;
-                hitPlayer = true;
-            }
-
-            const auto& objects = m_scene.GetObjects();
-            for (size_t index = 0; index < objects.size(); ++index)
-            {
-                const Disparity::Transform& transform = objects[index].Object.TransformData;
-                if (IntersectRaySphere(ray.Origin, ray.Direction, transform.Position, PickRadiusForTransform(transform), distance) && distance < bestDistance)
-                {
-                    bestDistance = distance;
-                    hitPlayer = false;
-                    hitIndex = index;
-                }
-            }
-
-            if (hitPlayer)
-            {
-                m_selectedPlayer = true;
-                m_multiSelection.clear();
-                m_lastPickStatus = "Player";
-                SetStatus("Picked Player");
-                return;
-            }
-
-            if (hitIndex != InvalidIndex)
-            {
-                SelectSceneObject(hitIndex, Disparity::Input::IsKeyDown(VK_CONTROL));
-                m_lastPickStatus = objects[hitIndex].Name;
-                SetStatus("Picked " + objects[hitIndex].Name);
+                ApplyEditorPick(pick, Disparity::Input::IsKeyDown(VK_CONTROL));
                 return;
             }
 
@@ -3655,6 +4078,8 @@ namespace
                 {
                     if (key == "expected_capture_width") { loadedBaseline.ExpectedCaptureWidth = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "expected_capture_height") { loadedBaseline.ExpectedCaptureHeight = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_editor_pick_tests") { loadedBaseline.MinEditorPickTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_gizmo_pick_tests") { loadedBaseline.MinGizmoPickTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
                     else if (key == "min_non_black_ratio") { loadedBaseline.MinNonBlackRatio = std::stod(value); }
@@ -3705,6 +4130,7 @@ namespace
         std::vector<RuntimeReplayStep> m_runtimeReplaySteps;
         RuntimeBudgetStats m_runtimeBudgetStats;
         RuntimePlaybackStats m_runtimePlayback;
+        EditorVerificationStats m_runtimeEditorStats;
         RuntimeBaseline m_runtimeBaseline;
         Disparity::FrameCaptureResult m_runtimeCapture;
         Disparity::Entity m_playerEntity = 0;
@@ -3750,6 +4176,8 @@ namespace
         uint32_t m_runtimeReplayEndFrame = 0;
         DirectX::XMFLOAT3 m_editorCameraTarget = { 0.0f, 1.1f, 0.0f };
         DirectX::XMFLOAT2 m_editorLastMousePosition = {};
+        EditorViewportState m_editorViewport;
+        EditorPickResult m_hoverPick;
         RuntimeVerificationConfig m_runtimeVerification;
         bool m_selectedPlayer = true;
         bool m_editorVisible = true;
@@ -3762,6 +4190,7 @@ namespace
         bool m_runtimeVerificationSavedScene = false;
         bool m_runtimeVerificationExercisedRenderer = false;
         bool m_runtimeVerificationCycledSelection = false;
+        bool m_runtimeVerificationValidatedEditorPrecision = false;
         bool m_runtimeVerificationCaptureRequested = false;
         bool m_runtimeVerificationCaptureValidated = false;
         bool m_runtimeBaselineLoaded = false;

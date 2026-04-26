@@ -177,12 +177,21 @@ Editor UI:
 - `Tools/SummarizePerformanceHistory.ps1` reports recent CPU/GPU deltas by suite and executable.
 - `VerifyDisparity.ps1` now runs all suites for Debug and packaged builds, then prints the local performance trend summary.
 
+## Engine v14 Followups Implemented
+
+- Editor picking now uses viewport-owned screen mapping instead of raw full-window assumptions.
+- Scene selection uses OBB ray tests and stable pick IDs, so the editor reports deterministic object tokens instead of only names.
+- Gizmo axes and planes now expose hover state and brighten when hovered or dragged.
+- Runtime verification validates editor precision with stable-ID object picks and gizmo handle picks.
+- `EditorPrecision` adds a third replay/baseline/golden suite focused on editor interaction invariants.
+- Performance history rows now include editor pick and gizmo pick counts.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
 - Turn the scheduled render graph into the authoritative renderer execution path with real DX11 resource lifetime ownership, alias allocation decisions, async compute candidates, and GPU-driven culling.
-- Add a dedicated editor viewport render target, object-ID selection buffers, depth-aware gizmo handle picking, and editor interaction verification suites.
+- Add a dedicated editor viewport render target and a real GPU object-ID/depth selection buffer to replace the new CPU-side stable-ID picking groundwork.
 - Add prefab variants, nested prefabs, dependency-aware apply/revert, and save-game separation.
 - Add production `.glb` cooking, animation retargeting/blending, and GPU skinning palettes.
 - Replace the WinMM prototype audio backend with XAudio2 voices, sends, snapshots, streamed layers, spatial emitters, and meters.

@@ -14,7 +14,7 @@ Current shape:
 - Renderer backend is DirectX 11.
 - Dependency policy now allows the vendored Dear ImGui docking branch in `ThirdParty/imgui`; otherwise prefer Win32, DirectX 11, DirectXMath, WIC/WinMM, and the Windows SDK.
 - Geometry includes procedural primitives, procedural terrain, and a glTF 2.0 scene loader path for static mesh primitives, material texture binding, node instancing, skin metadata, joint/weight attributes, and animation sampler data.
-- Editor/runtime v13 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, copy/paste/duplicate/delete scene-object workflows, an independent editor camera with right-drag WASD/QE fly controls, simple transform gizmo buttons plus camera-scaled 3D translate/rotate/scale handles, torus rotate rings, translucent XY/XZ/YZ translate-plane handles, snapping and world/local space, prefab apply/save workflows, visibly stronger post effects with debug views, bus-based audio controls, spatial tone preview, an asset database with import settings and cooked metadata files, a compiled render graph schedule with pass CPU/GPU timings, culled passes, transition diagnostics, alias candidates, resource lifetimes, job system, version reporting, crash logs, deterministic runtime self-verification, multi-suite assetized replay/baseline verification, frame capture validation, golden thumbnail comparison, performance trend summaries, stronger window smoke tests, and unified static/runtime verification scripts.
+- Editor/runtime v14 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, stable-ID/OBB editor picking, gizmo hover highlighting, copy/paste/duplicate/delete scene-object workflows, an independent editor camera with right-drag WASD/QE fly controls, simple transform gizmo buttons plus camera-scaled 3D translate/rotate/scale handles, torus rotate rings, translucent XY/XZ/YZ translate-plane handles, snapping and world/local space, prefab apply/save workflows, visibly stronger post effects with debug views, bus-based audio controls, spatial tone preview, an asset database with import settings and cooked metadata files, a compiled render graph schedule with pass CPU/GPU timings, culled passes, transition diagnostics, alias candidates, resource lifetimes, job system, version reporting, crash logs, deterministic runtime self-verification, multi-suite assetized replay/baseline verification, frame capture validation, golden thumbnail comparison, editor precision verification, performance trend summaries, stronger window smoke tests, and unified static/runtime verification scripts.
 
 ## Important Paths
 
@@ -38,8 +38,10 @@ Current shape:
 - `Assets/Verification/RuntimeSuites.dverify`: runtime verification suite manifest.
 - `Assets/Verification/Prototype.dreplay`: deterministic runtime verification replay asset.
 - `Assets/Verification/CameraSweep.dreplay`: camera-heavy deterministic runtime verification replay asset.
+- `Assets/Verification/EditorPrecision.dreplay`: editor stable-ID picking and gizmo picking runtime verification replay asset.
 - `Assets/Verification/RuntimeBaseline.dverify`: runtime capture/performance baseline asset.
 - `Assets/Verification/CameraSweepBaseline.dverify`: camera-heavy runtime capture/performance baseline asset.
+- `Assets/Verification/EditorPrecisionBaseline.dverify`: editor precision runtime capture/performance baseline asset.
 - `Assets/Verification/Goldens/*.ppm`: suite-specific golden thumbnails used by runtime verification.
 - `Assets/ImportSettings/Assets/Meshes/SampleTriangle.gltf.dimport`: sample import settings file for the asset database.
 - `Assets/Scripts/Prototype.dscript`: tiny prototype scene script.
@@ -50,7 +52,7 @@ Current shape:
 - `Tools/RuntimeVerifyDisparity.ps1`: launches `DisparityGame.exe --verify-runtime`, waits for the runtime PASS/FAIL report, verifies capture output, and fails on non-zero exit.
 - `Tools/VerifyDisparity.ps1`: full local verification gate for static and runtime checks.
 - `Tools/CompareCaptureDisparity.ps1`: downsamples PPM captures and compares or updates golden thumbnails.
-- `Tools/SummarizePerformanceHistory.ps1`: prints recent CPU/GPU trend summaries grouped by suite/executable.
+- `Tools/SummarizePerformanceHistory.ps1`: prints recent CPU/GPU and editor/gizmo pick trend summaries grouped by suite/executable.
 - `.github/workflows/windows-build.yml`: GitHub Actions static verification through `Tools/VerifyDisparity.ps1 -SkipRuntime`, plus an opt-in `workflow_dispatch` runtime gate for interactive runners.
 - `ThirdParty/imgui`: vendored Dear ImGui source and Win32/DX11 backends.
 - `Docs/ENGINE_FEATURES.md`: current feature/testing guide.
@@ -109,19 +111,19 @@ It writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/
 
 ## Verified Baseline
 
-On 2026-04-27 after the v13 verification followup pass:
+On 2026-04-27 after the v14 verification followup pass:
 
 - `Debug|x64` built successfully with 0 warnings and 0 errors.
 - `Release|x64` built successfully with 0 warnings and 0 errors.
 - MSVC static analysis completed successfully.
 - `Assets/Shaders/Basic.hlsl` and `Assets/Shaders/PostProcess.hlsl` compiled successfully for `VSMain` and `PSMain` with `fxc`.
 - `Tools/SmokeTestDisparity.ps1 -Configuration Debug -ExerciseWindow` launched `DisparityGame.exe`, found the window, resized it, sent basic editor hotkeys, kept it alive for 3 seconds, and closed it cleanly.
-- `Tools/RuntimeVerifyDisparity.ps1 -Configuration Debug -Frames 90` produced PASS runtime reports for the `Prototype` and `CameraSweep` suites, wrote captures/thumbnails, compared them against `Assets/Verification/Goldens/*.ppm`, loaded the replay/baseline assets, and appended `Saved/Verification/performance_history.csv`.
+- `Tools/RuntimeVerifyDisparity.ps1 -Configuration Debug -Frames 90` produced PASS runtime reports for the `Prototype`, `CameraSweep`, and `EditorPrecision` suites, wrote captures/thumbnails, compared them against `Assets/Verification/Goldens/*.ppm`, validated stable-ID editor picks and gizmo picks, loaded the replay/baseline assets, and appended `Saved/Verification/performance_history.csv`.
 - `Tools/PackageDisparity.ps1 -Configuration Release` produced `dist/DISPARITY-Release`.
 - `Tools/SmokeTestDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe -ExerciseWindow` launched the packaged build, found/resized/exercised the window, and closed it cleanly.
-- `Tools/RuntimeVerifyDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe -Frames 90` produced PASS packaged runtime reports, captures, golden comparisons, and local performance history rows for both suites.
+- `Tools/RuntimeVerifyDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe -Frames 90` produced PASS packaged runtime reports, captures, golden comparisons, and local performance history rows for all three suites.
 - `Tools/SummarizePerformanceHistory.ps1` completed successfully as part of `Tools/VerifyDisparity.ps1`.
-- The v13 pass was committed only after `Tools/VerifyDisparity.ps1` and `git status --short` review.
+- The v14 pass was committed only after `Tools/VerifyDisparity.ps1` and `git status --short` review.
 
 After feature work, run `powershell -ExecutionPolicy Bypass -File .\Tools\VerifyDisparity.ps1` and `git status --short` before declaring the repo healthy.
 
@@ -130,8 +132,8 @@ After feature work, run `powershell -ExecutionPolicy Bypass -File .\Tools\Verify
 Good next steps for making the engine more modern and AAA-like:
 
 - Move renderer execution onto the compiled render graph with real DX11 resource ownership, alias allocation decisions, async compute candidates, and GPU-driven culling.
-- Add a dedicated editor viewport render target, object-ID selection buffer, object-ID gizmo handle picking, depth-aware hover states, and stronger transform constraints.
-- Expand the new multi-suite replay/baseline/golden harness into editor camera, picking, gizmo dragging, asset reload, and post-debug scenario coverage.
+- Add a dedicated editor viewport render target, GPU object-ID selection buffer, GPU object-ID gizmo handle picking, depth-aware hover states, and stronger transform constraints.
+- Expand the new multi-suite replay/baseline/golden harness into editor camera, gizmo dragging, asset reload, and post-debug scenario coverage.
 - Add per-GPU/driver golden tolerance profiles and commit-to-commit performance regression baselines.
 - Upgrade serialization to stable deterministic IDs, schema versions, undo grouping, prefab variants, dependency-aware apply/revert, and save-game separation.
 - Replace prototype glTF runtime loading and metadata cooking with true cooked `.glb` import, animation blending, retargeting, and GPU skinning palette upload.

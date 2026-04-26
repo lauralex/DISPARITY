@@ -8,10 +8,10 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - Drag panels into the main dockspace, or pull them outside the main window to test multi-viewport support.
 - Use `Hierarchy` to select the player or a scene object.
 - Selected objects render with a bright outline in the main viewport.
-- Press `Tab` to release the mouse, then left-click the main viewport to pick objects. Hold `Ctrl` while picking or selecting in `Hierarchy` to multi-select.
+- Press `Tab` to release the mouse, then left-click the main viewport to pick objects. Hold `Ctrl` while picking or selecting in `Hierarchy` to multi-select. Picks use stable editor IDs and OBB tests for scene objects.
 - Use `Copy`, `Paste`, `Duplicate`, and `Delete` in the `Hierarchy` panel or `Edit` menu. Keyboard shortcuts are `Ctrl+C`, `Ctrl+V`, `Ctrl+D`, and `Delete`.
 - The `Viewport` panel enables an editor camera. Use `Frame Selection`, `Frame Player`, right-drag look, arrow/Page keys, or right-drag plus `WASD`/`Q`/`E` to inspect the scene without moving the player.
-- Use `Inspector` to edit transforms/materials. The `Transform Gizmo` section provides small move, scale, and yaw buttons without adding another third-party dependency, and the viewport draws camera-scaled 3D gizmo handles at the current selection pivot. Choose translate/rotate/scale and world/local space in `Viewport`, then left-drag an axis marker, rotate ring, or translucent translate-plane handle; hold `Shift` while dragging for snapping.
+- Use `Inspector` to edit transforms/materials. The `Transform Gizmo` section provides small move, scale, and yaw buttons without adding another third-party dependency, and the viewport draws camera-scaled 3D gizmo handles at the current selection pivot. Choose translate/rotate/scale and world/local space in `Viewport`, then left-drag an axis marker, rotate ring, or translucent translate-plane handle; hold `Shift` while dragging for snapping. Gizmo handles brighten on hover or drag.
 - Use `Ctrl+Z` and `Ctrl+Y`, or the `DISPARITY` menu, to test undo/redo. The profiler shows recent command labels.
 
 ## Assets And Prefabs
@@ -81,13 +81,14 @@ Runtime verification writes `Saved/Verification/runtime_verify.txt`, captures `S
 
 Runtime replay and baseline expectations are assetized:
 
-- `Assets/Verification/RuntimeSuites.dverify` defines named runtime suites. The current suites are `Prototype` and `CameraSweep`.
+- `Assets/Verification/RuntimeSuites.dverify` defines named runtime suites. The current suites are `Prototype`, `CameraSweep`, and `EditorPrecision`.
 - `Assets/Verification/Prototype.dreplay` defines frame ranges, movement vectors, and camera drift for deterministic playback.
 - `Assets/Verification/CameraSweep.dreplay` adds a camera-heavy deterministic playback path.
-- `Assets/Verification/RuntimeBaseline.dverify` and `Assets/Verification/CameraSweepBaseline.dverify` define expected capture dimensions, average luminance tolerance, nonblack pixel ratio, minimum replay distance, performance budgets, and golden thumbnail tolerances.
+- `Assets/Verification/EditorPrecision.dreplay` adds editor-picking coverage for stable-ID object picks and gizmo handle picks.
+- `Assets/Verification/*Baseline.dverify` files define expected capture dimensions, average luminance tolerance, nonblack pixel ratio, minimum replay distance, editor pick counts, gizmo pick counts, performance budgets, and golden thumbnail tolerances.
 - `Assets/Verification/Goldens/*.ppm` stores suite-specific 64x36 golden thumbnails.
 - `Tools/CompareCaptureDisparity.ps1` creates or compares capture thumbnails against goldens.
-- `Tools/SummarizePerformanceHistory.ps1` groups recent local runs by suite/executable and reports CPU/GPU deltas.
+- `Tools/SummarizePerformanceHistory.ps1` groups recent local runs by suite/executable and reports CPU/GPU deltas plus editor/gizmo pick counts.
 - `Saved/Verification/performance_history.csv` is appended by `RuntimeVerifyDisparity.ps1` so repeated local runs leave a trend trail without committing generated data.
 
 Crashes write a small report to `Saved/CrashLogs`. GitHub Actions runs the static side of `Tools/VerifyDisparity.ps1` on push and pull request; an opt-in `workflow_dispatch` input can run the runtime gate when a runner has an interactive desktop.

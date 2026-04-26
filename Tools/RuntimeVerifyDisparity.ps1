@@ -230,7 +230,7 @@ if (!$DisablePerfHistory) {
         New-Item -ItemType Directory -Force -Path $historyParent | Out-Null
     }
 
-    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance"
+    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance,editor_pick_tests,editor_pick_failures,gizmo_pick_tests,gizmo_pick_failures"
     if (Test-Path -LiteralPath $HistoryPath) {
         $currentHeader = Get-Content -LiteralPath $HistoryPath -First 1
         if ($currentHeader -ne $historyHeader) {
@@ -261,7 +261,11 @@ if (!$DisablePerfHistory) {
         $metrics["pass_gpu_max_name"],
         $metrics["capture_average_luma"],
         $metrics["capture_checksum"],
-        $metrics["playback_distance"]
+        $metrics["playback_distance"],
+        $metrics["editor_pick_tests"],
+        $metrics["editor_pick_failures"],
+        $metrics["gizmo_pick_tests"],
+        $metrics["gizmo_pick_failures"]
     ) | ForEach-Object {
         '"' + ([string]$_ -replace '"', '""') + '"'
     }

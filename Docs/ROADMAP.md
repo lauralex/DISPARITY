@@ -1,11 +1,11 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v13 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
+The current engine now has functional v14 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
 
 ## Editor
 
 - Build a dedicated editor viewport render target that owns camera state, scene picking, and tool overlays.
-- Add object-ID selection and object-ID gizmo handle picking to replace the current ray-test approximations.
+- Replace the new CPU stable-ID/OBB picking groundwork with a GPU object-ID and depth picking buffer for scene objects and gizmo handles.
 - Expand the current mesh/ring/plane gizmo handles with depth-aware hover states, constraint previews, numerical transform entry, and pivot/orientation controls.
 - Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command filters, and visible command history.
 - Add prefab override visualization, nested prefabs, prefab variants, and dependency-aware apply/revert.
@@ -39,7 +39,7 @@ The current engine now has functional v13 versions of many requested followups. 
 
 ## Production
 
-- Expand the new multi-suite replay/baseline/golden format into editor camera, selection, gizmo dragging, asset reload, and rendering debug-view suites.
+- Expand the new multi-suite replay/baseline/golden format beyond `EditorPrecision` into editor camera, selection, gizmo dragging, asset reload, and rendering debug-view suites.
 - Add per-GPU/driver golden tolerance profiles and richer image-diff diagnostics around the new thumbnail comparator.
 - Turn the local performance history summary into automated commit-to-commit regression gates.
 - Extend CI with packaged runtime smoke tests by default when an interactive desktop runner is available.

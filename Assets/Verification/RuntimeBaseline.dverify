@@ -1,6 +1,8 @@
 # DISPARITY runtime verification baseline v1
 expected_capture_width=1280
 expected_capture_height=720
+min_editor_pick_tests=3
+min_gizmo_pick_tests=3
 expected_average_luma=82.17
 average_luma_tolerance=12.0
 min_non_black_ratio=0.05

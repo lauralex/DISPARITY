@@ -51,8 +51,10 @@ foreach ($group in $groups) {
     $latestCpu = [double]$latest.cpu_frame_max_ms
     $latestGpu = [double]$latest.gpu_frame_max_ms
     $latestLuma = [double]$latest.capture_average_luma
+    $editorPicks = if ($latest.PSObject.Properties.Name -contains "editor_pick_tests" -and ![string]::IsNullOrWhiteSpace($latest.editor_pick_tests)) { [int]$latest.editor_pick_tests } else { 0 }
+    $gizmoPicks = if ($latest.PSObject.Properties.Name -contains "gizmo_pick_tests" -and ![string]::IsNullOrWhiteSpace($latest.gizmo_pick_tests)) { [int]$latest.gizmo_pick_tests } else { 0 }
 
-    Write-Host ("{0}: latest cpu_max={1:N3}ms gpu_max={2:N3}ms luma={3:N2}" -f $label, $latestCpu, $latestGpu, $latestLuma)
+    Write-Host ("{0}: latest cpu_max={1:N3}ms gpu_max={2:N3}ms luma={3:N2} editor_picks={4} gizmo_picks={5}" -f $label, $latestCpu, $latestGpu, $latestLuma, $editorPicks, $gizmoPicks)
 
     if ($latestRows.Count -lt 2) {
         continue
