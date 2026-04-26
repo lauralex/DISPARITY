@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <limits>
 #include <unordered_map>
+#include <vector>
 #include <windows.h>
 #include <wrl/client.h>
 
@@ -111,6 +112,13 @@ namespace Disparity
             Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> ShaderResourceView;
         };
 
+        struct GpuPassProfile
+        {
+            Microsoft::WRL::ComPtr<ID3D11Query> StartQuery;
+            Microsoft::WRL::ComPtr<ID3D11Query> EndQuery;
+            bool QueryIssued = false;
+        };
+
         bool CreateDeviceAndSwapChain();
         bool CreateBackBufferResources();
         bool CreateShaders();
@@ -129,6 +137,10 @@ namespace Disparity
         void BeginGpuFrameProfile();
         void EndGpuFrameProfile();
         void ResolveGpuFrameProfile();
+        void EnsureGpuPassProfiles(size_t passCount);
+        void BeginGpuPassProfile(uint32_t passId);
+        void EndGpuPassProfile(uint32_t passId);
+        void ResolveGpuPassProfiles();
 
         HWND m_windowHandle = nullptr;
         uint32_t m_width = 1;
@@ -153,6 +165,7 @@ namespace Disparity
         uint32_t m_activeGraphPass = std::numeric_limits<uint32_t>::max();
         std::chrono::steady_clock::time_point m_graphPassStart;
         double m_gpuFrameMilliseconds = 0.0;
+        uint64_t m_gpuTimestampFrequency = 0;
         bool m_gpuTimingSupported = false;
         bool m_gpuTimingValid = false;
         bool m_gpuFrameQueryIssued = false;
@@ -194,6 +207,7 @@ namespace Disparity
         Microsoft::WRL::ComPtr<ID3D11Query> m_gpuFrameDisjointQuery;
         Microsoft::WRL::ComPtr<ID3D11Query> m_gpuFrameStartQuery;
         Microsoft::WRL::ComPtr<ID3D11Query> m_gpuFrameEndQuery;
+        std::vector<GpuPassProfile> m_gpuPassProfiles;
 
         std::unordered_map<MeshHandle, GpuMesh> m_meshes;
         std::unordered_map<TextureHandle, GpuTexture> m_textures;

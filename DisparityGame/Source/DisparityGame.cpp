@@ -17,6 +17,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include <windows.h>
 
@@ -232,9 +233,24 @@ namespace
             {
                 DeleteSelectedObject();
             }
-            if (m_editorVisible && !Disparity::Input::IsMouseCaptured() && !editorCapturesMouse && Disparity::Input::WasMouseButtonPressed(0))
+            if (m_gizmoDragging)
             {
-                PickSceneObjectAtMouse();
+                if (Disparity::Input::IsMouseButtonDown(0))
+                {
+                    UpdateGizmoDrag();
+                }
+                else
+                {
+                    EndGizmoDrag();
+                }
+            }
+
+            if (m_editorVisible && !m_gizmoDragging && !Disparity::Input::IsMouseCaptured() && !editorCapturesMouse && Disparity::Input::WasMouseButtonPressed(0))
+            {
+                if (!TryBeginGizmoDrag())
+                {
+                    PickSceneObjectAtMouse();
+                }
             }
 
             const DirectX::XMFLOAT2 mouseDelta = Disparity::Input::GetMouseDelta();
@@ -343,6 +359,26 @@ namespace
         {
             std::string Label;
             EditState State;
+        };
+
+        enum class GizmoAxis
+        {
+            None,
+            X,
+            Y,
+            Z
+        };
+
+        struct MouseRay
+        {
+            DirectX::XMFLOAT3 Origin = {};
+            DirectX::XMFLOAT3 Direction = {};
+        };
+
+        struct GizmoDragObject
+        {
+            size_t SceneIndex = InvalidIndex;
+            DirectX::XMFLOAT3 OriginalPosition = {};
         };
 
         void InitializeMaterials()
@@ -1008,6 +1044,7 @@ namespace
             ImGui::SliderFloat("Orbit distance", &m_editorCameraDistance, 2.5f, 40.0f);
             ImGui::DragFloat3("Target", &m_editorCameraTarget.x, 0.08f);
             ImGui::Text("Pick: %s", m_lastPickStatus.c_str());
+            ImGui::Text("Gizmo: %s", m_gizmoStatus.c_str());
             ImGui::TextDisabled("Tab releases mouse; left-click picks. Right-drag or arrow/Page keys move the editor camera.");
             ImGui::End();
         }
@@ -1454,12 +1491,42 @@ namespace
                     }
 
                     const Disparity::RenderGraphPass& pass = graph.GetPasses()[passId];
-                    ImGui::BulletText("#%u %s  CPU %.3f ms  R:%zu W:%zu",
+                    ImGui::BulletText("#%u %s  CPU %.3f ms  GPU %.3f ms  R:%zu W:%zu",
                         pass.ExecutionOrder,
                         pass.Name.c_str(),
                         pass.LastCpuMilliseconds,
+                        pass.LastGpuMilliseconds,
                         pass.Reads.size(),
                         pass.Writes.size());
+                }
+
+                if (ImGui::TreeNode("Culled Passes"))
+                {
+                    for (const Disparity::RenderGraphPass& pass : graph.GetPasses())
+                    {
+                        if (pass.Culled)
+                        {
+                            ImGui::BulletText("%s: %s", pass.Name.c_str(), pass.CullReason.c_str());
+                        }
+                    }
+                    ImGui::TreePop();
+                }
+
+                if (ImGui::TreeNode("Resource Transitions"))
+                {
+                    for (const Disparity::RenderGraphBarrier& barrier : graph.GetBarriers())
+                    {
+                        const char* fromPassName = barrier.FromPass < graph.GetPasses().size() ? graph.GetPasses()[barrier.FromPass].Name.c_str() : "External";
+                        const char* toPassName = barrier.ToPass < graph.GetPasses().size() ? graph.GetPasses()[barrier.ToPass].Name.c_str() : "External";
+                        ImGui::BulletText(
+                            "%s: %s %s -> %s %s",
+                            findResourceName(barrier.ResourceId),
+                            fromPassName,
+                            barrier.FromAccess.c_str(),
+                            toPassName,
+                            barrier.ToAccess.c_str());
+                    }
+                    ImGui::TreePop();
                 }
 
                 if (ImGui::TreeNode("Resource Lifetimes"))
@@ -1472,6 +1539,15 @@ namespace
                             lifetime.FirstPass,
                             lifetime.LastPass,
                             lifetime.External ? " external" : "");
+                    }
+                    ImGui::TreePop();
+                }
+
+                if (ImGui::TreeNode("Alias Candidates"))
+                {
+                    for (const Disparity::RenderGraphAliasCandidate& alias : graph.GetAliasCandidates())
+                    {
+                        ImGui::BulletText("%s <-> %s", findResourceName(alias.FirstResourceId), findResourceName(alias.SecondResourceId));
                     }
                     ImGui::TreePop();
                 }
@@ -1705,11 +1781,11 @@ namespace
             return std::max(0.45f, Length(transform.Scale) * 0.62f);
         }
 
-        void PickSceneObjectAtMouse()
+        bool BuildMouseRay(MouseRay& outRay) const
         {
             if (!m_application)
             {
-                return;
+                return false;
             }
 
             const DirectX::XMFLOAT2 mouse = Disparity::Input::GetMousePosition();
@@ -1717,7 +1793,7 @@ namespace
             const float height = static_cast<float>(std::max(1u, m_application->GetHeight()));
             if (mouse.x < 0.0f || mouse.y < 0.0f || mouse.x > width || mouse.y > height)
             {
-                return;
+                return false;
             }
 
             const DirectX::XMMATRIX identity = DirectX::XMMatrixIdentity();
@@ -1745,18 +1821,222 @@ namespace
                 projection,
                 view,
                 identity);
-            const DirectX::XMVECTOR directionVector = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(farPoint, nearPoint));
+            DirectX::XMStoreFloat3(&outRay.Origin, nearPoint);
+            DirectX::XMStoreFloat3(&outRay.Direction, DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(farPoint, nearPoint)));
+            return true;
+        }
 
-            DirectX::XMFLOAT3 origin = {};
-            DirectX::XMFLOAT3 direction = {};
-            DirectX::XMStoreFloat3(&origin, nearPoint);
-            DirectX::XMStoreFloat3(&direction, directionVector);
+        DirectX::XMFLOAT2 ProjectWorldToScreen(const DirectX::XMFLOAT3& worldPosition) const
+        {
+            const float width = m_application ? static_cast<float>(std::max(1u, m_application->GetWidth())) : 1.0f;
+            const float height = m_application ? static_cast<float>(std::max(1u, m_application->GetHeight())) : 1.0f;
+            const DirectX::XMVECTOR projected = DirectX::XMVector3Project(
+                DirectX::XMLoadFloat3(&worldPosition),
+                0.0f,
+                0.0f,
+                width,
+                height,
+                0.0f,
+                1.0f,
+                GetRenderCamera().GetProjectionMatrix(),
+                GetRenderCamera().GetViewMatrix(),
+                DirectX::XMMatrixIdentity());
+
+            DirectX::XMFLOAT3 screen = {};
+            DirectX::XMStoreFloat3(&screen, projected);
+            return { screen.x, screen.y };
+        }
+
+        DirectX::XMFLOAT3 AxisVector(GizmoAxis axis) const
+        {
+            switch (axis)
+            {
+            case GizmoAxis::X:
+                return { 1.0f, 0.0f, 0.0f };
+            case GizmoAxis::Y:
+                return { 0.0f, 1.0f, 0.0f };
+            case GizmoAxis::Z:
+                return { 0.0f, 0.0f, 1.0f };
+            case GizmoAxis::None:
+            default:
+                return {};
+            }
+        }
+
+        const char* AxisName(GizmoAxis axis) const
+        {
+            switch (axis)
+            {
+            case GizmoAxis::X:
+                return "X";
+            case GizmoAxis::Y:
+                return "Y";
+            case GizmoAxis::Z:
+                return "Z";
+            case GizmoAxis::None:
+            default:
+                return "None";
+            }
+        }
+
+        bool TryPickGizmoAxis(GizmoAxis& outAxis) const
+        {
+            outAxis = GizmoAxis::None;
+            DirectX::XMFLOAT3 pivot = {};
+            MouseRay ray;
+            if (!TryGetSelectionPivot(pivot) || !BuildMouseRay(ray))
+            {
+                return false;
+            }
+
+            float bestDistance = FLT_MAX;
+            float distance = 0.0f;
+            const std::array<std::pair<GizmoAxis, DirectX::XMFLOAT3>, 3> handles = {
+                std::pair<GizmoAxis, DirectX::XMFLOAT3>{ GizmoAxis::X, Add(pivot, { 0.75f, 0.0f, 0.0f }) },
+                std::pair<GizmoAxis, DirectX::XMFLOAT3>{ GizmoAxis::Y, Add(pivot, { 0.0f, 0.75f, 0.0f }) },
+                std::pair<GizmoAxis, DirectX::XMFLOAT3>{ GizmoAxis::Z, Add(pivot, { 0.0f, 0.0f, 0.75f }) }
+            };
+
+            for (const auto& [axis, handlePosition] : handles)
+            {
+                if (IntersectRaySphere(ray.Origin, ray.Direction, handlePosition, 0.34f, distance) && distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    outAxis = axis;
+                }
+            }
+
+            return outAxis != GizmoAxis::None;
+        }
+
+        bool TryBeginGizmoDrag()
+        {
+            if (m_gizmoDragging)
+            {
+                return true;
+            }
+
+            GizmoAxis pickedAxis = GizmoAxis::None;
+            DirectX::XMFLOAT3 pivot = {};
+            if (!TryPickGizmoAxis(pickedAxis) || !TryGetSelectionPivot(pivot))
+            {
+                return false;
+            }
+
+            m_gizmoDragging = true;
+            m_gizmoDragMoved = false;
+            m_gizmoDragAxis = pickedAxis;
+            m_gizmoDragStartMouse = Disparity::Input::GetMousePosition();
+            m_gizmoDragStartPivot = pivot;
+            m_gizmoDragStartPlayerPosition = m_playerPosition;
+            m_gizmoDragObjects.clear();
+            m_gizmoDragBeforeState = CaptureEditState();
+            for (const size_t selectedIndex : GetSelectedSceneIndices())
+            {
+                if (selectedIndex < m_scene.Count())
+                {
+                    m_gizmoDragObjects.push_back(GizmoDragObject{ selectedIndex, m_scene.GetObjects()[selectedIndex].Object.TransformData.Position });
+                }
+            }
+
+            m_gizmoStatus = std::string("Dragging ") + AxisName(m_gizmoDragAxis);
+            return true;
+        }
+
+        void UpdateGizmoDrag()
+        {
+            if (!m_gizmoDragging || m_gizmoDragAxis == GizmoAxis::None)
+            {
+                return;
+            }
+
+            const DirectX::XMFLOAT3 axis = AxisVector(m_gizmoDragAxis);
+            const DirectX::XMFLOAT2 startScreen = ProjectWorldToScreen(m_gizmoDragStartPivot);
+            const DirectX::XMFLOAT2 endScreen = ProjectWorldToScreen(Add(m_gizmoDragStartPivot, axis));
+            DirectX::XMFLOAT2 axisScreen = {
+                endScreen.x - startScreen.x,
+                endScreen.y - startScreen.y
+            };
+            float axisScreenLength = std::sqrt(axisScreen.x * axisScreen.x + axisScreen.y * axisScreen.y);
+            if (axisScreenLength <= 0.001f)
+            {
+                axisScreen = { 1.0f, 0.0f };
+                axisScreenLength = 1.0f;
+            }
+            axisScreen.x /= axisScreenLength;
+            axisScreen.y /= axisScreenLength;
+
+            const DirectX::XMFLOAT2 mouse = Disparity::Input::GetMousePosition();
+            const DirectX::XMFLOAT2 mouseDelta = {
+                mouse.x - m_gizmoDragStartMouse.x,
+                mouse.y - m_gizmoDragStartMouse.y
+            };
+            const float projectedPixels = mouseDelta.x * axisScreen.x + mouseDelta.y * axisScreen.y;
+            const float cameraDistance = Length(Subtract(GetRenderCamera().GetPosition(), m_gizmoDragStartPivot));
+            float worldDelta = projectedPixels * std::max(0.004f, cameraDistance * 0.0035f);
+            if (Disparity::Input::IsKeyDown(VK_SHIFT))
+            {
+                constexpr float Snap = 0.25f;
+                worldDelta = std::round(worldDelta / Snap) * Snap;
+            }
+
+            const DirectX::XMFLOAT3 offset = Scale(axis, worldDelta);
+            if (m_selectedPlayer)
+            {
+                m_playerPosition = Add(m_gizmoDragStartPlayerPosition, offset);
+                m_gizmoDragMoved = m_gizmoDragMoved || std::abs(worldDelta) > 0.001f;
+            }
+            else
+            {
+                for (const GizmoDragObject& object : m_gizmoDragObjects)
+                {
+                    if (object.SceneIndex >= m_scene.Count())
+                    {
+                        continue;
+                    }
+
+                    m_scene.GetObjects()[object.SceneIndex].Object.TransformData.Position = Add(object.OriginalPosition, offset);
+                    SyncSceneObjectToRegistry(object.SceneIndex);
+                    m_gizmoDragMoved = m_gizmoDragMoved || std::abs(worldDelta) > 0.001f;
+                }
+            }
+
+            m_gizmoStatus = std::string("Dragging ") + AxisName(m_gizmoDragAxis) + " " + std::to_string(worldDelta);
+        }
+
+        void EndGizmoDrag()
+        {
+            if (!m_gizmoDragging)
+            {
+                return;
+            }
+
+            if (m_gizmoDragMoved && m_gizmoDragBeforeState.has_value())
+            {
+                PushUndoState(*m_gizmoDragBeforeState, std::string("Drag Gizmo ") + AxisName(m_gizmoDragAxis));
+            }
+
+            m_gizmoDragging = false;
+            m_gizmoDragMoved = false;
+            m_gizmoDragAxis = GizmoAxis::None;
+            m_gizmoDragObjects.clear();
+            m_gizmoDragBeforeState.reset();
+            m_gizmoStatus = "Idle";
+        }
+
+        void PickSceneObjectAtMouse()
+        {
+            MouseRay ray;
+            if (!BuildMouseRay(ray))
+            {
+                return;
+            }
 
             float bestDistance = FLT_MAX;
             bool hitPlayer = false;
             size_t hitIndex = InvalidIndex;
             float distance = 0.0f;
-            if (IntersectRaySphere(origin, direction, Add(m_playerPosition, { 0.0f, 1.1f, 0.0f }), 1.2f, distance))
+            if (IntersectRaySphere(ray.Origin, ray.Direction, Add(m_playerPosition, { 0.0f, 1.1f, 0.0f }), 1.2f, distance))
             {
                 bestDistance = distance;
                 hitPlayer = true;
@@ -1766,7 +2046,7 @@ namespace
             for (size_t index = 0; index < objects.size(); ++index)
             {
                 const Disparity::Transform& transform = objects[index].Object.TransformData;
-                if (IntersectRaySphere(origin, direction, transform.Position, PickRadiusForTransform(transform), distance) && distance < bestDistance)
+                if (IntersectRaySphere(ray.Origin, ray.Direction, transform.Position, PickRadiusForTransform(transform), distance) && distance < bestDistance)
                 {
                     bestDistance = distance;
                     hitPlayer = false;
@@ -2121,6 +2401,8 @@ namespace
         std::deque<HistoryEntry> m_redoStack;
         std::deque<std::string> m_commandHistory;
         std::optional<Disparity::NamedSceneObject> m_sceneClipboard;
+        std::optional<EditState> m_gizmoDragBeforeState;
+        std::vector<GizmoDragObject> m_gizmoDragObjects;
         Disparity::Entity m_playerEntity = 0;
         Disparity::MeshHandle m_cubeMesh = 0;
         Disparity::MeshHandle m_planeMesh = 0;
@@ -2134,6 +2416,9 @@ namespace
         Disparity::Material m_gizmoZMaterial;
         Disparity::Material m_gizmoCenterMaterial;
         DirectX::XMFLOAT3 m_playerPosition = { 0.0f, 0.0f, 0.0f };
+        DirectX::XMFLOAT3 m_gizmoDragStartPivot = {};
+        DirectX::XMFLOAT3 m_gizmoDragStartPlayerPosition = {};
+        DirectX::XMFLOAT2 m_gizmoDragStartMouse = {};
         float m_playerYaw = 0.0f;
         float m_cameraYaw = Pi;
         float m_cameraPitch = 0.42f;
@@ -2154,8 +2439,12 @@ namespace
         bool m_hotReloadEnabled = true;
         bool m_gltfAnimationPlayback = true;
         bool m_applyingHistory = false;
+        bool m_gizmoDragging = false;
+        bool m_gizmoDragMoved = false;
+        GizmoAxis m_gizmoDragAxis = GizmoAxis::None;
         std::string m_statusMessage;
         std::string m_lastPickStatus = "None";
+        std::string m_gizmoStatus = "Idle";
     };
 }
 

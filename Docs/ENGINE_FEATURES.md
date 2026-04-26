@@ -11,7 +11,7 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - Press `Tab` to release the mouse, then left-click the main viewport to pick objects. Hold `Ctrl` while picking or selecting in `Hierarchy` to multi-select.
 - Use `Copy`, `Paste`, `Duplicate`, and `Delete` in the `Hierarchy` panel or `Edit` menu. Keyboard shortcuts are `Ctrl+C`, `Ctrl+V`, `Ctrl+D`, and `Delete`.
 - The `Viewport` panel enables an editor camera. Use `Frame Selection`, `Frame Player`, right-drag orbit, arrow keys, and PageUp/PageDown to inspect the scene without moving the player.
-- Use `Inspector` to edit transforms/materials. The `Transform Gizmo` section provides small move, scale, and yaw buttons without adding another third-party dependency, and the viewport draws colored 3D axis handles at the current selection pivot.
+- Use `Inspector` to edit transforms/materials. The `Transform Gizmo` section provides small move, scale, and yaw buttons without adding another third-party dependency, and the viewport draws colored 3D axis handles at the current selection pivot. Left-drag an axis handle to move the current selection; hold `Shift` while dragging for 0.25-unit snapping.
 - Use `Ctrl+Z` and `Ctrl+Y`, or the `DISPARITY` menu, to test undo/redo. The profiler shows recent command labels.
 
 ## Assets And Prefabs
@@ -38,7 +38,7 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - The `Renderer` panel exposes VSync, tone mapping, shadow maps, broader CSM-style shadow coverage, clustered light contribution, bloom, SSAO, anti-aliasing, temporal AA, exposure, shadow strength, bloom threshold/strength, SSAO strength, AA strength, temporal blend, saturation, contrast, and post debug views.
 - The scene uses a directional light, shadow map, and four point lights.
 - Post-processing uses the HDR scene texture, temporal history texture, and depth SRV.
-- The `Profiler` panel shows frame timings, job worker count, renderer draw-call counters, GPU frame timing once DX11 timestamp queries warm up, and compiled render-graph schedule/resource lifetime diagnostics.
+- The `Profiler` panel shows frame timings, job worker count, renderer draw-call counters, GPU frame timing once DX11 timestamp queries warm up, and compiled render-graph schedule/resource lifetime diagnostics. The render graph view also reports per-pass GPU timings, culled passes, read/write transition diagnostics, and alias candidates.
 - If bloom/SSAO/AA differences are hard to spot in the final image, use `Renderer > Post debug`: `Bloom` isolates bright bleed, `SSAO mask` shows contact darkening, `AA edges` shows the edge detector, and `Depth` visualizes the depth buffer.
 - Bloom became more visible because the scene shader no longer clamps lighting before the HDR post pass.
 

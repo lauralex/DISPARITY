@@ -40,6 +40,7 @@ Controls:
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 - When the mouse is released with `Tab`, left-click the viewport to pick objects. Hold `Ctrl` while clicking or selecting in the hierarchy to multi-select.
+- Left-drag the colored X/Y/Z handles at the selection pivot to move the selected object, multi-selection, or player; hold `Shift` while dragging to snap in 0.25-unit steps.
 
 Editor UI:
 
@@ -47,7 +48,7 @@ Editor UI:
 - Dock panels into the main viewport, or drag panels outside the main window with ImGui multi-viewport enabled.
 - `Hierarchy`: select the player or scene entities, then copy/paste/duplicate/delete scene objects.
 - `Viewport`: enable the independent editor camera, frame the player/selection, and use right-drag or arrow/Page keys to move without driving gameplay input.
-- `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw colored 3D axis handles in the viewport.
+- `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw draggable colored 3D axis handles in the viewport.
 - `Assets`: reload scene/script, toggle hot reload, inspect the asset database, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, and play generated UI/SFX/spatial test tones.
@@ -121,12 +122,19 @@ Editor UI:
 - The DX11 renderer records a GPU frame timestamp query and reports the most recent GPU frame time after the query warms up.
 - Selected objects and the player draw colored 3D transform handles at the active selection pivot.
 
+## Engine v7 Followups Implemented
+
+- `RenderGraph` now tracks disabled/culled passes, read/write transition diagnostics, and alias candidates for non-overlapping internal resources.
+- The profiler shows CPU and GPU time per scheduled graph pass, plus culled passes, resource transitions, lifetimes, alias opportunities, and validation.
+- The shadow-map graph pass is now culled when shadows are disabled, so render-graph diagnostics reflect renderer settings instead of only submitted work.
+- The visible X/Y/Z transform handles are interactive: left-drag a handle to move the player, selected object, or multi-selection, with `Shift` snapping.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Turn the scheduled render graph into the authoritative renderer execution path with explicit resource transitions, aliases, async compute candidates, and GPU-driven culling.
-- Add a dedicated editor viewport render target, object-ID selection buffers, and interactive drag behavior for the 3D transform handles.
+- Turn the scheduled render graph into the authoritative renderer execution path with real DX11 resource lifetime ownership, alias allocation decisions, async compute candidates, and GPU-driven culling.
+- Add a dedicated editor viewport render target, object-ID selection buffers, and proper 3D gizmo handles for rotate/scale/local-world modes.
 - Add prefab variants, nested prefabs, dependency-aware apply/revert, and save-game separation.
 - Add production `.glb` cooking, animation retargeting/blending, and GPU skinning palettes.
 - Replace the WinMM prototype audio backend with XAudio2 voices, sends, snapshots, streamed layers, spatial emitters, and meters.

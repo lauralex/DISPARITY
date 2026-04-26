@@ -1,11 +1,11 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v6 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
+The current engine now has functional v7 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
 
 ## Editor
 
 - Replace the main-window picking/editor camera path with a dedicated scene viewport render target and object-ID selection buffer.
-- Make the visible 3D transform handles interactive with mouse drag, snapping, local/world modes, and object-ID handle picking.
+- Expand the current draggable X/Y/Z translation handles into proper local/world translate, rotate, and scale gizmos with object-ID handle picking and planar drag modes.
 - Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command filters, and visible command history.
 - Add prefab override visualization, nested prefabs, prefab variants, and dependency-aware apply/revert.
 
@@ -18,7 +18,7 @@ The current engine now has functional v6 versions of many requested followups. T
 
 ## Rendering
 
-- Move renderer execution onto the compiled render graph, then add explicit resource barriers/aliases, per-pass GPU timestamp scopes, and graph-driven pass culling.
+- Move renderer execution onto the compiled render graph, then convert the current transition/alias/cull diagnostics into real DX11 resource ownership and pass dispatch decisions.
 - Add GPU frustum/occlusion culling and real clustered or Forward+ light binning.
 - Replace the single shadow-map coverage mode with true cascaded shadow maps.
 - Add normal/depth pre-pass options, SSR/SSGI experiments, motion vectors, and a more correct temporal AA resolve beyond the current FXAA-style resolve plus history blend.

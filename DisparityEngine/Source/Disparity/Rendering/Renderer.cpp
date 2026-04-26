@@ -223,6 +223,8 @@ namespace Disparity
         m_gpuFrameEndQuery.Reset();
         m_gpuFrameStartQuery.Reset();
         m_gpuFrameDisjointQuery.Reset();
+        m_gpuPassProfiles.clear();
+        m_gpuTimestampFrequency = 0;
         m_gpuTimingSupported = false;
         m_gpuTimingValid = false;
         m_gpuFrameQueryIssued = false;
@@ -720,21 +722,15 @@ namespace Disparity
         m_graphHistory = m_renderGraph.AddResource("Temporal History", RenderGraphResourceKind::Texture);
         m_graphShadowMap = m_renderGraph.AddResource("Directional Shadow Map", RenderGraphResourceKind::Texture);
         m_graphClearPass = m_renderGraph.AddPass("Clear HDR+Depth", {}, { m_graphHdrScene, m_graphDepth });
-        m_graphShadowPass = std::numeric_limits<uint32_t>::max();
-        if (m_settings.Shadows)
-        {
-            m_graphShadowPass = m_renderGraph.AddPass("Shadow Map", {}, { m_graphShadowMap });
-        }
-        std::vector<uint32_t> sceneReads;
-        if (m_settings.Shadows)
-        {
-            sceneReads.push_back(m_graphShadowMap);
-        }
+        m_graphShadowPass = m_renderGraph.AddPass("Shadow Map", {}, { m_graphShadowMap });
+        m_renderGraph.SetPassEnabled(m_graphShadowPass, m_settings.Shadows, "Shadows disabled");
+        std::vector<uint32_t> sceneReads = m_settings.Shadows ? std::vector<uint32_t>{ m_graphShadowMap } : std::vector<uint32_t>{};
         m_graphScenePass = m_renderGraph.AddPass("Scene Color", std::move(sceneReads), { m_graphHdrScene, m_graphDepth });
         m_graphPostPass = m_renderGraph.AddPass("Post Process", { m_graphHdrScene, m_graphDepth, m_graphHistory }, { m_graphBackBuffer, m_graphHistory });
         m_graphEditorPass = m_renderGraph.AddPass("Editor UI", { m_graphBackBuffer }, { m_graphBackBuffer });
         m_activeGraphPass = std::numeric_limits<uint32_t>::max();
         (void)m_renderGraph.Compile();
+        EnsureGpuPassProfiles(m_renderGraph.GetPasses().size());
     }
 
     void Renderer::BeginGraphPass(uint32_t passId)
@@ -752,6 +748,7 @@ namespace Disparity
         EndGraphPass();
         m_activeGraphPass = passId;
         m_graphPassStart = std::chrono::steady_clock::now();
+        BeginGpuPassProfile(passId);
     }
 
     void Renderer::EndGraphPass()
@@ -762,6 +759,7 @@ namespace Disparity
         }
 
         const auto end = std::chrono::steady_clock::now();
+        EndGpuPassProfile(m_activeGraphPass);
         m_renderGraph.RecordPassCpuTime(
             m_activeGraphPass,
             std::chrono::duration<double, std::milli>(end - m_graphPassStart).count());
@@ -793,7 +791,11 @@ namespace Disparity
     void Renderer::BeginGpuFrameProfile()
     {
         ResolveGpuFrameProfile();
-        if (!m_gpuTimingSupported || !m_context)
+        if (!m_gpuFrameQueryIssued)
+        {
+            ResolveGpuPassProfiles();
+        }
+        if (!m_gpuTimingSupported || !m_context || m_gpuFrameQueryIssued)
         {
             return;
         }
@@ -804,7 +806,7 @@ namespace Disparity
 
     void Renderer::EndGpuFrameProfile()
     {
-        if (!m_gpuTimingSupported || !m_context)
+        if (!m_gpuTimingSupported || !m_context || m_gpuFrameQueryIssued)
         {
             return;
         }
@@ -829,14 +831,123 @@ namespace Disparity
         const HRESULT startResult = m_context->GetData(m_gpuFrameStartQuery.Get(), &startTicks, sizeof(startTicks), flags);
         const HRESULT endResult = m_context->GetData(m_gpuFrameEndQuery.Get(), &endTicks, sizeof(endTicks), flags);
 
+        if (disjointResult != S_OK || startResult != S_OK || endResult != S_OK)
+        {
+            return;
+        }
+
         m_gpuFrameQueryIssued = false;
-        if (disjointResult == S_OK && startResult == S_OK && endResult == S_OK && !disjoint.Disjoint && disjoint.Frequency > 0 && endTicks >= startTicks)
+        if (disjoint.Disjoint || disjoint.Frequency == 0)
+        {
+            for (GpuPassProfile& passProfile : m_gpuPassProfiles)
+            {
+                passProfile.QueryIssued = false;
+            }
+            return;
+        }
+
+        m_gpuTimestampFrequency = disjoint.Frequency;
+        if (endTicks >= startTicks)
         {
             m_gpuFrameMilliseconds = (static_cast<double>(endTicks - startTicks) / static_cast<double>(disjoint.Frequency)) * 1000.0;
             m_gpuTimingValid = true;
-            if (m_graphPostPass != std::numeric_limits<uint32_t>::max())
+        }
+        ResolveGpuPassProfiles();
+    }
+
+    void Renderer::EnsureGpuPassProfiles(size_t passCount)
+    {
+        if (!m_gpuTimingSupported || !m_device)
+        {
+            return;
+        }
+
+        if (m_gpuPassProfiles.size() >= passCount)
+        {
+            return;
+        }
+
+        D3D11_QUERY_DESC timestampDesc = {};
+        timestampDesc.Query = D3D11_QUERY_TIMESTAMP;
+        while (m_gpuPassProfiles.size() < passCount)
+        {
+            GpuPassProfile profile;
+            const HRESULT startResult = m_device->CreateQuery(&timestampDesc, profile.StartQuery.GetAddressOf());
+            const HRESULT endResult = m_device->CreateQuery(&timestampDesc, profile.EndQuery.GetAddressOf());
+            if (FAILED(startResult) || FAILED(endResult))
             {
-                m_renderGraph.RecordPassGpuTime(m_graphPostPass, m_gpuFrameMilliseconds);
+                m_gpuTimingSupported = false;
+                m_gpuPassProfiles.clear();
+                return;
+            }
+
+            m_gpuPassProfiles.push_back(std::move(profile));
+        }
+    }
+
+    void Renderer::BeginGpuPassProfile(uint32_t passId)
+    {
+        if (!m_gpuTimingSupported || !m_context || passId >= m_gpuPassProfiles.size())
+        {
+            return;
+        }
+
+        GpuPassProfile& profile = m_gpuPassProfiles[passId];
+        if (profile.QueryIssued)
+        {
+            return;
+        }
+
+        m_context->End(profile.StartQuery.Get());
+    }
+
+    void Renderer::EndGpuPassProfile(uint32_t passId)
+    {
+        if (!m_gpuTimingSupported || !m_context || passId >= m_gpuPassProfiles.size())
+        {
+            return;
+        }
+
+        GpuPassProfile& profile = m_gpuPassProfiles[passId];
+        if (profile.QueryIssued)
+        {
+            return;
+        }
+
+        m_context->End(profile.EndQuery.Get());
+        profile.QueryIssued = true;
+    }
+
+    void Renderer::ResolveGpuPassProfiles()
+    {
+        if (!m_gpuTimingSupported || !m_context || m_gpuTimestampFrequency == 0)
+        {
+            return;
+        }
+
+        const UINT flags = D3D11_ASYNC_GETDATA_DONOTFLUSH;
+        for (uint32_t passId = 0; passId < m_gpuPassProfiles.size(); ++passId)
+        {
+            GpuPassProfile& profile = m_gpuPassProfiles[passId];
+            if (!profile.QueryIssued)
+            {
+                continue;
+            }
+
+            UINT64 startTicks = 0;
+            UINT64 endTicks = 0;
+            const HRESULT startResult = m_context->GetData(profile.StartQuery.Get(), &startTicks, sizeof(startTicks), flags);
+            const HRESULT endResult = m_context->GetData(profile.EndQuery.Get(), &endTicks, sizeof(endTicks), flags);
+            if (startResult != S_OK || endResult != S_OK)
+            {
+                continue;
+            }
+
+            profile.QueryIssued = false;
+            if (endTicks >= startTicks)
+            {
+                const double milliseconds = (static_cast<double>(endTicks - startTicks) / static_cast<double>(m_gpuTimestampFrequency)) * 1000.0;
+                m_renderGraph.RecordPassGpuTime(passId, milliseconds);
             }
         }
     }

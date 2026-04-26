@@ -15,6 +15,8 @@ namespace Disparity
         m_passes.clear();
         m_executionOrder.clear();
         m_resourceLifetimes.clear();
+        m_barriers.clear();
+        m_aliasCandidates.clear();
         m_compileErrors.clear();
     }
 
@@ -42,6 +44,19 @@ namespace Disparity
         return id;
     }
 
+    void RenderGraph::SetPassEnabled(uint32_t passId, bool enabled, std::string reason)
+    {
+        if (passId >= m_passes.size())
+        {
+            return;
+        }
+
+        RenderGraphPass& pass = m_passes[passId];
+        pass.Enabled = enabled;
+        pass.Culled = !enabled;
+        pass.CullReason = enabled ? std::string{} : std::move(reason);
+    }
+
     const std::vector<RenderGraphResource>& RenderGraph::GetResources() const
     {
         return m_resources;
@@ -60,6 +75,16 @@ namespace Disparity
     const std::vector<RenderGraphResourceLifetime>& RenderGraph::GetResourceLifetimes() const
     {
         return m_resourceLifetimes;
+    }
+
+    const std::vector<RenderGraphBarrier>& RenderGraph::GetBarriers() const
+    {
+        return m_barriers;
+    }
+
+    const std::vector<RenderGraphAliasCandidate>& RenderGraph::GetAliasCandidates() const
+    {
+        return m_aliasCandidates;
     }
 
     std::vector<std::string> RenderGraph::Validate() const
@@ -96,6 +121,8 @@ namespace Disparity
     {
         m_executionOrder.clear();
         m_resourceLifetimes.clear();
+        m_barriers.clear();
+        m_aliasCandidates.clear();
         m_compileErrors.clear();
 
         const size_t passCount = m_passes.size();
@@ -120,6 +147,18 @@ namespace Disparity
 
         for (uint32_t passId = 0; passId < passCount; ++passId)
         {
+            RenderGraphPass& mutablePass = m_passes[passId];
+            mutablePass.ExecutionOrder = std::numeric_limits<uint32_t>::max();
+            mutablePass.Culled = !mutablePass.Enabled;
+            if (!mutablePass.Enabled)
+            {
+                if (mutablePass.CullReason.empty())
+                {
+                    mutablePass.CullReason = "Pass disabled by renderer settings";
+                }
+                continue;
+            }
+
             const RenderGraphPass& pass = m_passes[passId];
             for (const uint32_t resource : pass.Reads)
             {
@@ -132,6 +171,7 @@ namespace Disparity
                 if (writer != latestWriter.end())
                 {
                     addDependency(passId, writer->second);
+                    m_barriers.push_back(RenderGraphBarrier{ resource, writer->second, passId, "Write", "Read" });
                 }
                 latestReaders[resource].push_back(passId);
             }
@@ -147,6 +187,7 @@ namespace Disparity
                 if (writer != latestWriter.end())
                 {
                     addDependency(passId, writer->second);
+                    m_barriers.push_back(RenderGraphBarrier{ resource, writer->second, passId, "Write", "Write" });
                 }
 
                 const auto readers = latestReaders.find(resource);
@@ -167,6 +208,11 @@ namespace Disparity
         std::vector<uint32_t> indegree(passCount, 0);
         for (uint32_t passId = 0; passId < passCount; ++passId)
         {
+            if (!m_passes[passId].Enabled)
+            {
+                continue;
+            }
+
             indegree[passId] = static_cast<uint32_t>(dependencies[passId].size());
             if (indegree[passId] == 0)
             {
@@ -193,13 +239,19 @@ namespace Disparity
             }
         }
 
-        if (m_executionOrder.size() != passCount)
+        const size_t enabledPassCount = static_cast<size_t>(std::count_if(m_passes.begin(), m_passes.end(), [](const RenderGraphPass& pass) {
+            return pass.Enabled;
+        }));
+        if (m_executionOrder.size() != enabledPassCount)
         {
             m_compileErrors.push_back("Render graph scheduling failed; falling back to submission order");
             m_executionOrder.clear();
             for (uint32_t passId = 0; passId < passCount; ++passId)
             {
-                m_executionOrder.push_back(passId);
+                if (m_passes[passId].Enabled)
+                {
+                    m_executionOrder.push_back(passId);
+                }
             }
         }
 
@@ -253,6 +305,31 @@ namespace Disparity
             }
             return left.FirstPass < right.FirstPass;
         });
+
+        for (size_t first = 0; first < m_resourceLifetimes.size(); ++first)
+        {
+            const RenderGraphResource* firstResource = FindResource(m_resourceLifetimes[first].ResourceId);
+            if (!firstResource || firstResource->Kind == RenderGraphResourceKind::External)
+            {
+                continue;
+            }
+
+            for (size_t second = first + 1; second < m_resourceLifetimes.size(); ++second)
+            {
+                const RenderGraphResource* secondResource = FindResource(m_resourceLifetimes[second].ResourceId);
+                if (!secondResource || secondResource->Kind != firstResource->Kind || secondResource->Kind == RenderGraphResourceKind::External)
+                {
+                    continue;
+                }
+
+                const RenderGraphResourceLifetime& a = m_resourceLifetimes[first];
+                const RenderGraphResourceLifetime& b = m_resourceLifetimes[second];
+                if (a.LastPass < b.FirstPass || b.LastPass < a.FirstPass)
+                {
+                    m_aliasCandidates.push_back(RenderGraphAliasCandidate{ a.ResourceId, b.ResourceId });
+                }
+            }
+        }
 
         return m_compileErrors.empty();
     }
