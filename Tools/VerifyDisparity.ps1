@@ -205,11 +205,16 @@ Invoke-Step "HLSL shader compilation" {
 }
 
 Invoke-Step "Asset cook manifest" {
-    & (Join-Path $PSScriptRoot "CookDisparityAssets.ps1") -Configuration Debug
+    & (Join-Path $PSScriptRoot "CookDisparityAssets.ps1") -Configuration Debug -BinaryPackages
 }
 
 Invoke-Step "Crash upload manifest dry run" {
     & (Join-Path $PSScriptRoot "CollectCrashReports.ps1") -DryRun
+    & (Join-Path $PSScriptRoot "UploadCrashReports.ps1") -DryRun
+}
+
+Invoke-Step "Verification baseline review" {
+    & (Join-Path $PSScriptRoot "ReviewVerificationBaselines.ps1") -HistoryPath (Join-Path $root "Saved\Verification\performance_history.csv") -PerformanceBaselinePath $PerformanceBaselinePath -ListGoldenProfiles
 }
 
 if (!$SkipRuntime) {
@@ -244,6 +249,14 @@ if (!$SkipRuntime) {
 if (!$SkipPackage) {
     Invoke-Step "Release package" {
         & (Join-Path $PSScriptRoot "PackageDisparity.ps1") -Configuration Release -IncludeSymbols -CreateArchive
+    }
+
+    Invoke-Step "Release symbol index" {
+        & (Join-Path $PSScriptRoot "IndexDisparitySymbols.ps1") -PackagePath (Join-Path $root "dist\DISPARITY-Release")
+    }
+
+    Invoke-Step "Installer payload manifest" {
+        & (Join-Path $PSScriptRoot "CreateDisparityInstaller.ps1") -PackagePath (Join-Path $root "dist\DISPARITY-Release") -CreateArchive
     }
 
     if (!$SkipRuntime) {

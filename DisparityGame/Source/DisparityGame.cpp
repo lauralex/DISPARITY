@@ -522,7 +522,9 @@ namespace
             bool Finished = false;
             uint32_t Steps = 0;
             DirectX::XMFLOAT3 StartPosition = {};
+            DirectX::XMFLOAT3 LastPosition = {};
             DirectX::XMFLOAT3 EndPosition = {};
+            float NetDistance = 0.0f;
             float Distance = 0.0f;
         };
 
@@ -546,6 +548,9 @@ namespace
             uint32_t MinSceneSaves = 0;
             uint32_t MinPostDebugViews = 0;
             uint32_t MinAudioSnapshotTests = 0;
+            uint32_t MinRenderGraphAllocations = 4;
+            uint32_t MinRenderGraphAliasedResources = 1;
+            bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
             double MinNonBlackRatio = 0.05;
@@ -1747,7 +1752,14 @@ namespace
             {
                 Disparity::AudioSystem::SetMasterVolume(masterVolume);
             }
-            ImGui::Text("Backend: %s", Disparity::AudioSystem::GetBackendName());
+            Disparity::AudioBackendInfo backendInfo = Disparity::AudioSystem::GetBackendInfo();
+            ImGui::Text("Backend: %s", backendInfo.ActiveBackend.c_str());
+            ImGui::Text("XAudio2 runtime: %s", backendInfo.XAudio2Available ? "available" : "not found");
+            bool preferXAudio2 = backendInfo.XAudio2Preferred;
+            if (ImGui::Checkbox("Prefer XAudio2", &preferXAudio2))
+            {
+                Disparity::AudioSystem::PreferXAudio2(preferXAudio2);
+            }
 
             if (ImGui::Button("Low Tone"))
             {
@@ -2143,6 +2155,7 @@ namespace
             {
                 m_runtimePlayback.Started = true;
                 m_runtimePlayback.StartPosition = m_playerPosition;
+                m_runtimePlayback.LastPosition = m_playerPosition;
                 AddRuntimeVerificationNote("Started deterministic input playback.");
             }
 
@@ -2173,7 +2186,10 @@ namespace
             }
 
             constexpr float playbackDeltaSeconds = 1.0f / 60.0f;
+            const DirectX::XMFLOAT3 previousPosition = m_playerPosition;
             MovePlayerWithInput(activeStep->MoveInput, playbackDeltaSeconds);
+            m_runtimePlayback.Distance += Length(Subtract(m_playerPosition, previousPosition));
+            m_runtimePlayback.LastPosition = m_playerPosition;
             m_playerBobOffset = m_playerBob.SampleOffset(playbackDeltaSeconds);
             SyncPlayerTransformToRegistry();
             m_cameraYaw += activeStep->CameraYawDelta;
@@ -2191,11 +2207,11 @@ namespace
 
             m_runtimePlayback.Finished = true;
             m_runtimePlayback.EndPosition = m_playerPosition;
-            m_runtimePlayback.Distance = Length(Subtract(m_runtimePlayback.EndPosition, m_runtimePlayback.StartPosition));
+            m_runtimePlayback.NetDistance = Length(Subtract(m_runtimePlayback.EndPosition, m_runtimePlayback.StartPosition));
             const double minimumDistance = m_runtimeBaselineLoaded ? m_runtimeBaseline.MinPlaybackDistance : 1.0;
             if (m_runtimePlayback.Distance < minimumDistance)
             {
-                AddRuntimeVerificationFailure("input replay moved the player less than expected.");
+                AddRuntimeVerificationFailure("input replay path distance is less than expected.");
             }
             AddRuntimeVerificationNote("Finished deterministic input replay.");
         }
@@ -2667,6 +2683,37 @@ namespace
                 {
                     AddRuntimeVerificationFailure(std::string(stage) + ": render graph validation: " + error);
                 }
+
+                const Disparity::RendererFrameGraphDiagnostics graphDiagnostics = m_renderer->GetFrameGraphDiagnostics();
+                if (!graphDiagnostics.DispatchOrderValid)
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": renderer pass dispatch did not match compiled graph order.");
+                }
+                if (graphDiagnostics.ExecutedPasses != graph.GetExecutionOrder().size())
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": renderer did not execute every compiled graph pass.");
+                }
+                if (m_runtimeBaselineLoaded &&
+                    graphDiagnostics.TransientAllocations < m_runtimeBaseline.MinRenderGraphAllocations)
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": render graph transient allocation count is below baseline.");
+                }
+                if (m_runtimeBaselineLoaded &&
+                    graphDiagnostics.AliasedResources < m_runtimeBaseline.MinRenderGraphAliasedResources)
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": render graph alias allocation count is below baseline.");
+                }
+
+                const Disparity::EditorViewportResourcesInfo editorResources = m_renderer->GetEditorViewportResources();
+                if (m_runtimeBaselineLoaded && m_runtimeBaseline.RequireEditorGpuPickResources &&
+                    (!editorResources.ViewportTargetReady ||
+                        !editorResources.ObjectIdTargetReady ||
+                        !editorResources.ObjectDepthTargetReady ||
+                        editorResources.Width != m_renderer->GetWidth() ||
+                        editorResources.Height != m_renderer->GetHeight()))
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": editor viewport/object-ID/depth GPU resources are not ready.");
+                }
             }
         }
 
@@ -2723,12 +2770,28 @@ namespace
             if (m_renderer)
             {
                 const Disparity::RenderGraph& graph = m_renderer->GetRenderGraph();
+                const Disparity::RendererFrameGraphDiagnostics graphDiagnostics = m_renderer->GetFrameGraphDiagnostics();
+                const Disparity::EditorViewportResourcesInfo editorResources = m_renderer->GetEditorViewportResources();
                 report << "render_graph_passes=" << graph.GetPasses().size() << "\n";
                 report << "render_graph_resources=" << graph.GetResources().size() << "\n";
                 report << "render_graph_order=" << graph.GetExecutionOrder().size() << "\n";
+                report << "render_graph_executed_passes=" << graphDiagnostics.ExecutedPasses << "\n";
+                report << "render_graph_dispatch_valid=" << (graphDiagnostics.DispatchOrderValid ? "true" : "false") << "\n";
+                report << "render_graph_allocations=" << graphDiagnostics.TransientAllocations << "\n";
+                report << "render_graph_aliased_resources=" << graphDiagnostics.AliasedResources << "\n";
+                report << "editor_viewport_ready=" << (editorResources.ViewportTargetReady ? "true" : "false") << "\n";
+                report << "editor_object_id_ready=" << (editorResources.ObjectIdTargetReady ? "true" : "false") << "\n";
+                report << "editor_object_depth_ready=" << (editorResources.ObjectDepthTargetReady ? "true" : "false") << "\n";
+                report << "editor_viewport_width=" << editorResources.Width << "\n";
+                report << "editor_viewport_height=" << editorResources.Height << "\n";
             }
+            const Disparity::AudioBackendInfo audioBackendInfo = Disparity::AudioSystem::GetBackendInfo();
+            report << "audio_backend=" << audioBackendInfo.ActiveBackend << "\n";
+            report << "audio_xaudio2_available=" << (audioBackendInfo.XAudio2Available ? "true" : "false") << "\n";
+            report << "audio_xaudio2_preferred=" << (audioBackendInfo.XAudio2Preferred ? "true" : "false") << "\n";
             report << "playback_steps=" << m_runtimePlayback.Steps << "\n";
             report << "playback_distance=" << m_runtimePlayback.Distance << "\n";
+            report << "playback_net_distance=" << m_runtimePlayback.NetDistance << "\n";
             report << "editor_pick_tests=" << m_runtimeEditorStats.ObjectPickTests << "\n";
             report << "editor_pick_failures=" << m_runtimeEditorStats.ObjectPickFailures << "\n";
             report << "gizmo_pick_tests=" << m_runtimeEditorStats.GizmoPickTests << "\n";
@@ -4284,6 +4347,9 @@ namespace
                     else if (key == "min_scene_saves") { loadedBaseline.MinSceneSaves = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_post_debug_views") { loadedBaseline.MinPostDebugViews = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_audio_snapshot_tests") { loadedBaseline.MinAudioSnapshotTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_render_graph_allocations") { loadedBaseline.MinRenderGraphAllocations = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_render_graph_aliased_resources") { loadedBaseline.MinRenderGraphAliasedResources = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
                     else if (key == "min_non_black_ratio") { loadedBaseline.MinNonBlackRatio = std::stod(value); }

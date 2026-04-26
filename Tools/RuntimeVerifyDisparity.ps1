@@ -100,6 +100,32 @@ function Read-BaselineValues {
     return $values
 }
 
+function Get-SafeProfileName {
+    param([string]$Name)
+
+    $safe = [regex]::Replace($Name.Trim(), "[^A-Za-z0-9_.-]", "_")
+    if ([string]::IsNullOrWhiteSpace($safe)) {
+        return "UnknownAdapter"
+    }
+    return $safe
+}
+
+function Get-DetectedAdapterName {
+    try {
+        $adapter = Get-CimInstance Win32_VideoController -ErrorAction Stop |
+            Where-Object { ![string]::IsNullOrWhiteSpace($_.Name) } |
+            Sort-Object AdapterRAM -Descending |
+            Select-Object -First 1
+        if ($adapter) {
+            return [string]$adapter.Name
+        }
+    }
+    catch {
+    }
+
+    return "UnknownAdapter"
+}
+
 function Get-BaselineInt {
     param(
         [hashtable]$Values,
@@ -214,6 +240,19 @@ if (!$DisableCapture -and !$DisableGoldenComparison) {
 
     $baselineValues = Read-BaselineValues -Path $resolvedBaselinePath
     $profileValues = @{}
+    $detectedAdapterName = Get-DetectedAdapterName
+    $defaultGoldenProfilePath = "Assets/Verification/GoldenProfiles/Default.dgoldenprofile"
+    if ($GoldenProfilePath -eq $defaultGoldenProfilePath) {
+        $safeAdapterName = Get-SafeProfileName -Name $detectedAdapterName
+        $adapterProfileCandidate = Join-Path $root "Assets\Verification\GoldenProfiles\$safeAdapterName.dgoldenprofile"
+        if (Test-Path -LiteralPath $adapterProfileCandidate) {
+            $GoldenProfilePath = $adapterProfileCandidate
+            Write-Host "Detected adapter '$detectedAdapterName'; using adapter golden tolerance profile $adapterProfileCandidate"
+        }
+        else {
+            Write-Host "Detected adapter '$detectedAdapterName'; using default golden tolerance profile"
+        }
+    }
     $resolvedGoldenProfilePath = Resolve-VerificationPath -Path $GoldenProfilePath
     if (Test-Path -LiteralPath $resolvedGoldenProfilePath) {
         $profileValues = Read-BaselineValues -Path $resolvedGoldenProfilePath
@@ -267,7 +306,7 @@ if (!$DisablePerfHistory) {
         New-Item -ItemType Directory -Force -Path $historyParent | Out-Null
     }
 
-    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance,editor_pick_tests,editor_pick_failures,gizmo_pick_tests,gizmo_pick_failures,gizmo_drag_tests,gizmo_drag_failures,scene_reload_tests,scene_save_tests,post_debug_view_tests,audio_snapshot_tests"
+    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance,playback_net_distance,editor_pick_tests,editor_pick_failures,gizmo_pick_tests,gizmo_pick_failures,gizmo_drag_tests,gizmo_drag_failures,scene_reload_tests,scene_save_tests,post_debug_view_tests,audio_snapshot_tests,render_graph_allocations,render_graph_aliased_resources,render_graph_dispatch_valid,editor_viewport_ready,editor_object_id_ready,editor_object_depth_ready,audio_xaudio2_available"
     if (Test-Path -LiteralPath $HistoryPath) {
         $currentHeader = Get-Content -LiteralPath $HistoryPath -First 1
         if ($currentHeader -ne $historyHeader) {
@@ -299,6 +338,7 @@ if (!$DisablePerfHistory) {
         $metrics["capture_average_luma"],
         $metrics["capture_checksum"],
         $metrics["playback_distance"],
+        $metrics["playback_net_distance"],
         $metrics["editor_pick_tests"],
         $metrics["editor_pick_failures"],
         $metrics["gizmo_pick_tests"],
@@ -308,7 +348,14 @@ if (!$DisablePerfHistory) {
         $metrics["scene_reload_tests"],
         $metrics["scene_save_tests"],
         $metrics["post_debug_view_tests"],
-        $metrics["audio_snapshot_tests"]
+        $metrics["audio_snapshot_tests"],
+        $metrics["render_graph_allocations"],
+        $metrics["render_graph_aliased_resources"],
+        $metrics["render_graph_dispatch_valid"],
+        $metrics["editor_viewport_ready"],
+        $metrics["editor_object_id_ready"],
+        $metrics["editor_object_depth_ready"],
+        $metrics["audio_xaudio2_available"]
     ) | ForEach-Object {
         '"' + ([string]$_ -replace '"', '""') + '"'
     }

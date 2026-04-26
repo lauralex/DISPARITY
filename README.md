@@ -154,7 +154,7 @@ Editor UI:
 
 ## Engine v11 Followups Implemented
 
-- Runtime verification now drives deterministic player/camera input playback and records playback distance/step counts in `Saved/Verification/runtime_verify.txt`.
+- Runtime verification now drives deterministic player/camera input playback and records playback path distance/step counts in `Saved/Verification/runtime_verify.txt`.
 - The DX11 renderer can capture the post-editor back buffer to a portable PPM file and reports capture dimensions, luminance, nonblack pixels, bright pixels, and an RGB checksum.
 - Runtime verification validates `Saved/Verification/runtime_capture.ppm` so the gate catches blank or invalid frames instead of only checking draw-call counters.
 - Runtime verification tracks CPU frame time, GPU frame time when timestamp queries are available, and render-graph pass CPU/GPU maxima against configurable budgets.
@@ -164,7 +164,7 @@ Editor UI:
 
 - Deterministic runtime playback now lives in `Assets/Verification/Prototype.dreplay` instead of hardcoded C++ frame ranges.
 - Runtime image/performance expectations now live in `Assets/Verification/RuntimeBaseline.dverify`.
-- Runtime verification compares capture dimensions, average luminance tolerance, nonblack ratio, replay distance, and CPU/GPU/pass budgets against the baseline asset.
+- Runtime verification compares capture dimensions, average luminance tolerance, nonblack ratio, replay path distance, and CPU/GPU/pass budgets against the baseline asset.
 - `RuntimeVerifyDisparity.ps1` appends `Saved/Verification/performance_history.csv` so local verification runs produce a trendable performance/capture history.
 - `VerifyDisparity.ps1` exposes replay and baseline path overrides for future scenario-specific verification suites.
 
@@ -198,13 +198,25 @@ Editor UI:
 - Scene saving now emits schema v3 metadata with deterministic ID and save-game separation flags.
 - The current WinMM prototype audio layer gained a production-facing backend name, listener orientation, bus sends, peak/RMS meters, and mixer snapshots.
 
+## Engine v16 Followups Implemented
+
+- `RenderGraph` now assigns transient resources to physical allocation slots, marks alias reuse, and exposes allocation diagnostics alongside existing schedules/lifetimes/barriers.
+- The DX11 renderer records submitted pass order against the compiled graph and runtime verification fails if the renderer skips or reorders compiled passes.
+- The renderer owns dedicated editor GPU targets for viewport color, object IDs, and object depth, laying the groundwork for GPU picking and editor-only compositing.
+- Runtime verification baselines now require render-graph allocation/alias counts and ready editor viewport/object-ID/depth resources.
+- Runtime reports and performance history now include graph allocation, aliasing, dispatch-valid, editor target, and XAudio2 availability metrics.
+- `RuntimeVerifyDisparity.ps1` detects the primary display adapter and can use adapter-specific golden tolerance profiles when present.
+- `CookDisparityAssets.ps1 -BinaryPackages` now writes deterministic `.dassetbin` cooked packages next to metadata records.
+- Production tooling now includes verification baseline review, symbol indexing, installer payload manifest generation, and crash upload dry-run transport.
+- The audio layer detects XAudio2 runtime availability and exposes a preference switch while keeping the stable WinMM render path for v16.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Turn the render graph into the actual DX11 pass dispatcher with owned transient resources and alias allocation.
-- Add a GPU object-ID/depth buffer and dedicated editor viewport render target for picking and tool overlays.
-- Convert asset cook metadata into real binary cooked mesh/material/animation packages with dependency invalidation.
-- Add prefab variants, nested prefabs, override diffing, and dependency-aware apply/revert.
-- Replace the WinMM prototype backend with XAudio2 voices, sends, streamed music, spatial emitters, and live meters.
-- Add per-adapter golden profiles, historical baseline update review tooling, installer generation, and crash upload integration.
+- Execute all renderer passes through graph-owned callbacks and bind resources from graph allocation handles instead of renderer member variables.
+- Populate the editor object-ID/depth targets with real scene-object and gizmo-handle IDs, then switch viewport picking to GPU readback.
+- Replace `.dassetbin` source bundles with true cooked mesh/material/animation payloads, dependency invalidation, and runtime streaming.
+- Add prefab variants, nested prefabs, override diffing, and dependency-aware apply/revert with undo grouping.
+- Replace the WinMM playback path with XAudio2 voices, sends, streamed music, spatial emitters, attenuation curves, and live meters.
+- Add real installer bootstrapper output, symbol-server indexing, crash upload authentication/retry, and packaged runtime smoke on interactive CI runners.

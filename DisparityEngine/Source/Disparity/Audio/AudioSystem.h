@@ -30,12 +30,22 @@ namespace Disparity
         std::vector<AudioBus> Buses;
     };
 
+    struct AudioBackendInfo
+    {
+        std::string ActiveBackend;
+        bool XAudio2Available = false;
+        bool XAudio2Preferred = false;
+    };
+
     class AudioSystem
     {
     public:
         static bool Initialize();
         static void Shutdown();
         [[nodiscard]] static const char* GetBackendName();
+        [[nodiscard]] static AudioBackendInfo GetBackendInfo();
+        [[nodiscard]] static bool IsXAudio2Available();
+        static void PreferXAudio2(bool preferred);
         static void PlayNotification();
         static void PlayTone(float frequencyHz, float durationSeconds, float volume);
         static void PlayToneOnBus(const std::string& busName, float frequencyHz, float durationSeconds, float volume);

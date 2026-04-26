@@ -17,6 +17,7 @@ namespace Disparity
         m_resourceLifetimes.clear();
         m_barriers.clear();
         m_aliasCandidates.clear();
+        m_resourceAllocations.clear();
         m_compileErrors.clear();
     }
 
@@ -87,6 +88,11 @@ namespace Disparity
         return m_aliasCandidates;
     }
 
+    const std::vector<RenderGraphResourceAllocation>& RenderGraph::GetResourceAllocations() const
+    {
+        return m_resourceAllocations;
+    }
+
     std::vector<std::string> RenderGraph::Validate() const
     {
         std::vector<std::string> errors = m_compileErrors;
@@ -123,7 +129,14 @@ namespace Disparity
         m_resourceLifetimes.clear();
         m_barriers.clear();
         m_aliasCandidates.clear();
+        m_resourceAllocations.clear();
         m_compileErrors.clear();
+
+        for (RenderGraphResource& resource : m_resources)
+        {
+            resource.PhysicalIndex = std::numeric_limits<uint32_t>::max();
+            resource.Aliased = false;
+        }
 
         const size_t passCount = m_passes.size();
         std::vector<std::vector<uint32_t>> dependencies(passCount);
@@ -328,6 +341,69 @@ namespace Disparity
                 {
                     m_aliasCandidates.push_back(RenderGraphAliasCandidate{ a.ResourceId, b.ResourceId });
                 }
+            }
+        }
+
+        struct TransientHeapSlot
+        {
+            RenderGraphResourceKind Kind = RenderGraphResourceKind::Texture;
+            uint32_t LastPass = 0;
+        };
+
+        std::vector<TransientHeapSlot> heapSlots;
+        for (const RenderGraphResourceLifetime& lifetime : m_resourceLifetimes)
+        {
+            const RenderGraphResource* resource = FindResource(lifetime.ResourceId);
+            if (!resource)
+            {
+                continue;
+            }
+
+            if (resource->Kind == RenderGraphResourceKind::External)
+            {
+                m_resourceAllocations.push_back(RenderGraphResourceAllocation{
+                    lifetime.ResourceId,
+                    std::numeric_limits<uint32_t>::max(),
+                    true,
+                    false
+                });
+                continue;
+            }
+
+            uint32_t heapIndex = std::numeric_limits<uint32_t>::max();
+            bool aliased = false;
+            for (uint32_t index = 0; index < static_cast<uint32_t>(heapSlots.size()); ++index)
+            {
+                TransientHeapSlot& slot = heapSlots[index];
+                if (slot.Kind == resource->Kind && slot.LastPass < lifetime.FirstPass)
+                {
+                    heapIndex = index;
+                    slot.LastPass = lifetime.LastPass;
+                    aliased = true;
+                    break;
+                }
+            }
+
+            if (heapIndex == std::numeric_limits<uint32_t>::max())
+            {
+                heapIndex = static_cast<uint32_t>(heapSlots.size());
+                heapSlots.push_back(TransientHeapSlot{ resource->Kind, lifetime.LastPass });
+            }
+
+            m_resourceAllocations.push_back(RenderGraphResourceAllocation{
+                lifetime.ResourceId,
+                heapIndex,
+                false,
+                aliased
+            });
+
+            auto mutableResource = std::find_if(m_resources.begin(), m_resources.end(), [resourceId = lifetime.ResourceId](const RenderGraphResource& candidate) {
+                return candidate.Id == resourceId;
+            });
+            if (mutableResource != m_resources.end())
+            {
+                mutableResource->PhysicalIndex = heapIndex;
+                mutableResource->Aliased = aliased;
             }
         }
 

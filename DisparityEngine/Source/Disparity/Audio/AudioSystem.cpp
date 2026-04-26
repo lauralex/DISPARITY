@@ -23,6 +23,9 @@ namespace Disparity
         std::mutex g_audioMutex;
         std::unordered_map<std::string, AudioBus> g_buses;
         std::unordered_map<std::string, AudioBusMeter> g_meters;
+        bool g_xaudio2Available = false;
+        bool g_preferXAudio2 = false;
+        std::string g_backendName = "WinMM prototype mixer";
         DirectX::XMFLOAT3 g_listenerPosition = {};
         DirectX::XMFLOAT3 g_listenerForward = { 0.0f, 0.0f, 1.0f };
         DirectX::XMFLOAT3 g_listenerUp = { 0.0f, 1.0f, 0.0f };
@@ -66,6 +69,29 @@ namespace Disparity
             g_buses.emplace("UI", AudioBus{ "UI", 0.85f, false });
             g_buses.emplace("Music", AudioBus{ "Music", 0.7f, false });
             g_buses.emplace("Ambience", AudioBus{ "Ambience", 0.65f, false });
+        }
+
+        bool DetectXAudio2()
+        {
+            HMODULE xaudio = LoadLibraryW(L"XAudio2_9.dll");
+            if (!xaudio)
+            {
+                xaudio = LoadLibraryW(L"XAudio2_8.dll");
+            }
+            if (!xaudio)
+            {
+                return false;
+            }
+
+            FreeLibrary(xaudio);
+            return true;
+        }
+
+        void RefreshBackendName()
+        {
+            g_backendName = (g_preferXAudio2 && g_xaudio2Available)
+                ? "XAudio2 available (WinMM render path)"
+                : "WinMM prototype mixer";
         }
 
         void BeginVoiceMeter(const std::string& busName, float peak, float rms)
@@ -187,12 +213,32 @@ namespace Disparity
     bool AudioSystem::Initialize()
     {
         EnsureDefaultBuses();
+        g_xaudio2Available = DetectXAudio2();
+        RefreshBackendName();
         return true;
     }
 
     const char* AudioSystem::GetBackendName()
     {
-        return "WinMM prototype mixer";
+        RefreshBackendName();
+        return g_backendName.c_str();
+    }
+
+    AudioBackendInfo AudioSystem::GetBackendInfo()
+    {
+        RefreshBackendName();
+        return AudioBackendInfo{ g_backendName, g_xaudio2Available, g_preferXAudio2 };
+    }
+
+    bool AudioSystem::IsXAudio2Available()
+    {
+        return g_xaudio2Available;
+    }
+
+    void AudioSystem::PreferXAudio2(bool preferred)
+    {
+        g_preferXAudio2 = preferred;
+        RefreshBackendName();
     }
 
     void AudioSystem::Shutdown()

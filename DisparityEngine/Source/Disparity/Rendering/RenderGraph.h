@@ -20,6 +20,8 @@ namespace Disparity
         uint32_t Id = 0;
         std::string Name;
         RenderGraphResourceKind Kind = RenderGraphResourceKind::Texture;
+        uint32_t PhysicalIndex = std::numeric_limits<uint32_t>::max();
+        bool Aliased = false;
     };
 
     struct RenderGraphPass
@@ -60,6 +62,14 @@ namespace Disparity
         uint32_t SecondResourceId = 0;
     };
 
+    struct RenderGraphResourceAllocation
+    {
+        uint32_t ResourceId = 0;
+        uint32_t HeapIndex = std::numeric_limits<uint32_t>::max();
+        bool External = false;
+        bool Aliased = false;
+    };
+
     class RenderGraph
     {
     public:
@@ -78,6 +88,7 @@ namespace Disparity
         [[nodiscard]] const std::vector<RenderGraphResourceLifetime>& GetResourceLifetimes() const;
         [[nodiscard]] const std::vector<RenderGraphBarrier>& GetBarriers() const;
         [[nodiscard]] const std::vector<RenderGraphAliasCandidate>& GetAliasCandidates() const;
+        [[nodiscard]] const std::vector<RenderGraphResourceAllocation>& GetResourceAllocations() const;
         [[nodiscard]] std::vector<std::string> Validate() const;
         [[nodiscard]] bool Compile();
         void Execute();
@@ -95,6 +106,7 @@ namespace Disparity
         std::vector<RenderGraphResourceLifetime> m_resourceLifetimes;
         std::vector<RenderGraphBarrier> m_barriers;
         std::vector<RenderGraphAliasCandidate> m_aliasCandidates;
+        std::vector<RenderGraphResourceAllocation> m_resourceAllocations;
         std::vector<std::string> m_compileErrors;
     };
 }

@@ -1,6 +1,17 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v15 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
+The current engine now has functional v16 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
+
+## v16 Completed Production Batch
+
+- `RenderGraph` assigns transient texture/buffer resources to physical allocation slots and reports alias reuse, not just alias opportunities.
+- The DX11 renderer checks every submitted graph pass against the compiled schedule and records dispatch validity in runtime reports.
+- Dedicated editor viewport, object-ID, and object-depth GPU targets are allocated, cleared, exposed through renderer diagnostics, and required by runtime baselines.
+- Runtime reports and performance history now include render-graph allocation, alias, dispatch-valid, editor target readiness, and XAudio2 availability fields.
+- Runtime verification detects the primary display adapter and can select adapter-specific golden tolerance profiles when they exist.
+- Asset cooking can write deterministic `.dassetbin` binary source bundles with package hashes alongside metadata records.
+- Production tooling now includes baseline review, symbol indexing, installer payload manifest/archive creation, and crash upload dry-run transport.
+- The audio layer detects XAudio2 runtime availability and exposes a preference switch while keeping the v16 WinMM playback path stable.
 
 ## v15 Completed Production Batch
 
@@ -16,22 +27,23 @@ The current engine now has functional v15 versions of many requested followups. 
 
 ## Editor
 
-- Build a dedicated editor viewport render target that owns camera state, scene picking, and tool overlays.
-- Replace the CPU stable-ID/OBB picking groundwork with a GPU object-ID and depth picking buffer for scene objects and gizmo handles.
+- Populate the dedicated editor object-ID/depth targets with scene-object IDs, player IDs, and gizmo handle IDs, then move viewport picking from CPU OBB tests to GPU readback.
+- Make editor viewport compositing use the dedicated viewport texture as the visible ImGui image instead of the swap-chain back buffer.
 - Expand the current mesh/ring/plane gizmo handles with depth-aware hover occlusion, constraint previews, numerical transform entry, pivot/orientation controls, and true object-ID handle picking.
 - Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command filters, and a filterable command history panel.
 - Add prefab override visualization, nested prefabs, prefab variants, and dependency-aware apply/revert.
 
 ## Asset Pipeline
 
-- Expand the new deterministic metadata cook into real `.glb` cooking, binary mesh/material packages, and dependency graph invalidation.
+- Replace `.dassetbin` source bundles with optimized cooked `.glb` mesh/material/animation payloads and dependency graph invalidation.
 - Expand glTF-to-material export with texture slots for base color, normal, metallic-roughness, emissive, and occlusion.
 - Add animation clips, skeleton assets, animation blending, retargeting, and GPU skinning palette upload.
 - Add hot-reload dependency graphs so reloading one source asset updates all dependent runtime resources, not only the current prototype scene/script/material set.
 
 ## Rendering
 
-- Move renderer execution onto the compiled render graph, then convert the current transition/alias/cull diagnostics into real DX11 resource ownership and pass dispatch decisions.
+- Move renderer execution fully onto graph-owned pass callbacks and bind transient resources from allocation handles instead of renderer member variables.
+- Turn render-graph transition diagnostics into explicit DX11 bind/unbind barriers and add resource alias lifetime validation around the new physical allocation slots.
 - Add GPU frustum/occlusion culling and real clustered or Forward+ light binning.
 - Replace the single shadow-map coverage mode with true cascaded shadow maps.
 - Add normal/depth pre-pass options, SSR/SSGI experiments, motion vectors, and a more correct temporal AA resolve beyond the current FXAA-style resolve plus history blend.
@@ -46,12 +58,12 @@ The current engine now has functional v15 versions of many requested followups. 
 
 ## Audio
 
-- Replace WinMM playback with XAudio2 or another production backend behind the v15 snapshot/meter/listener surface.
+- Replace WinMM playback with XAudio2 behind the v16 snapshot/meter/listener/backend-selection surface.
 - Add real mixer voices, sends, snapshots, streamed music layers, spatial emitters, attenuation curves, and debugging meters.
 
 ## Production
 
-- Add per-GPU/driver golden tolerance profiles beyond the default profile, including adapter detection and tighter local overrides.
-- Turn the local performance history summary into automated commit-to-commit regression gates with reviewed baseline update workflow.
+- Add committed per-GPU/driver golden tolerance profiles for known adapters and tighter local overrides.
+- Turn the local baseline review and performance history summary into automated commit-to-commit regression gates with explicit baseline update approvals.
 - Extend CI with packaged runtime smoke tests by default when an interactive desktop runner is available.
-- Add installer-style packaging, versioned release artifacts, symbol indexing, and real crash upload transport beyond local bundle creation.
+- Replace the installer payload manifest with a real installer bootstrapper, add symbol-server publishing, and add authenticated crash upload with retry/backoff.

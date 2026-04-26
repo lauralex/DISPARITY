@@ -3,6 +3,7 @@ param(
     [string]$Configuration = "Debug",
     [string]$AssetsPath = "Assets",
     [string]$OutputPath = "Saved/CookedAssets",
+    [switch]$BinaryPackages,
     [switch]$Clean
 )
 
@@ -24,6 +25,9 @@ if ($Clean -and (Test-Path -LiteralPath $OutputPath)) {
 }
 
 New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null
+if ($BinaryPackages) {
+    New-Item -ItemType Directory -Force -Path (Join-Path $OutputPath "Binary") | Out-Null
+}
 
 function Get-RelativePath {
     param(
@@ -68,6 +72,8 @@ foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
     $kind = Get-AssetKind -Extension $file.Extension
     $metadataName = ($assetRelativePath -replace "[\\/:\*\?`"<>|]", "_") + ".dcooked"
     $metadataPath = Join-Path $OutputPath $metadataName
+    $binaryName = ($assetRelativePath -replace "[\\/:\*\?`"<>|]", "_") + ".dassetbin"
+    $binaryPath = Join-Path (Join-Path $OutputPath "Binary") $binaryName
     $importSettings = Join-Path $root ("Assets/ImportSettings/" + $relativePath + ".dimport")
     $dependencies = @()
     if (Test-Path -LiteralPath $importSettings) {
@@ -85,12 +91,31 @@ foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
     }
     $metadata | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $metadataPath
 
+    $binaryRelativePath = ""
+    $binaryBytes = 0
+    $binaryHash = ""
+    if ($BinaryPackages) {
+        $sourceBytes = [System.IO.File]::ReadAllBytes($file.FullName)
+        $metadataJson = $metadata | ConvertTo-Json -Depth 4 -Compress
+        $header = [System.Text.Encoding]::UTF8.GetBytes("DSPK1`n$metadataJson`n---SOURCE---`n")
+        $payload = New-Object byte[] ($header.Length + $sourceBytes.Length)
+        [System.Buffer]::BlockCopy($header, 0, $payload, 0, $header.Length)
+        [System.Buffer]::BlockCopy($sourceBytes, 0, $payload, $header.Length, $sourceBytes.Length)
+        [System.IO.File]::WriteAllBytes($binaryPath, $payload)
+        $binaryRelativePath = (Get-RelativePath -BasePath $root -Path $binaryPath).Replace("\", "/")
+        $binaryBytes = (Get-Item -LiteralPath $binaryPath).Length
+        $binaryHash = (Get-FileHash -LiteralPath $binaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+
     $records += [pscustomobject]@{
         source = $relativePath
         kind = $kind
         hash = $hash
         bytes = $file.Length
         cooked_metadata = (Get-RelativePath -BasePath $root -Path $metadataPath).Replace("\", "/")
+        cooked_binary = $binaryRelativePath
+        binary_bytes = $binaryBytes
+        binary_sha256 = $binaryHash
         dependencies = $dependencies
     }
 }
@@ -100,10 +125,16 @@ $manifest = [pscustomobject]@{
     configuration = $Configuration
     created_utc = (Get-Date).ToUniversalTime().ToString("o")
     asset_count = $records.Count
+    binary_packages = [bool]$BinaryPackages
     records = $records
 }
 
 $manifestPath = Join-Path $OutputPath "manifest.dcook"
 $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath
 
-Write-Host "Cooked $($records.Count) asset metadata record(s) to $manifestPath"
+if ($BinaryPackages) {
+    Write-Host "Cooked $($records.Count) asset metadata and binary package record(s) to $manifestPath"
+}
+else {
+    Write-Host "Cooked $($records.Count) asset metadata record(s) to $manifestPath"
+}

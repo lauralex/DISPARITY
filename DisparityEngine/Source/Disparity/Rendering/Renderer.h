@@ -74,6 +74,23 @@ namespace Disparity
         double AverageLuma = 0.0;
     };
 
+    struct RendererFrameGraphDiagnostics
+    {
+        bool DispatchOrderValid = false;
+        uint32_t ExecutedPasses = 0;
+        uint32_t TransientAllocations = 0;
+        uint32_t AliasedResources = 0;
+    };
+
+    struct EditorViewportResourcesInfo
+    {
+        bool ViewportTargetReady = false;
+        bool ObjectIdTargetReady = false;
+        bool ObjectDepthTargetReady = false;
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+    };
+
     class Renderer
     {
     public:
@@ -111,6 +128,8 @@ namespace Disparity
         [[nodiscard]] uint32_t GetFrameDrawCalls() const;
         [[nodiscard]] uint32_t GetSceneDrawCalls() const;
         [[nodiscard]] uint32_t GetShadowDrawCalls() const;
+        [[nodiscard]] RendererFrameGraphDiagnostics GetFrameGraphDiagnostics() const;
+        [[nodiscard]] EditorViewportResourcesInfo GetEditorViewportResources() const;
         [[nodiscard]] double GetGpuFrameMilliseconds() const;
         [[nodiscard]] bool IsGpuTimingAvailable() const;
         [[nodiscard]] bool HasLastFrameCapture() const;
@@ -175,12 +194,20 @@ namespace Disparity
         uint32_t m_graphDepth = 0;
         uint32_t m_graphHistory = 0;
         uint32_t m_graphShadowMap = 0;
+        uint32_t m_graphEditorViewport = 0;
+        uint32_t m_graphEditorObjectIds = 0;
+        uint32_t m_graphEditorObjectDepth = 0;
         uint32_t m_graphClearPass = std::numeric_limits<uint32_t>::max();
         uint32_t m_graphShadowPass = std::numeric_limits<uint32_t>::max();
         uint32_t m_graphScenePass = std::numeric_limits<uint32_t>::max();
+        uint32_t m_graphEditorViewportPass = std::numeric_limits<uint32_t>::max();
         uint32_t m_graphPostPass = std::numeric_limits<uint32_t>::max();
         uint32_t m_graphEditorPass = std::numeric_limits<uint32_t>::max();
         uint32_t m_activeGraphPass = std::numeric_limits<uint32_t>::max();
+        std::vector<uint32_t> m_graphExecutedPasses;
+        bool m_graphDispatchOrderValid = false;
+        uint32_t m_graphTransientAllocations = 0;
+        uint32_t m_graphAliasedResources = 0;
         std::chrono::steady_clock::time_point m_graphPassStart;
         double m_gpuFrameMilliseconds = 0.0;
         uint64_t m_gpuTimestampFrequency = 0;
@@ -208,6 +235,15 @@ namespace Disparity
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_depthStencilShaderResourceView;
         Microsoft::WRL::ComPtr<ID3D11Texture2D> m_historyTexture;
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_historyShaderResourceView;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_editorViewportTexture;
+        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_editorViewportRenderTargetView;
+        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_editorViewportShaderResourceView;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_editorObjectIdTexture;
+        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_editorObjectIdRenderTargetView;
+        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_editorObjectIdShaderResourceView;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_editorObjectDepthTexture;
+        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_editorObjectDepthRenderTargetView;
+        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_editorObjectDepthShaderResourceView;
         Microsoft::WRL::ComPtr<ID3D11Texture2D> m_shadowMapTexture;
         Microsoft::WRL::ComPtr<ID3D11DepthStencilView> m_shadowMapDepthView;
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_shadowMapShaderResourceView;

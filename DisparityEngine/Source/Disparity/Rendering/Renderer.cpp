@@ -484,6 +484,8 @@ namespace Disparity
         m_frameDrawCalls = 0;
         m_sceneDrawCalls = 0;
         m_shadowDrawCalls = 0;
+        m_graphExecutedPasses.clear();
+        m_graphDispatchOrderValid = true;
 
         m_shadowPassActive = false;
         BuildFrameRenderGraph();
@@ -648,6 +650,17 @@ namespace Disparity
         }
 
         EndGraphPass();
+        BeginGraphPass(m_graphEditorViewportPass);
+        if (m_editorViewportRenderTargetView && m_editorObjectIdRenderTargetView && m_editorObjectDepthRenderTargetView)
+        {
+            const float transparentBlack[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            const float noObjectId[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            const float farDepth[4] = { 1.0f, 0.0f, 0.0f, 0.0f };
+            m_context->ClearRenderTargetView(m_editorViewportRenderTargetView.Get(), transparentBlack);
+            m_context->ClearRenderTargetView(m_editorObjectIdRenderTargetView.Get(), noObjectId);
+            m_context->ClearRenderTargetView(m_editorObjectDepthRenderTargetView.Get(), farDepth);
+        }
+        EndGraphPass();
         BeginGraphPass(m_graphPostPass);
         RenderPostProcess();
         EndGraphPass();
@@ -713,6 +726,27 @@ namespace Disparity
     uint32_t Renderer::GetShadowDrawCalls() const
     {
         return m_shadowDrawCalls;
+    }
+
+    RendererFrameGraphDiagnostics Renderer::GetFrameGraphDiagnostics() const
+    {
+        return RendererFrameGraphDiagnostics{
+            m_graphDispatchOrderValid,
+            static_cast<uint32_t>(m_graphExecutedPasses.size()),
+            m_graphTransientAllocations,
+            m_graphAliasedResources
+        };
+    }
+
+    EditorViewportResourcesInfo Renderer::GetEditorViewportResources() const
+    {
+        return EditorViewportResourcesInfo{
+            m_editorViewportTexture.Get() != nullptr && m_editorViewportRenderTargetView.Get() != nullptr,
+            m_editorObjectIdTexture.Get() != nullptr && m_editorObjectIdRenderTargetView.Get() != nullptr,
+            m_editorObjectDepthTexture.Get() != nullptr && m_editorObjectDepthRenderTargetView.Get() != nullptr,
+            m_width,
+            m_height
+        };
     }
 
     double Renderer::GetGpuFrameMilliseconds() const
@@ -851,15 +885,35 @@ namespace Disparity
         m_graphDepth = m_renderGraph.AddResource("Scene Depth", RenderGraphResourceKind::Texture);
         m_graphHistory = m_renderGraph.AddResource("Temporal History", RenderGraphResourceKind::Texture);
         m_graphShadowMap = m_renderGraph.AddResource("Directional Shadow Map", RenderGraphResourceKind::Texture);
+        m_graphEditorViewport = m_renderGraph.AddResource("Editor Viewport Color", RenderGraphResourceKind::Texture);
+        m_graphEditorObjectIds = m_renderGraph.AddResource("Editor Object IDs", RenderGraphResourceKind::Texture);
+        m_graphEditorObjectDepth = m_renderGraph.AddResource("Editor Object Depth", RenderGraphResourceKind::Texture);
         m_graphClearPass = m_renderGraph.AddPass("Clear HDR+Depth", {}, { m_graphHdrScene, m_graphDepth });
         m_graphShadowPass = m_renderGraph.AddPass("Shadow Map", {}, { m_graphShadowMap });
         m_renderGraph.SetPassEnabled(m_graphShadowPass, m_settings.Shadows, "Shadows disabled");
         std::vector<uint32_t> sceneReads = m_settings.Shadows ? std::vector<uint32_t>{ m_graphShadowMap } : std::vector<uint32_t>{};
         m_graphScenePass = m_renderGraph.AddPass("Scene Color", std::move(sceneReads), { m_graphHdrScene, m_graphDepth });
+        m_graphEditorViewportPass = m_renderGraph.AddPass(
+            "Editor Viewport Targets",
+            { m_graphHdrScene, m_graphDepth },
+            { m_graphEditorViewport, m_graphEditorObjectIds, m_graphEditorObjectDepth });
         m_graphPostPass = m_renderGraph.AddPass("Post Process", { m_graphHdrScene, m_graphDepth, m_graphHistory }, { m_graphBackBuffer, m_graphHistory });
         m_graphEditorPass = m_renderGraph.AddPass("Editor UI", { m_graphBackBuffer }, { m_graphBackBuffer });
         m_activeGraphPass = std::numeric_limits<uint32_t>::max();
         (void)m_renderGraph.Compile();
+        m_graphTransientAllocations = 0;
+        m_graphAliasedResources = 0;
+        for (const RenderGraphResourceAllocation& allocation : m_renderGraph.GetResourceAllocations())
+        {
+            if (!allocation.External)
+            {
+                ++m_graphTransientAllocations;
+            }
+            if (allocation.Aliased)
+            {
+                ++m_graphAliasedResources;
+            }
+        }
         EnsureGpuPassProfiles(m_renderGraph.GetPasses().size());
     }
 
@@ -876,6 +930,21 @@ namespace Disparity
         }
 
         EndGraphPass();
+        const auto& passes = m_renderGraph.GetPasses();
+        if (passId >= passes.size())
+        {
+            m_graphDispatchOrderValid = false;
+        }
+        else
+        {
+            const uint32_t expectedOrder = passes[passId].ExecutionOrder;
+            if (expectedOrder != std::numeric_limits<uint32_t>::max() &&
+                expectedOrder != static_cast<uint32_t>(m_graphExecutedPasses.size()))
+            {
+                m_graphDispatchOrderValid = false;
+            }
+        }
+        m_graphExecutedPasses.push_back(passId);
         m_activeGraphPass = passId;
         m_graphPassStart = std::chrono::steady_clock::now();
         BeginGpuPassProfile(passId);
@@ -1254,6 +1323,82 @@ namespace Disparity
             return false;
         }
 
+        hr = m_device->CreateTexture2D(&hdrDesc, nullptr, m_editorViewportTexture.GetAddressOf());
+        if (FAILED(hr))
+        {
+            Log(LogLevel::Error, "Editor viewport texture creation failed with HRESULT " + HrToString(hr));
+            return false;
+        }
+
+        hr = m_device->CreateRenderTargetView(m_editorViewportTexture.Get(), nullptr, m_editorViewportRenderTargetView.GetAddressOf());
+        if (FAILED(hr))
+        {
+            Log(LogLevel::Error, "Editor viewport render target creation failed with HRESULT " + HrToString(hr));
+            return false;
+        }
+
+        hr = m_device->CreateShaderResourceView(m_editorViewportTexture.Get(), nullptr, m_editorViewportShaderResourceView.GetAddressOf());
+        if (FAILED(hr))
+        {
+            Log(LogLevel::Error, "Editor viewport shader resource view creation failed with HRESULT " + HrToString(hr));
+            return false;
+        }
+
+        D3D11_TEXTURE2D_DESC objectIdDesc = {};
+        objectIdDesc.Width = m_width;
+        objectIdDesc.Height = m_height;
+        objectIdDesc.MipLevels = 1;
+        objectIdDesc.ArraySize = 1;
+        objectIdDesc.Format = DXGI_FORMAT_R32_UINT;
+        objectIdDesc.SampleDesc.Count = 1;
+        objectIdDesc.Usage = D3D11_USAGE_DEFAULT;
+        objectIdDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+        hr = m_device->CreateTexture2D(&objectIdDesc, nullptr, m_editorObjectIdTexture.GetAddressOf());
+        if (FAILED(hr))
+        {
+            Log(LogLevel::Error, "Editor object-ID texture creation failed with HRESULT " + HrToString(hr));
+            return false;
+        }
+
+        hr = m_device->CreateRenderTargetView(m_editorObjectIdTexture.Get(), nullptr, m_editorObjectIdRenderTargetView.GetAddressOf());
+        if (FAILED(hr))
+        {
+            Log(LogLevel::Error, "Editor object-ID render target creation failed with HRESULT " + HrToString(hr));
+            return false;
+        }
+
+        hr = m_device->CreateShaderResourceView(m_editorObjectIdTexture.Get(), nullptr, m_editorObjectIdShaderResourceView.GetAddressOf());
+        if (FAILED(hr))
+        {
+            Log(LogLevel::Error, "Editor object-ID shader resource view creation failed with HRESULT " + HrToString(hr));
+            return false;
+        }
+
+        D3D11_TEXTURE2D_DESC objectDepthDesc = objectIdDesc;
+        objectDepthDesc.Format = DXGI_FORMAT_R32_FLOAT;
+
+        hr = m_device->CreateTexture2D(&objectDepthDesc, nullptr, m_editorObjectDepthTexture.GetAddressOf());
+        if (FAILED(hr))
+        {
+            Log(LogLevel::Error, "Editor object-depth texture creation failed with HRESULT " + HrToString(hr));
+            return false;
+        }
+
+        hr = m_device->CreateRenderTargetView(m_editorObjectDepthTexture.Get(), nullptr, m_editorObjectDepthRenderTargetView.GetAddressOf());
+        if (FAILED(hr))
+        {
+            Log(LogLevel::Error, "Editor object-depth render target creation failed with HRESULT " + HrToString(hr));
+            return false;
+        }
+
+        hr = m_device->CreateShaderResourceView(m_editorObjectDepthTexture.Get(), nullptr, m_editorObjectDepthShaderResourceView.GetAddressOf());
+        if (FAILED(hr))
+        {
+            Log(LogLevel::Error, "Editor object-depth shader resource view creation failed with HRESULT " + HrToString(hr));
+            return false;
+        }
+
         m_historyValid = false;
         return true;
     }
@@ -1507,6 +1652,15 @@ namespace Disparity
 
     void Renderer::ReleaseBackBufferResources()
     {
+        m_editorObjectDepthShaderResourceView.Reset();
+        m_editorObjectDepthRenderTargetView.Reset();
+        m_editorObjectDepthTexture.Reset();
+        m_editorObjectIdShaderResourceView.Reset();
+        m_editorObjectIdRenderTargetView.Reset();
+        m_editorObjectIdTexture.Reset();
+        m_editorViewportShaderResourceView.Reset();
+        m_editorViewportRenderTargetView.Reset();
+        m_editorViewportTexture.Reset();
         m_historyShaderResourceView.Reset();
         m_historyTexture.Reset();
         m_depthStencilShaderResourceView.Reset();
