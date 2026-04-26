@@ -5,7 +5,9 @@ param(
     [int]$RuntimeFrames = 90,
     [double]$RuntimeCpuFrameBudgetMs = 120.0,
     [double]$RuntimeGpuFrameBudgetMs = 50.0,
-    [double]$RuntimePassBudgetMs = 60.0
+    [double]$RuntimePassBudgetMs = 60.0,
+    [string]$RuntimeReplayPath = "Assets/Verification/Prototype.dreplay",
+    [string]$RuntimeBaselinePath = "Assets/Verification/RuntimeBaseline.dverify"
 )
 
 $ErrorActionPreference = "Stop"
@@ -151,7 +153,7 @@ if (!$SkipRuntime) {
     }
 
     Invoke-Step "Debug runtime self-verification" {
-        & (Join-Path $PSScriptRoot "RuntimeVerifyDisparity.ps1") -Configuration Debug -Frames $RuntimeFrames -CpuFrameBudgetMs $RuntimeCpuFrameBudgetMs -GpuFrameBudgetMs $RuntimeGpuFrameBudgetMs -PassBudgetMs $RuntimePassBudgetMs
+        & (Join-Path $PSScriptRoot "RuntimeVerifyDisparity.ps1") -Configuration Debug -Frames $RuntimeFrames -CpuFrameBudgetMs $RuntimeCpuFrameBudgetMs -GpuFrameBudgetMs $RuntimeGpuFrameBudgetMs -PassBudgetMs $RuntimePassBudgetMs -ReplayPath $RuntimeReplayPath -BaselinePath $RuntimeBaselinePath
     }
 }
 
@@ -167,7 +169,7 @@ if (!$SkipPackage) {
         }
 
         Invoke-Step "Packaged runtime self-verification" {
-            & (Join-Path $PSScriptRoot "RuntimeVerifyDisparity.ps1") -ExecutablePath $packagedExecutable -Frames $RuntimeFrames -CpuFrameBudgetMs $RuntimeCpuFrameBudgetMs -GpuFrameBudgetMs $RuntimeGpuFrameBudgetMs -PassBudgetMs $RuntimePassBudgetMs
+            & (Join-Path $PSScriptRoot "RuntimeVerifyDisparity.ps1") -ExecutablePath $packagedExecutable -Frames $RuntimeFrames -CpuFrameBudgetMs $RuntimeCpuFrameBudgetMs -GpuFrameBudgetMs $RuntimeGpuFrameBudgetMs -PassBudgetMs $RuntimePassBudgetMs -ReplayPath $RuntimeReplayPath -BaselinePath $RuntimeBaselinePath
         }
     }
 }

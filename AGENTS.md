@@ -14,7 +14,7 @@ Current shape:
 - Renderer backend is DirectX 11.
 - Dependency policy now allows the vendored Dear ImGui docking branch in `ThirdParty/imgui`; otherwise prefer Win32, DirectX 11, DirectXMath, WIC/WinMM, and the Windows SDK.
 - Geometry includes procedural primitives, procedural terrain, and a glTF 2.0 scene loader path for static mesh primitives, material texture binding, node instancing, skin metadata, joint/weight attributes, and animation sampler data.
-- Editor/runtime v11 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, copy/paste/duplicate/delete scene-object workflows, an independent editor camera with right-drag WASD/QE fly controls, simple transform gizmo buttons plus camera-scaled 3D translate/rotate/scale handles, torus rotate rings, translucent XY/XZ/YZ translate-plane handles, snapping and world/local space, prefab apply/save workflows, visibly stronger post effects with debug views, bus-based audio controls, spatial tone preview, an asset database with import settings and cooked metadata files, a compiled render graph schedule with pass CPU/GPU timings, culled passes, transition diagnostics, alias candidates, resource lifetimes, job system, version reporting, crash logs, deterministic runtime self-verification, frame capture validation, stronger window smoke tests, and unified static/runtime verification scripts.
+- Editor/runtime v12 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, copy/paste/duplicate/delete scene-object workflows, an independent editor camera with right-drag WASD/QE fly controls, simple transform gizmo buttons plus camera-scaled 3D translate/rotate/scale handles, torus rotate rings, translucent XY/XZ/YZ translate-plane handles, snapping and world/local space, prefab apply/save workflows, visibly stronger post effects with debug views, bus-based audio controls, spatial tone preview, an asset database with import settings and cooked metadata files, a compiled render graph schedule with pass CPU/GPU timings, culled passes, transition diagnostics, alias candidates, resource lifetimes, job system, version reporting, crash logs, deterministic runtime self-verification, assetized replay/baseline verification, frame capture validation, stronger window smoke tests, and unified static/runtime verification scripts.
 
 ## Important Paths
 
@@ -35,6 +35,8 @@ Current shape:
 - `Assets/Shaders/Basic.hlsl`: runtime-compiled scene shader.
 - `Assets/Shaders/PostProcess.hlsl`: runtime-compiled HDR tone-mapping pass.
 - `Assets/Scenes/Prototype.dscene`: serialized prototype scene.
+- `Assets/Verification/Prototype.dreplay`: deterministic runtime verification replay asset.
+- `Assets/Verification/RuntimeBaseline.dverify`: runtime capture/performance baseline asset.
 - `Assets/ImportSettings/Assets/Meshes/SampleTriangle.gltf.dimport`: sample import settings file for the asset database.
 - `Assets/Scripts/Prototype.dscript`: tiny prototype scene script.
 - `Assets/Prefabs/Beacon.dprefab`: tiny prefab used by the script.
@@ -70,7 +72,7 @@ Runtime verification mode:
 .\bin\x64\Debug\DisparityGame.exe --verify-runtime --verify-frames=90
 ```
 
-It writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, exercises deterministic player/camera input playback, scene reload, runtime scene save, renderer setting toggles, selection cycling, draw-call counters, render-graph validation, image stats, and CPU/GPU/pass performance budgets, then exits with code `0` for PASS or `20` for FAIL.
+It writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, loads `Assets/Verification/Prototype.dreplay`, compares against `Assets/Verification/RuntimeBaseline.dverify`, exercises deterministic player/camera input playback, scene reload, runtime scene save, renderer setting toggles, selection cycling, draw-call counters, render-graph validation, image stats, and CPU/GPU/pass performance budgets, then exits with code `0` for PASS or `20` for FAIL.
 
 ## Current Controls
 
@@ -101,18 +103,18 @@ It writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/
 
 ## Verified Baseline
 
-On 2026-04-26 after the v11 verification followup pass:
+On 2026-04-27 after the v12 verification followup pass:
 
 - `Debug|x64` built successfully with 0 warnings and 0 errors.
 - `Release|x64` built successfully with 0 warnings and 0 errors.
 - MSVC static analysis completed successfully.
 - `Assets/Shaders/Basic.hlsl` and `Assets/Shaders/PostProcess.hlsl` compiled successfully for `VSMain` and `PSMain` with `fxc`.
 - `Tools/SmokeTestDisparity.ps1 -Configuration Debug -ExerciseWindow` launched `DisparityGame.exe`, found the window, resized it, sent basic editor hotkeys, kept it alive for 3 seconds, and closed it cleanly.
-- `Tools/RuntimeVerifyDisparity.ps1 -Configuration Debug -Frames 90` produced a PASS runtime report and wrote `Saved/Verification/runtime_capture.ppm`.
+- `Tools/RuntimeVerifyDisparity.ps1 -Configuration Debug -Frames 90` produced a PASS runtime report, wrote `Saved/Verification/runtime_capture.ppm`, loaded the replay/baseline assets, and appended `Saved/Verification/performance_history.csv`.
 - `Tools/PackageDisparity.ps1 -Configuration Release` produced `dist/DISPARITY-Release`.
 - `Tools/SmokeTestDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe -ExerciseWindow` launched the packaged build, found/resized/exercised the window, and closed it cleanly.
-- `Tools/RuntimeVerifyDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe -Frames 90` produced a PASS packaged runtime report and capture.
-- The v11 pass was committed only after `Tools/VerifyDisparity.ps1` and `git status --short` review.
+- `Tools/RuntimeVerifyDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe -Frames 90` produced a PASS packaged runtime report, capture, and local performance history row.
+- The v12 pass was committed only after `Tools/VerifyDisparity.ps1` and `git status --short` review.
 
 After feature work, run `powershell -ExecutionPolicy Bypass -File .\Tools\VerifyDisparity.ps1` and `git status --short` before declaring the repo healthy.
 
@@ -122,7 +124,7 @@ Good next steps for making the engine more modern and AAA-like:
 
 - Move renderer execution onto the compiled render graph with real DX11 resource ownership, alias allocation decisions, async compute candidates, and GPU-driven culling.
 - Add a dedicated editor viewport render target, object-ID selection buffer, object-ID gizmo handle picking, depth-aware hover states, and stronger transform constraints.
-- Promote frame capture validation to golden-image comparison with per-machine tolerances, move deterministic playback into script assets, and persist performance trends across commits.
+- Add multiple replay/baseline suites, binary golden-image diffing with per-GPU tolerances, and automated performance trend regression summaries.
 - Upgrade serialization to stable deterministic IDs, schema versions, undo grouping, prefab variants, dependency-aware apply/revert, and save-game separation.
 - Replace prototype glTF runtime loading and metadata cooking with true cooked `.glb` import, animation blending, retargeting, and GPU skinning palette upload.
 - Replace WinMM with XAudio2 or another production backend for voices, sends, snapshots, streamed music, spatial emitters, listener orientation, attenuation curves, and meters.

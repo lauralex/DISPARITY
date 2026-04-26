@@ -169,13 +169,27 @@ namespace
         bool CaptureFrame = true;
         bool InputPlayback = true;
         bool EnforceBudgets = true;
+        bool UseBaseline = true;
         uint32_t TargetFrames = 90;
         double CpuFrameBudgetMs = 120.0;
         double GpuFrameBudgetMs = 50.0;
         double PassBudgetMs = 60.0;
         std::filesystem::path ReportPath = "Saved/Verification/runtime_verify.txt";
         std::filesystem::path CapturePath = "Saved/Verification/runtime_capture.ppm";
+        std::filesystem::path ReplayPath = "Assets/Verification/Prototype.dreplay";
+        std::filesystem::path BaselinePath = "Assets/Verification/RuntimeBaseline.dverify";
     };
+
+    std::string Trim(std::string value)
+    {
+        const auto isNotSpace = [](unsigned char character) {
+            return std::isspace(character) == 0;
+        };
+
+        value.erase(value.begin(), std::find_if(value.begin(), value.end(), isNotSpace));
+        value.erase(std::find_if(value.rbegin(), value.rend(), isNotSpace).base(), value.end());
+        return value;
+    }
 
     bool HasArgument(const std::wstring& arguments, const std::wstring& name)
     {
@@ -201,6 +215,20 @@ namespace
         {
             return fallback;
         }
+    }
+
+    std::filesystem::path ParsePathArgument(const std::wstring& arguments, const std::wstring& name, const std::filesystem::path& fallback)
+    {
+        const size_t begin = arguments.find(name);
+        if (begin == std::wstring::npos)
+        {
+            return fallback;
+        }
+
+        const size_t valueBegin = begin + name.size();
+        const size_t valueEnd = arguments.find(L' ', valueBegin);
+        const std::wstring value = arguments.substr(valueBegin, valueEnd == std::wstring::npos ? std::wstring::npos : valueEnd - valueBegin);
+        return value.empty() ? fallback : std::filesystem::path(value);
     }
 
     double ParseDoubleArgument(const std::wstring& arguments, const std::wstring& name, double fallback)
@@ -280,6 +308,7 @@ namespace
             {
                 m_editorVisible = false;
                 m_hotReloadEnabled = false;
+                LoadRuntimeVerificationAssets();
                 AddRuntimeVerificationNote("Runtime verification mode enabled.");
             }
             return true;
@@ -489,6 +518,28 @@ namespace
             DirectX::XMFLOAT3 StartPosition = {};
             DirectX::XMFLOAT3 EndPosition = {};
             float Distance = 0.0f;
+        };
+
+        struct RuntimeReplayStep
+        {
+            uint32_t StartFrame = 0;
+            uint32_t EndFrame = 0;
+            DirectX::XMFLOAT3 MoveInput = {};
+            float CameraYawDelta = 0.0f;
+            float CameraPitchDelta = 0.0f;
+        };
+
+        struct RuntimeBaseline
+        {
+            uint32_t ExpectedCaptureWidth = 1280;
+            uint32_t ExpectedCaptureHeight = 720;
+            double ExpectedAverageLuma = 82.17;
+            double AverageLumaTolerance = 12.0;
+            double MinNonBlackRatio = 0.05;
+            double MinPlaybackDistance = 1.0;
+            double MaxCpuFrameMs = 120.0;
+            double MaxGpuFrameMs = 50.0;
+            double MaxPassMs = 60.0;
         };
 
         enum class GizmoAxis
@@ -1980,7 +2031,12 @@ namespace
                 return;
             }
 
-            if (!m_runtimePlayback.Started && m_runtimeVerificationFrame >= 4)
+            if (m_runtimeReplaySteps.empty())
+            {
+                return;
+            }
+
+            if (!m_runtimePlayback.Started && m_runtimeVerificationFrame >= m_runtimeReplayStartFrame)
             {
                 m_runtimePlayback.Started = true;
                 m_runtimePlayback.StartPosition = m_playerPosition;
@@ -1992,40 +2048,53 @@ namespace
                 return;
             }
 
-            DirectX::XMFLOAT3 input = {};
-            if (m_runtimeVerificationFrame < 18)
+            if (m_runtimeVerificationFrame > m_runtimeReplayEndFrame)
             {
-                input.z = 1.0f;
+                FinishRuntimeReplayPlayback();
+                return;
             }
-            else if (m_runtimeVerificationFrame < 32)
+
+            const RuntimeReplayStep* activeStep = nullptr;
+            for (const RuntimeReplayStep& step : m_runtimeReplaySteps)
             {
-                input.x = 1.0f;
-            }
-            else if (m_runtimeVerificationFrame < 44)
-            {
-                input.z = -1.0f;
-            }
-            else
-            {
-                m_runtimePlayback.Finished = true;
-                m_runtimePlayback.EndPosition = m_playerPosition;
-                m_runtimePlayback.Distance = Length(Subtract(m_runtimePlayback.EndPosition, m_runtimePlayback.StartPosition));
-                if (m_runtimePlayback.Distance < 1.0f)
+                if (m_runtimeVerificationFrame >= step.StartFrame && m_runtimeVerificationFrame <= step.EndFrame)
                 {
-                    AddRuntimeVerificationFailure("input playback moved the player less than expected.");
+                    activeStep = &step;
+                    break;
                 }
-                AddRuntimeVerificationNote("Finished deterministic input playback.");
+            }
+
+            if (!activeStep)
+            {
                 return;
             }
 
             constexpr float playbackDeltaSeconds = 1.0f / 60.0f;
-            MovePlayerWithInput(input, playbackDeltaSeconds);
+            MovePlayerWithInput(activeStep->MoveInput, playbackDeltaSeconds);
             m_playerBobOffset = m_playerBob.SampleOffset(playbackDeltaSeconds);
             SyncPlayerTransformToRegistry();
-            m_cameraYaw += 0.0025f;
-            m_cameraPitch = std::clamp(m_cameraPitch + 0.0008f, -0.15f, 0.95f);
+            m_cameraYaw += activeStep->CameraYawDelta;
+            m_cameraPitch = std::clamp(m_cameraPitch + activeStep->CameraPitchDelta, -0.15f, 0.95f);
             UpdateCamera();
             ++m_runtimePlayback.Steps;
+        }
+
+        void FinishRuntimeReplayPlayback()
+        {
+            if (m_runtimePlayback.Finished)
+            {
+                return;
+            }
+
+            m_runtimePlayback.Finished = true;
+            m_runtimePlayback.EndPosition = m_playerPosition;
+            m_runtimePlayback.Distance = Length(Subtract(m_runtimePlayback.EndPosition, m_runtimePlayback.StartPosition));
+            const double minimumDistance = m_runtimeBaselineLoaded ? m_runtimeBaseline.MinPlaybackDistance : 1.0;
+            if (m_runtimePlayback.Distance < minimumDistance)
+            {
+                AddRuntimeVerificationFailure("input replay moved the player less than expected.");
+            }
+            AddRuntimeVerificationNote("Finished deterministic input replay.");
         }
 
         void CollectRuntimeBudgetStats()
@@ -2136,6 +2205,24 @@ namespace
             {
                 AddRuntimeVerificationFailure("frame capture checksum is invalid.");
             }
+            if (m_runtimeBaselineLoaded)
+            {
+                const double nonBlackRatio = pixelCount > 0
+                    ? static_cast<double>(capture.NonBlackPixels) / static_cast<double>(pixelCount)
+                    : 0.0;
+                if (capture.Width != m_runtimeBaseline.ExpectedCaptureWidth || capture.Height != m_runtimeBaseline.ExpectedCaptureHeight)
+                {
+                    AddRuntimeVerificationFailure("frame capture dimensions do not match the baseline.");
+                }
+                if (nonBlackRatio < m_runtimeBaseline.MinNonBlackRatio)
+                {
+                    AddRuntimeVerificationFailure("frame capture nonblack pixel ratio is below baseline.");
+                }
+                if (std::abs(capture.AverageLuma - m_runtimeBaseline.ExpectedAverageLuma) > m_runtimeBaseline.AverageLumaTolerance)
+                {
+                    AddRuntimeVerificationFailure("frame capture luminance drifted outside baseline tolerance.");
+                }
+            }
 
             AddRuntimeVerificationNote("Validated frame capture " + capture.Path.string() + ".");
         }
@@ -2177,6 +2264,16 @@ namespace
                 !std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Scripts/Prototype.dscript")))
             {
                 AddRuntimeVerificationFailure(std::string(stage) + ": required scene or script asset is missing.");
+            }
+            if (m_runtimeVerification.InputPlayback &&
+                !std::filesystem::exists(Disparity::FileSystem::FindAssetPath(m_runtimeVerification.ReplayPath)))
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": required replay asset is missing.");
+            }
+            if (m_runtimeVerification.UseBaseline &&
+                !std::filesystem::exists(Disparity::FileSystem::FindAssetPath(m_runtimeVerification.BaselinePath)))
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": required baseline asset is missing.");
             }
 
             if (m_runtimeVerificationFrame > 3 && m_renderer->GetFrameDrawCalls() == 0)
@@ -2283,6 +2380,15 @@ namespace
             report << "capture_non_black_pixels=" << m_runtimeCapture.NonBlackPixels << "\n";
             report << "capture_bright_pixels=" << m_runtimeCapture.BrightPixels << "\n";
             report << "capture_average_luma=" << m_runtimeCapture.AverageLuma << "\n";
+            report << "replay_path=" << m_runtimeVerification.ReplayPath.string() << "\n";
+            report << "replay_loaded_steps=" << m_runtimeReplaySteps.size() << "\n";
+            report << "baseline_path=" << m_runtimeVerification.BaselinePath.string() << "\n";
+            report << "baseline_loaded=" << (m_runtimeBaselineLoaded ? "true" : "false") << "\n";
+            report << "baseline_expected_luma=" << m_runtimeBaseline.ExpectedAverageLuma << "\n";
+            report << "baseline_luma_tolerance=" << m_runtimeBaseline.AverageLumaTolerance << "\n";
+            report << "budget_cpu_frame_ms=" << m_runtimeVerification.CpuFrameBudgetMs << "\n";
+            report << "budget_gpu_frame_ms=" << m_runtimeVerification.GpuFrameBudgetMs << "\n";
+            report << "budget_pass_ms=" << m_runtimeVerification.PassBudgetMs << "\n";
 
             report << "\nnotes:\n";
             for (const std::string& note : m_runtimeVerificationNotes)
@@ -3434,6 +3540,143 @@ namespace
             SetStatus("Hot reloaded " + std::to_string(changed.size()) + " asset(s)");
         }
 
+        void LoadRuntimeVerificationAssets()
+        {
+            if (m_runtimeVerification.InputPlayback)
+            {
+                LoadRuntimeReplay();
+            }
+
+            if (m_runtimeVerification.UseBaseline)
+            {
+                LoadRuntimeBaseline();
+            }
+        }
+
+        void LoadRuntimeReplay()
+        {
+            const std::filesystem::path resolvedPath = Disparity::FileSystem::FindAssetPath(m_runtimeVerification.ReplayPath);
+            if (!std::filesystem::exists(resolvedPath))
+            {
+                AddRuntimeVerificationFailure("runtime replay asset is missing: " + m_runtimeVerification.ReplayPath.string());
+                return;
+            }
+
+            std::ifstream replay(resolvedPath);
+            if (!replay)
+            {
+                AddRuntimeVerificationFailure("runtime replay asset could not be opened: " + resolvedPath.string());
+                return;
+            }
+
+            std::string line;
+            uint32_t lineNumber = 0;
+            while (std::getline(replay, line))
+            {
+                ++lineNumber;
+                line = Trim(line);
+                if (line.empty() || line.front() == '#')
+                {
+                    continue;
+                }
+
+                std::istringstream stream(line);
+                std::string command;
+                RuntimeReplayStep step;
+                if (!(stream >> command) || command != "move" ||
+                    !(stream >> step.StartFrame >> step.EndFrame >> step.MoveInput.x >> step.MoveInput.z >> step.CameraYawDelta >> step.CameraPitchDelta) ||
+                    step.StartFrame > step.EndFrame)
+                {
+                    AddRuntimeVerificationFailure("runtime replay parse failed at line " + std::to_string(lineNumber) + ".");
+                    continue;
+                }
+
+                m_runtimeReplaySteps.push_back(step);
+                if (m_runtimeReplaySteps.size() == 1)
+                {
+                    m_runtimeReplayStartFrame = step.StartFrame;
+                    m_runtimeReplayEndFrame = step.EndFrame;
+                }
+                else
+                {
+                    m_runtimeReplayStartFrame = std::min(m_runtimeReplayStartFrame, step.StartFrame);
+                    m_runtimeReplayEndFrame = std::max(m_runtimeReplayEndFrame, step.EndFrame);
+                }
+            }
+
+            std::sort(m_runtimeReplaySteps.begin(), m_runtimeReplaySteps.end(), [](const RuntimeReplayStep& left, const RuntimeReplayStep& right) {
+                return left.StartFrame < right.StartFrame;
+            });
+
+            if (m_runtimeReplaySteps.empty())
+            {
+                AddRuntimeVerificationFailure("runtime replay asset contains no steps.");
+                return;
+            }
+
+            AddRuntimeVerificationNote("Loaded replay asset " + resolvedPath.string() + ".");
+        }
+
+        void LoadRuntimeBaseline()
+        {
+            const std::filesystem::path resolvedPath = Disparity::FileSystem::FindAssetPath(m_runtimeVerification.BaselinePath);
+            if (!std::filesystem::exists(resolvedPath))
+            {
+                AddRuntimeVerificationFailure("runtime baseline asset is missing: " + m_runtimeVerification.BaselinePath.string());
+                return;
+            }
+
+            std::ifstream baseline(resolvedPath);
+            if (!baseline)
+            {
+                AddRuntimeVerificationFailure("runtime baseline asset could not be opened: " + resolvedPath.string());
+                return;
+            }
+
+            RuntimeBaseline loadedBaseline;
+            std::string line;
+            while (std::getline(baseline, line))
+            {
+                line = Trim(line);
+                if (line.empty() || line.front() == '#')
+                {
+                    continue;
+                }
+
+                const size_t separator = line.find('=');
+                if (separator == std::string::npos)
+                {
+                    continue;
+                }
+
+                const std::string key = Trim(line.substr(0, separator));
+                const std::string value = Trim(line.substr(separator + 1));
+                try
+                {
+                    if (key == "expected_capture_width") { loadedBaseline.ExpectedCaptureWidth = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "expected_capture_height") { loadedBaseline.ExpectedCaptureHeight = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
+                    else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
+                    else if (key == "min_non_black_ratio") { loadedBaseline.MinNonBlackRatio = std::stod(value); }
+                    else if (key == "min_playback_distance") { loadedBaseline.MinPlaybackDistance = std::stod(value); }
+                    else if (key == "max_cpu_frame_ms") { loadedBaseline.MaxCpuFrameMs = std::stod(value); }
+                    else if (key == "max_gpu_frame_ms") { loadedBaseline.MaxGpuFrameMs = std::stod(value); }
+                    else if (key == "max_pass_ms") { loadedBaseline.MaxPassMs = std::stod(value); }
+                }
+                catch (...)
+                {
+                    AddRuntimeVerificationFailure("runtime baseline value parse failed for key " + key + ".");
+                }
+            }
+
+            m_runtimeBaseline = loadedBaseline;
+            m_runtimeBaselineLoaded = true;
+            m_runtimeVerification.CpuFrameBudgetMs = std::min(m_runtimeVerification.CpuFrameBudgetMs, m_runtimeBaseline.MaxCpuFrameMs);
+            m_runtimeVerification.GpuFrameBudgetMs = std::min(m_runtimeVerification.GpuFrameBudgetMs, m_runtimeBaseline.MaxGpuFrameMs);
+            m_runtimeVerification.PassBudgetMs = std::min(m_runtimeVerification.PassBudgetMs, m_runtimeBaseline.MaxPassMs);
+            AddRuntimeVerificationNote("Loaded baseline asset " + resolvedPath.string() + ".");
+        }
+
         Disparity::Application* m_application = nullptr;
         Disparity::Renderer* m_renderer = nullptr;
         Disparity::Camera m_camera;
@@ -3459,8 +3702,10 @@ namespace
         std::vector<GizmoDragObject> m_gizmoDragObjects;
         std::vector<std::string> m_runtimeVerificationNotes;
         std::vector<std::string> m_runtimeVerificationFailures;
+        std::vector<RuntimeReplayStep> m_runtimeReplaySteps;
         RuntimeBudgetStats m_runtimeBudgetStats;
         RuntimePlaybackStats m_runtimePlayback;
+        RuntimeBaseline m_runtimeBaseline;
         Disparity::FrameCaptureResult m_runtimeCapture;
         Disparity::Entity m_playerEntity = 0;
         Disparity::MeshHandle m_cubeMesh = 0;
@@ -3501,6 +3746,8 @@ namespace
         float m_runtimeVerificationElapsed = 0.0f;
         size_t m_selectedIndex = 0;
         uint32_t m_runtimeVerificationFrame = 0;
+        uint32_t m_runtimeReplayStartFrame = 0;
+        uint32_t m_runtimeReplayEndFrame = 0;
         DirectX::XMFLOAT3 m_editorCameraTarget = { 0.0f, 1.1f, 0.0f };
         DirectX::XMFLOAT2 m_editorLastMousePosition = {};
         RuntimeVerificationConfig m_runtimeVerification;
@@ -3517,6 +3764,7 @@ namespace
         bool m_runtimeVerificationCycledSelection = false;
         bool m_runtimeVerificationCaptureRequested = false;
         bool m_runtimeVerificationCaptureValidated = false;
+        bool m_runtimeBaselineLoaded = false;
         bool m_gizmoDragging = false;
         bool m_gizmoDragMoved = false;
         GizmoAxis m_gizmoDragAxis = GizmoAxis::None;
@@ -3542,10 +3790,13 @@ int WINAPI wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE previousInstance
     runtimeVerification.CaptureFrame = !HasArgument(arguments, L"--verify-no-capture");
     runtimeVerification.InputPlayback = !HasArgument(arguments, L"--verify-no-input-playback");
     runtimeVerification.EnforceBudgets = !HasArgument(arguments, L"--verify-no-budgets");
-    runtimeVerification.TargetFrames = std::max(30u, ParseUnsignedArgument(arguments, L"--verify-frames=", runtimeVerification.TargetFrames));
+    runtimeVerification.UseBaseline = !HasArgument(arguments, L"--verify-no-baseline");
+    runtimeVerification.TargetFrames = std::max(60u, ParseUnsignedArgument(arguments, L"--verify-frames=", runtimeVerification.TargetFrames));
     runtimeVerification.CpuFrameBudgetMs = std::max(1.0, ParseDoubleArgument(arguments, L"--verify-cpu-budget-ms=", runtimeVerification.CpuFrameBudgetMs));
     runtimeVerification.GpuFrameBudgetMs = std::max(1.0, ParseDoubleArgument(arguments, L"--verify-gpu-budget-ms=", runtimeVerification.GpuFrameBudgetMs));
     runtimeVerification.PassBudgetMs = std::max(1.0, ParseDoubleArgument(arguments, L"--verify-pass-budget-ms=", runtimeVerification.PassBudgetMs));
+    runtimeVerification.ReplayPath = ParsePathArgument(arguments, L"--verify-replay=", runtimeVerification.ReplayPath);
+    runtimeVerification.BaselinePath = ParsePathArgument(arguments, L"--verify-baseline=", runtimeVerification.BaselinePath);
 
     Disparity::Application app({ instance, L"DISPARITY", 1280, 720 });
     app.SetLayer(std::make_unique<DisparityGameLayer>(runtimeVerification));

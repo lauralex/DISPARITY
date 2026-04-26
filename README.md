@@ -160,6 +160,14 @@ Editor UI:
 - Runtime verification tracks CPU frame time, GPU frame time when timestamp queries are available, and render-graph pass CPU/GPU maxima against configurable budgets.
 - GitHub Actions includes an opt-in `workflow_dispatch` runtime verification step for machines with an interactive desktop.
 
+## Engine v12 Followups Implemented
+
+- Deterministic runtime playback now lives in `Assets/Verification/Prototype.dreplay` instead of hardcoded C++ frame ranges.
+- Runtime image/performance expectations now live in `Assets/Verification/RuntimeBaseline.dverify`.
+- Runtime verification compares capture dimensions, average luminance tolerance, nonblack ratio, replay distance, and CPU/GPU/pass budgets against the baseline asset.
+- `RuntimeVerifyDisparity.ps1` appends `Saved/Verification/performance_history.csv` so local verification runs produce a trendable performance/capture history.
+- `VerifyDisparity.ps1` exposes replay and baseline path overrides for future scenario-specific verification suites.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
@@ -169,4 +177,4 @@ More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 - Add prefab variants, nested prefabs, dependency-aware apply/revert, and save-game separation.
 - Add production `.glb` cooking, animation retargeting/blending, and GPU skinning palettes.
 - Replace the WinMM prototype audio backend with XAudio2 voices, sends, snapshots, streamed layers, spatial emitters, and meters.
-- Add golden-image comparison thresholds, deterministic input script files, and historical performance trend tracking on top of the v11 verifier.
+- Add multiple replay/baseline suites, binary golden-image diffing with per-GPU tolerances, and automated performance trend regression summaries.

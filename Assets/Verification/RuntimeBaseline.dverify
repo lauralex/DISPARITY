@@ -1,0 +1,10 @@
+# DISPARITY runtime verification baseline v1
+expected_capture_width=1280
+expected_capture_height=720
+expected_average_luma=82.17
+average_luma_tolerance=12.0
+min_non_black_ratio=0.05
+min_playback_distance=1.0
+max_cpu_frame_ms=120.0
+max_gpu_frame_ms=50.0
+max_pass_ms=60.0
