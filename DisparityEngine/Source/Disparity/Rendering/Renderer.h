@@ -8,9 +8,11 @@
 
 #include <DirectXMath.h>
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <d3d11.h>
 #include <filesystem>
+#include <limits>
 #include <unordered_map>
 #include <windows.h>
 #include <wrl/client.h>
@@ -93,6 +95,8 @@ namespace Disparity
         [[nodiscard]] uint32_t GetFrameDrawCalls() const;
         [[nodiscard]] uint32_t GetSceneDrawCalls() const;
         [[nodiscard]] uint32_t GetShadowDrawCalls() const;
+        [[nodiscard]] double GetGpuFrameMilliseconds() const;
+        [[nodiscard]] bool IsGpuTimingAvailable() const;
 
     private:
         struct GpuMesh
@@ -113,12 +117,18 @@ namespace Disparity
         bool CreateStates();
         bool CreateConstantBuffers();
         bool CreateShadowResources();
+        void CreateGpuProfilingResources();
         void ReleaseBackBufferResources();
         void ReleaseShadowResources();
         void ApplyScenePipeline();
         void UploadFrameConstants(const DirectX::XMMATRIX& viewProjection);
         void RenderPostProcess();
         void BuildFrameRenderGraph();
+        void BeginGraphPass(uint32_t passId);
+        void EndGraphPass();
+        void BeginGpuFrameProfile();
+        void EndGpuFrameProfile();
+        void ResolveGpuFrameProfile();
 
         HWND m_windowHandle = nullptr;
         uint32_t m_width = 1;
@@ -135,6 +145,17 @@ namespace Disparity
         uint32_t m_graphDepth = 0;
         uint32_t m_graphHistory = 0;
         uint32_t m_graphShadowMap = 0;
+        uint32_t m_graphClearPass = std::numeric_limits<uint32_t>::max();
+        uint32_t m_graphShadowPass = std::numeric_limits<uint32_t>::max();
+        uint32_t m_graphScenePass = std::numeric_limits<uint32_t>::max();
+        uint32_t m_graphPostPass = std::numeric_limits<uint32_t>::max();
+        uint32_t m_graphEditorPass = std::numeric_limits<uint32_t>::max();
+        uint32_t m_activeGraphPass = std::numeric_limits<uint32_t>::max();
+        std::chrono::steady_clock::time_point m_graphPassStart;
+        double m_gpuFrameMilliseconds = 0.0;
+        bool m_gpuTimingSupported = false;
+        bool m_gpuTimingValid = false;
+        bool m_gpuFrameQueryIssued = false;
 
         Camera m_camera;
         DirectionalLight m_light;
@@ -170,6 +191,9 @@ namespace Disparity
         Microsoft::WRL::ComPtr<ID3D11BlendState> m_opaqueBlendState;
         Microsoft::WRL::ComPtr<ID3D11BlendState> m_alphaBlendState;
         Microsoft::WRL::ComPtr<ID3D11SamplerState> m_linearSamplerState;
+        Microsoft::WRL::ComPtr<ID3D11Query> m_gpuFrameDisjointQuery;
+        Microsoft::WRL::ComPtr<ID3D11Query> m_gpuFrameStartQuery;
+        Microsoft::WRL::ComPtr<ID3D11Query> m_gpuFrameEndQuery;
 
         std::unordered_map<MeshHandle, GpuMesh> m_meshes;
         std::unordered_map<TextureHandle, GpuTexture> m_textures;

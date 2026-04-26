@@ -282,6 +282,7 @@ namespace
             DrawWorld(renderer);
             DrawPlayer(renderer);
             DrawSelectionOutline(renderer);
+            DrawSelectionGizmoHandles(renderer);
         }
 
         void OnGui() override
@@ -359,6 +360,15 @@ namespace
             m_shadowMaterial.Albedo = { 0.0f, 0.0f, 0.0f };
             m_shadowMaterial.Roughness = 1.0f;
             m_shadowMaterial.Alpha = 0.28f;
+
+            m_gizmoXMaterial.Albedo = { 1.0f, 0.15f, 0.12f };
+            m_gizmoXMaterial.Roughness = 0.25f;
+            m_gizmoYMaterial.Albedo = { 0.18f, 0.92f, 0.28f };
+            m_gizmoYMaterial.Roughness = 0.25f;
+            m_gizmoZMaterial.Albedo = { 0.16f, 0.42f, 1.0f };
+            m_gizmoZMaterial.Roughness = 0.25f;
+            m_gizmoCenterMaterial.Albedo = { 1.0f, 0.92f, 0.25f };
+            m_gizmoCenterMaterial.Roughness = 0.2f;
         }
 
         void ReloadGltfAssets()
@@ -853,6 +863,59 @@ namespace
                 outlineTransform.Scale = Scale(outlineTransform.Scale, 1.06f);
                 renderer.DrawMesh(selected.Object.Mesh, outlineTransform, outlineMaterial);
             }
+        }
+
+        bool TryGetSelectionPivot(DirectX::XMFLOAT3& outPivot) const
+        {
+            if (m_selectedPlayer)
+            {
+                outPivot = Add(m_playerPosition, { 0.0f, 1.05f, 0.0f });
+                return true;
+            }
+
+            const std::vector<size_t> selectedIndices = GetSelectedSceneIndices();
+            if (selectedIndices.empty())
+            {
+                return false;
+            }
+
+            DirectX::XMFLOAT3 pivot = {};
+            for (const size_t selectedIndex : selectedIndices)
+            {
+                pivot = Add(pivot, m_scene.GetObjects()[selectedIndex].Object.TransformData.Position);
+            }
+
+            outPivot = Scale(pivot, 1.0f / static_cast<float>(selectedIndices.size()));
+            return true;
+        }
+
+        void DrawSelectionGizmoHandles(Disparity::Renderer& renderer)
+        {
+            DirectX::XMFLOAT3 pivot = {};
+            if (!TryGetSelectionPivot(pivot) || m_cubeMesh == 0)
+            {
+                return;
+            }
+
+            Disparity::Transform center;
+            center.Position = pivot;
+            center.Scale = { 0.18f, 0.18f, 0.18f };
+            renderer.DrawMesh(m_cubeMesh, center, m_gizmoCenterMaterial);
+
+            Disparity::Transform xAxis;
+            xAxis.Position = Add(pivot, { 0.75f, 0.0f, 0.0f });
+            xAxis.Scale = { 0.9f, 0.055f, 0.055f };
+            renderer.DrawMesh(m_cubeMesh, xAxis, m_gizmoXMaterial);
+
+            Disparity::Transform yAxis;
+            yAxis.Position = Add(pivot, { 0.0f, 0.75f, 0.0f });
+            yAxis.Scale = { 0.055f, 0.9f, 0.055f };
+            renderer.DrawMesh(m_cubeMesh, yAxis, m_gizmoYMaterial);
+
+            Disparity::Transform zAxis;
+            zAxis.Position = Add(pivot, { 0.0f, 0.0f, 0.75f });
+            zAxis.Scale = { 0.055f, 0.055f, 0.9f };
+            renderer.DrawMesh(m_cubeMesh, zAxis, m_gizmoZMaterial);
         }
 
         void DrawDockspace()
@@ -1352,6 +1415,14 @@ namespace
                     m_renderer->GetFrameDrawCalls(),
                     m_renderer->GetSceneDrawCalls(),
                     m_renderer->GetShadowDrawCalls());
+                if (m_renderer->IsGpuTimingAvailable())
+                {
+                    ImGui::Text("GPU frame: %.3f ms", m_renderer->GetGpuFrameMilliseconds());
+                }
+                else
+                {
+                    ImGui::TextDisabled("GPU frame timing: warming up");
+                }
             }
             ImGui::Separator();
             for (const Disparity::ProfileRecord& record : snapshot.Records)
@@ -1362,10 +1433,47 @@ namespace
             if (m_renderer && ImGui::TreeNode("Render Graph"))
             {
                 const Disparity::RenderGraph& graph = m_renderer->GetRenderGraph();
+                const auto findResourceName = [&graph](uint32_t resourceId) -> const char* {
+                    for (const Disparity::RenderGraphResource& resource : graph.GetResources())
+                    {
+                        if (resource.Id == resourceId)
+                        {
+                            return resource.Name.c_str();
+                        }
+                    }
+                    return "Unknown";
+                };
+
                 ImGui::Text("Resources: %zu", graph.GetResources().size());
-                for (const Disparity::RenderGraphPass& pass : graph.GetPasses())
+                ImGui::Text("Scheduled passes: %zu", graph.GetExecutionOrder().size());
+                for (const uint32_t passId : graph.GetExecutionOrder())
                 {
-                    ImGui::BulletText("%s  R:%zu W:%zu", pass.Name.c_str(), pass.Reads.size(), pass.Writes.size());
+                    if (passId >= graph.GetPasses().size())
+                    {
+                        continue;
+                    }
+
+                    const Disparity::RenderGraphPass& pass = graph.GetPasses()[passId];
+                    ImGui::BulletText("#%u %s  CPU %.3f ms  R:%zu W:%zu",
+                        pass.ExecutionOrder,
+                        pass.Name.c_str(),
+                        pass.LastCpuMilliseconds,
+                        pass.Reads.size(),
+                        pass.Writes.size());
+                }
+
+                if (ImGui::TreeNode("Resource Lifetimes"))
+                {
+                    for (const Disparity::RenderGraphResourceLifetime& lifetime : graph.GetResourceLifetimes())
+                    {
+                        ImGui::BulletText(
+                            "%s: pass %u -> %u%s",
+                            findResourceName(lifetime.ResourceId),
+                            lifetime.FirstPass,
+                            lifetime.LastPass,
+                            lifetime.External ? " external" : "");
+                    }
+                    ImGui::TreePop();
                 }
 
                 const std::vector<std::string> validation = graph.Validate();
@@ -2021,6 +2129,10 @@ namespace
         Disparity::Material m_playerBodyMaterial;
         Disparity::Material m_playerHeadMaterial;
         Disparity::Material m_shadowMaterial;
+        Disparity::Material m_gizmoXMaterial;
+        Disparity::Material m_gizmoYMaterial;
+        Disparity::Material m_gizmoZMaterial;
+        Disparity::Material m_gizmoCenterMaterial;
         DirectX::XMFLOAT3 m_playerPosition = { 0.0f, 0.0f, 0.0f };
         float m_playerYaw = 0.0f;
         float m_cameraYaw = Pi;

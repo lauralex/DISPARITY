@@ -9,6 +9,7 @@
 #include <d3dcompiler.h>
 #include <filesystem>
 #include <string>
+#include <utility>
 #include <vector>
 #include <wincodec.h>
 
@@ -191,6 +192,8 @@ namespace Disparity
             return false;
         }
 
+        CreateGpuProfilingResources();
+
         m_initialized = true;
         return true;
     }
@@ -217,6 +220,12 @@ namespace Disparity
         m_postVertexShader.Reset();
         m_pixelShader.Reset();
         m_vertexShader.Reset();
+        m_gpuFrameEndQuery.Reset();
+        m_gpuFrameStartQuery.Reset();
+        m_gpuFrameDisjointQuery.Reset();
+        m_gpuTimingSupported = false;
+        m_gpuTimingValid = false;
+        m_gpuFrameQueryIssued = false;
         ReleaseBackBufferResources();
         ReleaseShadowResources();
         m_swapChain.Reset();
@@ -475,9 +484,12 @@ namespace Disparity
 
         m_shadowPassActive = false;
         BuildFrameRenderGraph();
+        BeginGpuFrameProfile();
+        BeginGraphPass(m_graphClearPass);
         m_context->OMSetRenderTargets(1, m_hdrSceneRenderTargetView.GetAddressOf(), m_depthStencilView.Get());
         m_context->ClearRenderTargetView(m_hdrSceneRenderTargetView.Get(), clearColor);
         m_context->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+        EndGraphPass();
 
         ApplyScenePipeline();
     }
@@ -512,6 +524,7 @@ namespace Disparity
         m_context->PSSetShaderResources(0, 3, nullViews);
 
         m_shadowPassActive = true;
+        BeginGraphPass(m_graphShadowPass);
         m_context->OMSetRenderTargets(0, nullptr, m_shadowMapDepthView.Get());
         m_context->ClearDepthStencilView(m_shadowMapDepthView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
@@ -540,6 +553,7 @@ namespace Disparity
         }
 
         m_shadowPassActive = false;
+        EndGraphPass();
         ApplyScenePipeline();
     }
 
@@ -593,6 +607,11 @@ namespace Disparity
             return;
         }
 
+        if (m_activeGraphPass != m_graphScenePass)
+        {
+            BeginGraphPass(m_graphScenePass);
+        }
+
         m_context->PSSetShaderResources(0, 1, &textureView);
 
         if (objectConstants.Alpha < 0.999f)
@@ -625,8 +644,14 @@ namespace Disparity
             return;
         }
 
+        EndGraphPass();
+        BeginGraphPass(m_graphPostPass);
         RenderPostProcess();
+        EndGraphPass();
+        BeginGraphPass(m_graphEditorPass);
         EditorGui::Render();
+        EndGraphPass();
+        EndGpuFrameProfile();
         m_swapChain->Present(m_settings.VSync ? 1u : 0u, 0);
         m_frameBegun = false;
     }
@@ -676,6 +701,16 @@ namespace Disparity
         return m_shadowDrawCalls;
     }
 
+    double Renderer::GetGpuFrameMilliseconds() const
+    {
+        return m_gpuFrameMilliseconds;
+    }
+
+    bool Renderer::IsGpuTimingAvailable() const
+    {
+        return m_gpuTimingSupported && m_gpuTimingValid;
+    }
+
     void Renderer::BuildFrameRenderGraph()
     {
         m_renderGraph.Reset();
@@ -684,19 +719,126 @@ namespace Disparity
         m_graphDepth = m_renderGraph.AddResource("Scene Depth", RenderGraphResourceKind::Texture);
         m_graphHistory = m_renderGraph.AddResource("Temporal History", RenderGraphResourceKind::Texture);
         m_graphShadowMap = m_renderGraph.AddResource("Directional Shadow Map", RenderGraphResourceKind::Texture);
-        uint32_t ignoredPass = m_renderGraph.AddPass("Clear HDR+Depth", {}, { m_graphHdrScene, m_graphDepth });
-        (void)ignoredPass;
+        m_graphClearPass = m_renderGraph.AddPass("Clear HDR+Depth", {}, { m_graphHdrScene, m_graphDepth });
+        m_graphShadowPass = std::numeric_limits<uint32_t>::max();
         if (m_settings.Shadows)
         {
-            ignoredPass = m_renderGraph.AddPass("Shadow Map", {}, { m_graphShadowMap });
-            (void)ignoredPass;
+            m_graphShadowPass = m_renderGraph.AddPass("Shadow Map", {}, { m_graphShadowMap });
         }
-        ignoredPass = m_renderGraph.AddPass("Scene Color", { m_graphShadowMap }, { m_graphHdrScene, m_graphDepth });
-        (void)ignoredPass;
-        ignoredPass = m_renderGraph.AddPass("Post Process", { m_graphHdrScene, m_graphDepth, m_graphHistory }, { m_graphBackBuffer, m_graphHistory });
-        (void)ignoredPass;
-        ignoredPass = m_renderGraph.AddPass("Editor UI", { m_graphBackBuffer }, { m_graphBackBuffer });
-        (void)ignoredPass;
+        std::vector<uint32_t> sceneReads;
+        if (m_settings.Shadows)
+        {
+            sceneReads.push_back(m_graphShadowMap);
+        }
+        m_graphScenePass = m_renderGraph.AddPass("Scene Color", std::move(sceneReads), { m_graphHdrScene, m_graphDepth });
+        m_graphPostPass = m_renderGraph.AddPass("Post Process", { m_graphHdrScene, m_graphDepth, m_graphHistory }, { m_graphBackBuffer, m_graphHistory });
+        m_graphEditorPass = m_renderGraph.AddPass("Editor UI", { m_graphBackBuffer }, { m_graphBackBuffer });
+        m_activeGraphPass = std::numeric_limits<uint32_t>::max();
+        (void)m_renderGraph.Compile();
+    }
+
+    void Renderer::BeginGraphPass(uint32_t passId)
+    {
+        if (passId == std::numeric_limits<uint32_t>::max())
+        {
+            return;
+        }
+
+        if (m_activeGraphPass == passId)
+        {
+            return;
+        }
+
+        EndGraphPass();
+        m_activeGraphPass = passId;
+        m_graphPassStart = std::chrono::steady_clock::now();
+    }
+
+    void Renderer::EndGraphPass()
+    {
+        if (m_activeGraphPass == std::numeric_limits<uint32_t>::max())
+        {
+            return;
+        }
+
+        const auto end = std::chrono::steady_clock::now();
+        m_renderGraph.RecordPassCpuTime(
+            m_activeGraphPass,
+            std::chrono::duration<double, std::milli>(end - m_graphPassStart).count());
+        m_activeGraphPass = std::numeric_limits<uint32_t>::max();
+    }
+
+    void Renderer::CreateGpuProfilingResources()
+    {
+        m_gpuTimingSupported = false;
+        m_gpuTimingValid = false;
+        m_gpuFrameQueryIssued = false;
+
+        if (!m_device)
+        {
+            return;
+        }
+
+        D3D11_QUERY_DESC disjointDesc = {};
+        disjointDesc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
+        D3D11_QUERY_DESC timestampDesc = {};
+        timestampDesc.Query = D3D11_QUERY_TIMESTAMP;
+
+        const HRESULT disjointResult = m_device->CreateQuery(&disjointDesc, m_gpuFrameDisjointQuery.GetAddressOf());
+        const HRESULT startResult = m_device->CreateQuery(&timestampDesc, m_gpuFrameStartQuery.GetAddressOf());
+        const HRESULT endResult = m_device->CreateQuery(&timestampDesc, m_gpuFrameEndQuery.GetAddressOf());
+        m_gpuTimingSupported = SUCCEEDED(disjointResult) && SUCCEEDED(startResult) && SUCCEEDED(endResult);
+    }
+
+    void Renderer::BeginGpuFrameProfile()
+    {
+        ResolveGpuFrameProfile();
+        if (!m_gpuTimingSupported || !m_context)
+        {
+            return;
+        }
+
+        m_context->Begin(m_gpuFrameDisjointQuery.Get());
+        m_context->End(m_gpuFrameStartQuery.Get());
+    }
+
+    void Renderer::EndGpuFrameProfile()
+    {
+        if (!m_gpuTimingSupported || !m_context)
+        {
+            return;
+        }
+
+        m_context->End(m_gpuFrameEndQuery.Get());
+        m_context->End(m_gpuFrameDisjointQuery.Get());
+        m_gpuFrameQueryIssued = true;
+    }
+
+    void Renderer::ResolveGpuFrameProfile()
+    {
+        if (!m_gpuTimingSupported || !m_context || !m_gpuFrameQueryIssued)
+        {
+            return;
+        }
+
+        D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint = {};
+        UINT64 startTicks = 0;
+        UINT64 endTicks = 0;
+        const UINT flags = D3D11_ASYNC_GETDATA_DONOTFLUSH;
+        const HRESULT disjointResult = m_context->GetData(m_gpuFrameDisjointQuery.Get(), &disjoint, sizeof(disjoint), flags);
+        const HRESULT startResult = m_context->GetData(m_gpuFrameStartQuery.Get(), &startTicks, sizeof(startTicks), flags);
+        const HRESULT endResult = m_context->GetData(m_gpuFrameEndQuery.Get(), &endTicks, sizeof(endTicks), flags);
+
+        m_gpuFrameQueryIssued = false;
+        if (disjointResult == S_OK && startResult == S_OK && endResult == S_OK && !disjoint.Disjoint && disjoint.Frequency > 0 && endTicks >= startTicks)
+        {
+            m_gpuFrameMilliseconds = (static_cast<double>(endTicks - startTicks) / static_cast<double>(disjoint.Frequency)) * 1000.0;
+            m_gpuTimingValid = true;
+            if (m_graphPostPass != std::numeric_limits<uint32_t>::max())
+            {
+                m_renderGraph.RecordPassGpuTime(m_graphPostPass, m_gpuFrameMilliseconds);
+            }
+        }
     }
 
     bool Renderer::CreateDeviceAndSwapChain()

@@ -47,7 +47,7 @@ Editor UI:
 - Dock panels into the main viewport, or drag panels outside the main window with ImGui multi-viewport enabled.
 - `Hierarchy`: select the player or scene entities, then copy/paste/duplicate/delete scene objects.
 - `Viewport`: enable the independent editor camera, frame the player/selection, and use right-drag or arrow/Page keys to move without driving gameplay input.
-- `Inspector`: edit transforms/materials and use simple transform gizmo buttons.
+- `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw colored 3D axis handles in the viewport.
 - `Assets`: reload scene/script, toggle hot reload, inspect the asset database, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, and play generated UI/SFX/spatial test tones.
@@ -114,12 +114,19 @@ Editor UI:
 - Scene files are versioned as v2 with stable object IDs while still loading older v1 scene lines.
 - `AssetDatabase` recognizes import settings, cooks dirty assets into metadata cache files through the job system, and exposes a glTF material export workflow.
 
+## Engine v6 Followups Implemented
+
+- `RenderGraph` now compiles pass dependencies into an execution schedule instead of only listing submitted passes.
+- Render graph diagnostics include pass CPU timings, resource lifetime ranges, validation errors, and scheduled pass order in the profiler.
+- The DX11 renderer records a GPU frame timestamp query and reports the most recent GPU frame time after the query warms up.
+- Selected objects and the player draw colored 3D transform handles at the active selection pivot.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Turn the live render-graph snapshot into actual pass scheduling/resource barriers and add GPU-driven culling.
-- Replace the button gizmo with real 3D transform handles and add object-ID selection buffers.
+- Turn the scheduled render graph into the authoritative renderer execution path with explicit resource transitions, aliases, async compute candidates, and GPU-driven culling.
+- Add a dedicated editor viewport render target, object-ID selection buffers, and interactive drag behavior for the 3D transform handles.
 - Add prefab variants, nested prefabs, dependency-aware apply/revert, and save-game separation.
 - Add production `.glb` cooking, animation retargeting/blending, and GPU skinning palettes.
 - Replace the WinMM prototype audio backend with XAudio2 voices, sends, snapshots, streamed layers, spatial emitters, and meters.

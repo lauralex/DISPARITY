@@ -14,14 +14,14 @@ Current shape:
 - Renderer backend is DirectX 11.
 - Dependency policy now allows the vendored Dear ImGui docking branch in `ThirdParty/imgui`; otherwise prefer Win32, DirectX 11, DirectXMath, WIC/WinMM, and the Windows SDK.
 - Geometry includes procedural primitives, procedural terrain, and a glTF 2.0 scene loader path for static mesh primitives, material texture binding, node instancing, skin metadata, joint/weight attributes, and animation sampler data.
-- Editor/runtime v5 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, copy/paste/duplicate/delete scene-object workflows, an independent editor camera, simple transform gizmo buttons, prefab apply/save workflows, visibly stronger post effects with debug views, bus-based audio controls, spatial tone preview, an asset database with import settings and cooked metadata files, a live render graph snapshot, job system, version reporting, crash logs, and CI/package verification scripts.
+- Editor/runtime v6 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, copy/paste/duplicate/delete scene-object workflows, an independent editor camera, simple transform gizmo buttons plus visible 3D selection handles, prefab apply/save workflows, visibly stronger post effects with debug views, bus-based audio controls, spatial tone preview, an asset database with import settings and cooked metadata files, a compiled render graph schedule with pass CPU timings/resource lifetimes/GPU frame timing, job system, version reporting, crash logs, and CI/package verification scripts.
 
 ## Important Paths
 
 - `DisparityEngine/Source/Disparity/Disparity.h`: public umbrella include.
 - `DisparityEngine/Source/Disparity/Core/`: application loop, input, time, logging, crash handler, version surface, layer hook.
 - `DisparityEngine/Source/Disparity/Rendering/Renderer.*`: DirectX 11 renderer, GPU resources, shader setup, draw calls, HDR post-processing.
-- `DisparityEngine/Source/Disparity/Rendering/RenderGraph.*`: small render graph scaffold for explicit future passes/resources.
+- `DisparityEngine/Source/Disparity/Rendering/RenderGraph.*`: compiled render graph scaffold with pass dependency scheduling, resource lifetimes, and timing diagnostics.
 - `DisparityEngine/Source/Disparity/Assets/`: asset database, material assets, simple JSON, glTF loading, asset hot reload, and tiny prefab IO.
 - `DisparityEngine/Source/Disparity/ECS/`: small entity/component registry.
 - `DisparityEngine/Source/Disparity/Diagnostics/`: frame profiler.
@@ -77,6 +77,7 @@ The Visual Studio debugger working directory is set to the solution directory so
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 - When mouse capture is released with `Tab`, left-click the main viewport to pick objects. Hold `Ctrl` while picking or selecting in Hierarchy for multi-selection.
 - The `Viewport` panel can enable the independent editor camera; right-drag or arrow/Page keys move that camera without moving the player.
+- Selected objects and the player draw colored 3D transform handles at the active selection pivot.
 
 ## Coding Conventions
 
@@ -90,7 +91,7 @@ The Visual Studio debugger working directory is set to the solution directory so
 
 ## Verified Baseline
 
-On 2026-04-26 after the v5 editor/assets/render-graph followup pass:
+On 2026-04-26 after the v6 render-graph/profiling/editor-handle followup pass:
 
 - `Debug|x64` built successfully with 0 warnings and 0 errors.
 - `Release|x64` built successfully with 0 warnings and 0 errors.
@@ -98,7 +99,7 @@ On 2026-04-26 after the v5 editor/assets/render-graph followup pass:
 - `Tools/SmokeTestDisparity.ps1 -Configuration Debug` launched `DisparityGame.exe`, kept it alive for 3 seconds, and closed it cleanly.
 - `Tools/PackageDisparity.ps1 -Configuration Release` produced `dist/DISPARITY-Release`.
 - `Tools/SmokeTestDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe` launched the packaged build for 3 seconds and closed it cleanly.
-- The v5 pass was committed only after the above checks and `git status --short` review.
+- The v6 pass was committed only after the above checks and `git status --short` review.
 
 After feature work, re-run Debug/Release builds, shader compiles for both HLSL files, runtime smoke, package script, packaged runtime smoke, and `git status --short` before declaring the repo healthy.
 
@@ -106,8 +107,8 @@ After feature work, re-run Debug/Release builds, shader compiles for both HLSL f
 
 Good next steps for making the engine more modern and AAA-like:
 
-- Replace the live render graph snapshot with actual pass scheduling, pass lifetime tracking, and GPU profiling.
-- Add a dedicated editor viewport render target, object-ID selection buffer, and real 3D gizmo handles.
+- Move renderer execution onto the compiled render graph with explicit resource transitions/aliases, graph-driven pass culling, and per-pass GPU timestamp scopes.
+- Add a dedicated editor viewport render target, object-ID selection buffer, and interactive drag behavior for the visible 3D gizmo handles.
 - Upgrade serialization to stable deterministic IDs, schema versions, undo grouping, prefab variants, dependency-aware apply/revert, and save-game separation.
 - Replace prototype glTF runtime loading and metadata cooking with true cooked `.glb` import, animation blending, retargeting, and GPU skinning palette upload.
 - Replace WinMM with XAudio2 or another production backend for voices, sends, snapshots, streamed music, spatial emitters, listener orientation, attenuation curves, and meters.

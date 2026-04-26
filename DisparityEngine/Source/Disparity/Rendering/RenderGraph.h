@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -23,10 +24,22 @@ namespace Disparity
 
     struct RenderGraphPass
     {
+        uint32_t Id = 0;
         std::string Name;
         std::vector<uint32_t> Reads;
         std::vector<uint32_t> Writes;
         std::function<void()> Execute;
+        uint32_t ExecutionOrder = std::numeric_limits<uint32_t>::max();
+        double LastCpuMilliseconds = 0.0;
+        double LastGpuMilliseconds = 0.0;
+    };
+
+    struct RenderGraphResourceLifetime
+    {
+        uint32_t ResourceId = 0;
+        uint32_t FirstPass = std::numeric_limits<uint32_t>::max();
+        uint32_t LastPass = 0;
+        bool External = false;
     };
 
     class RenderGraph
@@ -42,14 +55,23 @@ namespace Disparity
 
         [[nodiscard]] const std::vector<RenderGraphResource>& GetResources() const;
         [[nodiscard]] const std::vector<RenderGraphPass>& GetPasses() const;
+        [[nodiscard]] const std::vector<uint32_t>& GetExecutionOrder() const;
+        [[nodiscard]] const std::vector<RenderGraphResourceLifetime>& GetResourceLifetimes() const;
         [[nodiscard]] std::vector<std::string> Validate() const;
-        void Execute() const;
+        [[nodiscard]] bool Compile();
+        void Execute();
+        void RecordPassCpuTime(uint32_t passId, double milliseconds);
+        void RecordPassGpuTime(uint32_t passId, double milliseconds);
 
     private:
         [[nodiscard]] bool HasResource(uint32_t id) const;
+        [[nodiscard]] const RenderGraphResource* FindResource(uint32_t id) const;
 
         uint32_t m_nextResourceId = 1;
         std::vector<RenderGraphResource> m_resources;
         std::vector<RenderGraphPass> m_passes;
+        std::vector<uint32_t> m_executionOrder;
+        std::vector<RenderGraphResourceLifetime> m_resourceLifetimes;
+        std::vector<std::string> m_compileErrors;
     };
 }
