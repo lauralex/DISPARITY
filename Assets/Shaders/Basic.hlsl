@@ -143,5 +143,5 @@ float4 PSMain(VSOutput input) : SV_TARGET
     const float3 direct = diffuseColor * (AmbientIntensity + diffuse * LightColor * LightIntensity * shadow) + specular * LightColor * shadow;
     const float3 clustered = ComputePointLights(input.WorldPosition, normal, viewDir, diffuseColor);
     const float3 lit = direct + clustered;
-    return float4(saturate(lit), Alpha);
+    return float4(max(lit, 0.0f.xxx), Alpha);
 }

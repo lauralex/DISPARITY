@@ -6,10 +6,13 @@
 #include <array>
 #include <cfloat>
 #include <cmath>
+#include <cstddef>
 #include <deque>
 #include <filesystem>
 #include <limits>
+#include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -174,6 +177,23 @@ namespace
             {
                 RedoEdit();
             }
+            const bool editorShortcutAllowed = m_editorVisible && !io.WantTextInput;
+            if (editorShortcutAllowed && Disparity::Input::IsKeyDown(VK_CONTROL) && Disparity::Input::WasKeyPressed('C'))
+            {
+                CopySelectedObject();
+            }
+            if (editorShortcutAllowed && Disparity::Input::IsKeyDown(VK_CONTROL) && Disparity::Input::WasKeyPressed('V'))
+            {
+                PasteSceneObject();
+            }
+            if (editorShortcutAllowed && Disparity::Input::IsKeyDown(VK_CONTROL) && Disparity::Input::WasKeyPressed('D'))
+            {
+                DuplicateSelectedObject();
+            }
+            if (editorShortcutAllowed && Disparity::Input::WasKeyPressed(VK_DELETE))
+            {
+                DeleteSelectedObject();
+            }
 
             const DirectX::XMFLOAT2 mouseDelta = Disparity::Input::GetMouseDelta();
             if (Disparity::Input::IsMouseCaptured() && !editorCapturesMouse)
@@ -218,6 +238,7 @@ namespace
             renderer.SetLighting(light);
             DrawWorld(renderer);
             DrawPlayer(renderer);
+            DrawSelectionOutline(renderer);
         }
 
         void OnGui() override
@@ -683,6 +704,39 @@ namespace
             renderer.DrawMesh(m_cubeMesh, head, m_playerHeadMaterial);
         }
 
+        void DrawSelectionOutline(Disparity::Renderer& renderer)
+        {
+            Disparity::Material outlineMaterial;
+            outlineMaterial.Albedo = { 1.65f, 1.08f, 0.18f };
+            outlineMaterial.Roughness = 0.18f;
+            outlineMaterial.Metallic = 0.0f;
+            outlineMaterial.Alpha = 0.34f;
+
+            if (m_selectedPlayer)
+            {
+                Disparity::Transform body = PlayerBodyTransform();
+                body.Scale = Scale(body.Scale, 1.08f);
+                renderer.DrawMesh(m_cubeMesh, body, outlineMaterial);
+
+                Disparity::Transform head;
+                head.Position = Add(m_playerPosition, { 0.0f, 1.85f + m_playerBobOffset, 0.0f });
+                head.Rotation = { 0.0f, m_playerYaw, 0.0f };
+                head.Scale = { 0.62f, 0.52f, 0.62f };
+                renderer.DrawMesh(m_cubeMesh, head, outlineMaterial);
+                return;
+            }
+
+            if (m_selectedIndex >= m_scene.Count())
+            {
+                return;
+            }
+
+            const Disparity::NamedSceneObject& selected = m_scene.GetObjects()[m_selectedIndex];
+            Disparity::Transform outlineTransform = selected.Object.TransformData;
+            outlineTransform.Scale = Scale(outlineTransform.Scale, 1.06f);
+            renderer.DrawMesh(selected.Object.Mesh, outlineTransform, outlineMaterial);
+        }
+
         void DrawDockspace()
         {
             ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
@@ -714,6 +768,27 @@ namespace
                     if (ImGui::MenuItem("Redo", "Ctrl+Y", false, CanRedo()))
                     {
                         RedoEdit();
+                    }
+                    ImGui::EndMenu();
+                }
+
+                if (ImGui::BeginMenu("Edit"))
+                {
+                    if (ImGui::MenuItem("Copy", "Ctrl+C", false, CanCopySelection()))
+                    {
+                        CopySelectedObject();
+                    }
+                    if (ImGui::MenuItem("Paste", "Ctrl+V", false, m_sceneClipboard.has_value()))
+                    {
+                        PasteSceneObject();
+                    }
+                    if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, CanCopySelection()))
+                    {
+                        DuplicateSelectedObject();
+                    }
+                    if (ImGui::MenuItem("Delete", "Del", false, CanCopySelection()))
+                    {
+                        DeleteSelectedObject();
                     }
                     ImGui::EndMenu();
                 }
@@ -752,6 +827,27 @@ namespace
                     m_selectedPlayer = false;
                     m_selectedIndex = index;
                 }
+            }
+
+            ImGui::SeparatorText("Actions");
+            const bool canEditSelection = CanCopySelection();
+            if (ImGui::Button("Copy") && canEditSelection)
+            {
+                CopySelectedObject();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Paste") && m_sceneClipboard.has_value())
+            {
+                PasteSceneObject();
+            }
+            if (ImGui::Button("Duplicate") && canEditSelection)
+            {
+                DuplicateSelectedObject();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Delete") && canEditSelection)
+            {
+                DeleteSelectedObject();
             }
 
             ImGui::End();
@@ -888,6 +984,12 @@ namespace
             }
 
             ImGui::Checkbox("Hot reload assets", &m_hotReloadEnabled);
+            ImGui::SameLine();
+            if (ImGui::Button("Rescan Database"))
+            {
+                WatchAssets();
+                SetStatus("Rescanned asset database");
+            }
             if (ImGui::Button("Reload Scene + Script"))
             {
                 ReloadSceneAndScript();
@@ -910,13 +1012,40 @@ namespace
                 SaveSelectedPrefab(path);
             }
 
-            ImGui::SeparatorText("Known Assets");
-            ImGui::BulletText("Assets/Scenes/Prototype.dscene");
-            ImGui::BulletText("Assets/Scripts/Prototype.dscript");
-            ImGui::BulletText("Assets/Prefabs/Beacon.dprefab");
-            ImGui::BulletText("Assets/Meshes/SampleTriangle.gltf");
-            ImGui::BulletText("Assets/Materials/PlayerBody.dmat");
-            ImGui::BulletText("Assets/Materials/PlayerHead.dmat");
+            ImGui::SeparatorText("Asset Database");
+            ImGui::Text("Assets: %zu", m_assetDatabase.GetRecords().size());
+            ImGui::SameLine();
+            ImGui::Text("Dirty: %zu", m_assetDatabase.DirtyCount());
+
+            const std::map<Disparity::AssetKind, size_t> assetCounts = m_assetDatabase.CountByKind();
+            for (const auto& [kind, count] : assetCounts)
+            {
+                ImGui::Text("%s: %zu", Disparity::AssetDatabase::KindToString(kind), count);
+            }
+
+            if (ImGui::BeginTable("AssetTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0.0f, 145.0f)))
+            {
+                ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, 48.0f);
+                ImGui::TableSetupColumn("Kind", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+                ImGui::TableSetupColumn("Path");
+                ImGui::TableSetupColumn("Deps", ImGuiTableColumnFlags_WidthFixed, 44.0f);
+                ImGui::TableHeadersRow();
+
+                for (const Disparity::AssetRecord& record : m_assetDatabase.GetRecords())
+                {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(record.Dirty ? "Dirty" : "Cooked");
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(Disparity::AssetDatabase::KindToString(record.Kind));
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(record.Path.string().c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%zu", record.Dependencies.size());
+                }
+
+                ImGui::EndTable();
+            }
 
             ImGui::SeparatorText("glTF Metadata");
             ImGui::Text("Meshes: %zu", m_gltfSceneAsset.Meshes.size());
@@ -957,12 +1086,25 @@ namespace
             changed |= ImGui::Checkbox("Clustered lights", &settings.ClusteredLighting);
             changed |= ImGui::Checkbox("Bloom", &settings.Bloom);
             changed |= ImGui::Checkbox("SSAO", &settings.SSAO);
+            changed |= ImGui::Checkbox("Anti-aliasing", &settings.AntiAliasing);
             changed |= ImGui::Checkbox("Temporal AA", &settings.TemporalAA);
             changed |= ImGui::SliderFloat("Exposure", &settings.Exposure, 0.1f, 4.0f);
             changed |= ImGui::SliderFloat("Shadow strength", &settings.ShadowStrength, 0.0f, 0.95f);
             changed |= ImGui::SliderFloat("Bloom strength", &settings.BloomStrength, 0.0f, 1.25f);
+            changed |= ImGui::SliderFloat("Bloom threshold", &settings.BloomThreshold, 0.05f, 2.0f);
             changed |= ImGui::SliderFloat("SSAO strength", &settings.SsaoStrength, 0.0f, 1.0f);
+            changed |= ImGui::SliderFloat("AA strength", &settings.AntiAliasingStrength, 0.0f, 1.0f);
             changed |= ImGui::SliderFloat("TAA blend", &settings.TemporalBlend, 0.0f, 0.35f);
+            changed |= ImGui::SliderFloat("Saturation", &settings.ColorSaturation, 0.0f, 2.0f);
+            changed |= ImGui::SliderFloat("Contrast", &settings.ColorContrast, 0.0f, 2.0f);
+
+            const char* debugViews[] = { "Final", "Bloom", "SSAO mask", "AA edges", "Depth" };
+            int postDebugView = static_cast<int>(settings.PostDebugView);
+            if (ImGui::Combo("Post debug", &postDebugView, debugViews, IM_ARRAYSIZE(debugViews)))
+            {
+                settings.PostDebugView = static_cast<uint32_t>(postDebugView);
+                changed = true;
+            }
 
             if (changed)
             {
@@ -1039,8 +1181,10 @@ namespace
             }
 
             const Disparity::ProfileSnapshot snapshot = Disparity::Profiler::GetSnapshot();
+            ImGui::Text("%s %s (%s)", Disparity::Version::Name, Disparity::Version::ToString().c_str(), Disparity::Version::BuildConfiguration());
             ImGui::Text("FPS: %.1f", snapshot.FramesPerSecond);
             ImGui::Text("Frame: %.2f ms", snapshot.FrameMilliseconds);
+            ImGui::Text("Job workers: %u", Disparity::JobSystem::WorkerCount());
             ImGui::Separator();
             for (const Disparity::ProfileRecord& record : snapshot.Records)
             {
@@ -1176,6 +1320,101 @@ namespace
             SetStatus("Redo");
         }
 
+        bool CanCopySelection() const
+        {
+            return !m_selectedPlayer && m_scene.Count() > 0 && m_selectedIndex < m_scene.Count();
+        }
+
+        std::string MakeUniqueSceneObjectName(const std::string& requestedName) const
+        {
+            std::string baseName = requestedName.empty() ? "SceneObject" : requestedName;
+            std::string candidate = baseName;
+            int suffix = 1;
+
+            const auto nameExists = [this](const std::string& name) {
+                const auto& objects = m_scene.GetObjects();
+                return std::any_of(objects.begin(), objects.end(), [&name](const Disparity::NamedSceneObject& object) {
+                    return object.Name == name;
+                });
+            };
+
+            while (nameExists(candidate))
+            {
+                candidate = baseName + "_" + std::to_string(suffix++);
+            }
+
+            return candidate;
+        }
+
+        void CopySelectedObject()
+        {
+            if (!CanCopySelection())
+            {
+                return;
+            }
+
+            m_sceneClipboard = m_scene.GetObjects()[m_selectedIndex];
+            SetStatus("Copied " + m_sceneClipboard->Name);
+        }
+
+        void PasteSceneObject()
+        {
+            if (!m_sceneClipboard.has_value())
+            {
+                return;
+            }
+
+            const EditState before = CaptureEditState();
+            Disparity::NamedSceneObject pasted = *m_sceneClipboard;
+            pasted.Name = MakeUniqueSceneObjectName(pasted.Name);
+            pasted.Object.TransformData.Position.x += 0.75f;
+            pasted.Object.TransformData.Position.z += 0.75f;
+            m_scene.Add(pasted);
+            m_selectedPlayer = false;
+            m_selectedIndex = m_scene.Count() - 1u;
+            PushUndoState(before);
+            BuildRuntimeRegistry();
+            SetStatus("Pasted " + m_scene.GetObjects()[m_selectedIndex].Name);
+        }
+
+        void DuplicateSelectedObject()
+        {
+            if (!CanCopySelection())
+            {
+                return;
+            }
+
+            m_sceneClipboard = m_scene.GetObjects()[m_selectedIndex];
+            PasteSceneObject();
+            SetStatus("Duplicated " + m_scene.GetObjects()[m_selectedIndex].Name);
+        }
+
+        void DeleteSelectedObject()
+        {
+            if (!CanCopySelection())
+            {
+                return;
+            }
+
+            const EditState before = CaptureEditState();
+            const std::string deletedName = m_scene.GetObjects()[m_selectedIndex].Name;
+            std::vector<Disparity::NamedSceneObject>& objects = m_scene.GetObjects();
+            objects.erase(objects.begin() + static_cast<std::ptrdiff_t>(m_selectedIndex));
+            if (objects.empty())
+            {
+                m_selectedPlayer = true;
+                m_selectedIndex = 0;
+            }
+            else
+            {
+                m_selectedIndex = std::min(m_selectedIndex, objects.size() - 1u);
+            }
+
+            PushUndoState(before);
+            BuildRuntimeRegistry();
+            SetStatus("Deleted " + deletedName);
+        }
+
         void SaveSelectedPrefab(const std::filesystem::path& path)
         {
             if (m_selectedPlayer || m_selectedIndex >= m_scene.Count())
@@ -1232,12 +1471,25 @@ namespace
         void WatchAssets()
         {
             m_hotReloader.Clear();
-            m_hotReloader.Watch("Assets/Scenes/Prototype.dscene");
-            m_hotReloader.Watch("Assets/Scripts/Prototype.dscript");
-            m_hotReloader.Watch("Assets/Prefabs/Beacon.dprefab");
-            m_hotReloader.Watch("Assets/Meshes/SampleTriangle.gltf");
-            m_hotReloader.Watch("Assets/Materials/PlayerBody.dmat");
-            m_hotReloader.Watch("Assets/Materials/PlayerHead.dmat");
+            if (!m_assetDatabase.Scan("Assets"))
+            {
+                m_hotReloader.Watch("Assets/Scenes/Prototype.dscene");
+                m_hotReloader.Watch("Assets/Scripts/Prototype.dscript");
+                m_hotReloader.Watch("Assets/Prefabs/Beacon.dprefab");
+                m_hotReloader.Watch("Assets/Meshes/SampleTriangle.gltf");
+                m_hotReloader.Watch("Assets/Materials/PlayerBody.dmat");
+                m_hotReloader.Watch("Assets/Materials/PlayerHead.dmat");
+                return;
+            }
+
+            for (const Disparity::AssetRecord& record : m_assetDatabase.GetRecords())
+            {
+                m_hotReloader.Watch(record.Path);
+                for (const std::filesystem::path& dependency : record.Dependencies)
+                {
+                    m_hotReloader.Watch(dependency);
+                }
+            }
         }
 
         void PollHotReload(float dt)
@@ -1263,6 +1515,7 @@ namespace
             InitializeMaterials();
             ReloadGltfAssets();
             ReloadSceneAndScript();
+            WatchAssets();
             SetStatus("Hot reloaded " + std::to_string(changed.size()) + " asset(s)");
         }
 
@@ -1271,6 +1524,7 @@ namespace
         Disparity::Camera m_camera;
         Disparity::Registry m_registry;
         Disparity::Scene m_scene;
+        Disparity::AssetDatabase m_assetDatabase;
         Disparity::AssetHotReloader m_hotReloader;
         Disparity::GltfSceneAsset m_gltfSceneAsset;
         Disparity::BobAnimation m_playerBob;
@@ -1281,6 +1535,7 @@ namespace
         std::vector<size_t> m_gltfNodeSceneIndices;
         std::deque<EditState> m_undoStack;
         std::deque<EditState> m_redoStack;
+        std::optional<Disparity::NamedSceneObject> m_sceneClipboard;
         Disparity::Entity m_playerEntity = 0;
         Disparity::MeshHandle m_cubeMesh = 0;
         Disparity::MeshHandle m_planeMesh = 0;

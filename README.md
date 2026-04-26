@@ -38,15 +38,16 @@ Controls:
 - `F5`: reload the serialized scene and scene script; visible changes appear after editing `Assets/Scenes/Prototype.dscene` or `Assets/Scripts/Prototype.dscript`.
 - `F6`: save the runtime scene snapshot to `Saved/PrototypeRuntime.dscene` and show status in the editor menu bar.
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
+- `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 
 Editor UI:
 
 - `F1`: show/hide Dear ImGui editor panels.
 - Dock panels into the main viewport, or drag panels outside the main window with ImGui multi-viewport enabled.
-- `Hierarchy`: select the player or scene entities.
+- `Hierarchy`: select the player or scene entities, then copy/paste/duplicate/delete scene objects.
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons.
-- `Assets`: reload scene/script, toggle hot reload, inspect glTF metadata, and save/apply prefabs.
-- `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, and temporal AA.
+- `Assets`: reload scene/script, toggle hot reload, inspect the asset database, inspect glTF metadata, and save/apply prefabs.
+- `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, and play generated UI/SFX/spatial test tones.
 
 ## Engine v0 Features
@@ -94,12 +95,20 @@ Editor UI:
 - Renderer includes multiple point lights, a forward+/clustered-style light toggle, broader CSM-style shadow coverage, depth-SRV SSAO, bloom, and temporal history blending.
 - Audio has named buses, bus volume/mute controls, generated tones routed through buses, streamed/looped wave hooks, and simple stereo spatial tone preview.
 
+## Engine v4 Followups Implemented
+
+- Post processing is now intentionally visible: scene lighting stays HDR before post, bloom has threshold/strength controls, SSAO is stronger around depth contacts, anti-aliasing has an FXAA-style edge resolve, and the renderer panel includes Bloom/SSAO/AA/Depth debug views.
+- The editor draws a selected-object outline and supports copy, paste, duplicate, and delete from the Hierarchy panel, Edit menu, and keyboard shortcuts.
+- `AssetDatabase` scans `Assets`, classifies source files, tracks glTF/script/material dependencies, reports dirty cooked outputs, and feeds hot reload.
+- `RenderGraph` and `JobSystem` are added as small engine interfaces for future explicit render passes and async asset/runtime work.
+- Production hygiene now includes GitHub Actions Debug/Release builds, shader validation, packaging validation, `Tools/SmokeTestDisparity.ps1`, version reporting, and crash report files under `Saved/CrashLogs`.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Replace the prototype renderer with a render graph and GPU-driven culling path.
-- Add a true editor viewport with object picking, camera controls independent of game input, and full transform gizmo handles.
-- Replace the tiny scene/prefab formats with versioned serialization and dependency tracking.
-- Add production glTF/glb import, animation retargeting, GPU skinning palettes, and animation blending.
-- Add DX12/Vulkan backend research, async asset streaming, job system, and CI packaging.
+- Integrate the render graph into the live DirectX 11 renderer and add GPU-driven culling.
+- Add a true editor viewport with object picking, independent editor camera controls, and real 3D transform handles.
+- Replace the tiny scene/prefab formats with stable IDs, versioned serialization, variants, and dependency-aware apply/revert.
+- Add production `.glb` cooking, animation retargeting/blending, and GPU skinning palettes.
+- Replace the WinMM prototype audio backend with XAudio2 voices, sends, snapshots, streamed layers, spatial emitters, and meters.

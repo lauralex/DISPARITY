@@ -1,0 +1,42 @@
+name: Windows Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build Debug x64
+        run: msbuild DISPARITY.sln /m /p:Configuration=Debug /p:Platform=x64
+
+      - name: Build Release x64
+        run: msbuild DISPARITY.sln /m /p:Configuration=Release /p:Platform=x64
+
+      - name: Validate HLSL shaders
+        shell: pwsh
+        run: |
+          $fxc = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter fxc.exe |
+            Where-Object { $_.FullName -like "*\x64\fxc.exe" } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (!$fxc) {
+            throw "fxc.exe was not found."
+          }
+
+          & $fxc.FullName Assets/Shaders/Basic.hlsl /nologo /T vs_5_0 /E VSMain /Fo "$env:TEMP\basic_vs.cso"
+          & $fxc.FullName Assets/Shaders/Basic.hlsl /nologo /T ps_5_0 /E PSMain /Fo "$env:TEMP\basic_ps.cso"
+          & $fxc.FullName Assets/Shaders/PostProcess.hlsl /nologo /T vs_5_0 /E VSMain /Fo "$env:TEMP\post_vs.cso"
+          & $fxc.FullName Assets/Shaders/PostProcess.hlsl /nologo /T ps_5_0 /E PSMain /Fo "$env:TEMP\post_ps.cso"
+
+      - name: Package Release
+        shell: pwsh
+        run: ./Tools/PackageDisparity.ps1 -Configuration Release

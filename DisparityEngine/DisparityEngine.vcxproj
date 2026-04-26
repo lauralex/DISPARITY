@@ -67,6 +67,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Source\Disparity\Animation\Animation.h" />
+    <ClInclude Include="Source\Disparity\Assets\AssetDatabase.h" />
     <ClInclude Include="Source\Disparity\Assets\AssetHotReloader.h" />
     <ClInclude Include="Source\Disparity\Assets\GltfLoader.h" />
     <ClInclude Include="Source\Disparity\Assets\MaterialAsset.h" />
@@ -75,17 +76,21 @@
     <ClInclude Include="Source\Disparity\Audio\AudioSystem.h" />
     <ClInclude Include="Source\Disparity\Disparity.h" />
     <ClInclude Include="Source\Disparity\Core\Application.h" />
+    <ClInclude Include="Source\Disparity\Core\CrashHandler.h" />
     <ClInclude Include="Source\Disparity\Core\FileSystem.h" />
     <ClInclude Include="Source\Disparity\Core\Input.h" />
     <ClInclude Include="Source\Disparity\Core\Layer.h" />
     <ClInclude Include="Source\Disparity\Core\Log.h" />
     <ClInclude Include="Source\Disparity\Core\Time.h" />
+    <ClInclude Include="Source\Disparity\Core\Version.h" />
     <ClInclude Include="Source\Disparity\Diagnostics\Profiler.h" />
     <ClInclude Include="Source\Disparity\ECS\Registry.h" />
     <ClInclude Include="Source\Disparity\Editor\EditorGui.h" />
     <ClInclude Include="Source\Disparity\Editor\EditorOverlay.h" />
     <ClInclude Include="Source\Disparity\Math\Transform.h" />
+    <ClInclude Include="Source\Disparity\Rendering\RenderGraph.h" />
     <ClInclude Include="Source\Disparity\Rendering\Renderer.h" />
+    <ClInclude Include="Source\Disparity\Runtime\JobSystem.h" />
     <ClInclude Include="Source\Disparity\Scripting\ScriptRunner.h" />
     <ClInclude Include="Source\Disparity\Scene\Camera.h" />
     <ClInclude Include="Source\Disparity\Scene\Material.h" />
@@ -96,6 +101,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Disparity\Animation\Animation.cpp" />
+    <ClCompile Include="Source\Disparity\Assets\AssetDatabase.cpp" />
     <ClCompile Include="Source\Disparity\Assets\AssetHotReloader.cpp" />
     <ClCompile Include="Source\Disparity\Assets\GltfLoader.cpp" />
     <ClCompile Include="Source\Disparity\Assets\MaterialAsset.cpp" />
@@ -103,6 +109,7 @@
     <ClCompile Include="Source\Disparity\Assets\SimpleJson.cpp" />
     <ClCompile Include="Source\Disparity\Audio\AudioSystem.cpp" />
     <ClCompile Include="Source\Disparity\Core\Application.cpp" />
+    <ClCompile Include="Source\Disparity\Core\CrashHandler.cpp" />
     <ClCompile Include="Source\Disparity\Core\FileSystem.cpp" />
     <ClCompile Include="Source\Disparity\Core\Input.cpp" />
     <ClCompile Include="Source\Disparity\Core\Log.cpp" />
@@ -111,7 +118,9 @@
     <ClCompile Include="Source\Disparity\ECS\Registry.cpp" />
     <ClCompile Include="Source\Disparity\Editor\EditorGui.cpp" />
     <ClCompile Include="Source\Disparity\Editor\EditorOverlay.cpp" />
+    <ClCompile Include="Source\Disparity\Rendering\RenderGraph.cpp" />
     <ClCompile Include="Source\Disparity\Rendering\Renderer.cpp" />
+    <ClCompile Include="Source\Disparity\Runtime\JobSystem.cpp" />
     <ClCompile Include="Source\Disparity\Scripting\ScriptRunner.cpp" />
     <ClCompile Include="Source\Disparity\Scene\Camera.cpp" />
     <ClCompile Include="Source\Disparity\Scene\PrimitiveFactory.cpp" />

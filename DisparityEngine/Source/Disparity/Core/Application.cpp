@@ -1,5 +1,6 @@
 #include "Disparity/Core/Application.h"
 
+#include "Disparity/Core/CrashHandler.h"
 #include "Disparity/Core/Input.h"
 #include "Disparity/Core/Layer.h"
 #include "Disparity/Core/Log.h"
@@ -7,6 +8,7 @@
 #include "Disparity/Audio/AudioSystem.h"
 #include "Disparity/Diagnostics/Profiler.h"
 #include "Disparity/Editor/EditorGui.h"
+#include "Disparity/Runtime/JobSystem.h"
 
 #include <algorithm>
 
@@ -42,10 +44,12 @@ namespace Disparity
             return -1;
         }
 
+        CrashHandler::Install();
         ShowWindow(m_windowHandle, SW_SHOW);
         UpdateWindow(m_windowHandle);
 
         AudioSystem::Initialize();
+        JobSystem::Initialize();
         Input::Initialize(m_windowHandle);
 
         if (!m_renderer.Initialize(m_windowHandle, m_width, m_height))
@@ -149,6 +153,7 @@ namespace Disparity
         m_renderer.Shutdown();
         m_rendererInitialized = false;
         Input::Shutdown();
+        JobSystem::Shutdown();
         AudioSystem::Shutdown();
         DestroyMainWindow();
 

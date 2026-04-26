@@ -41,12 +41,18 @@ namespace Disparity
         bool ClusteredLighting = true;
         bool Bloom = true;
         bool SSAO = true;
+        bool AntiAliasing = true;
         bool TemporalAA = true;
         float Exposure = 1.0f;
         float ShadowStrength = 0.48f;
-        float BloomStrength = 0.18f;
-        float SsaoStrength = 0.22f;
-        float TemporalBlend = 0.08f;
+        float BloomStrength = 0.42f;
+        float BloomThreshold = 0.72f;
+        float SsaoStrength = 0.55f;
+        float AntiAliasingStrength = 0.85f;
+        float TemporalBlend = 0.12f;
+        float ColorSaturation = 1.04f;
+        float ColorContrast = 1.03f;
+        uint32_t PostDebugView = 0;
         uint32_t ShadowMapSize = 2048;
     };
 

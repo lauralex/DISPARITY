@@ -53,6 +53,13 @@ namespace Disparity
             float TaaBlend = 0.0f;
             float HistoryValid = 0.0f;
             DirectX::XMFLOAT2 InvResolution = {};
+            float BloomThreshold = 0.72f;
+            float AntiAliasingStrength = 0.0f;
+            float ColorSaturation = 1.0f;
+            float ColorContrast = 1.0f;
+            float PostDebugView = 0.0f;
+            float AntiAliasingEnabled = 0.0f;
+            DirectX::XMFLOAT2 Padding = {};
         };
 
         std::string HrToString(HRESULT hr)
@@ -443,8 +450,13 @@ namespace Disparity
         m_settings.Exposure = std::clamp(m_settings.Exposure, 0.1f, 4.0f);
         m_settings.ShadowStrength = std::clamp(m_settings.ShadowStrength, 0.0f, 0.95f);
         m_settings.BloomStrength = std::clamp(m_settings.BloomStrength, 0.0f, 1.25f);
+        m_settings.BloomThreshold = std::clamp(m_settings.BloomThreshold, 0.05f, 2.0f);
         m_settings.SsaoStrength = std::clamp(m_settings.SsaoStrength, 0.0f, 1.0f);
+        m_settings.AntiAliasingStrength = std::clamp(m_settings.AntiAliasingStrength, 0.0f, 1.0f);
         m_settings.TemporalBlend = std::clamp(m_settings.TemporalBlend, 0.0f, 0.35f);
+        m_settings.ColorSaturation = std::clamp(m_settings.ColorSaturation, 0.0f, 2.0f);
+        m_settings.ColorContrast = std::clamp(m_settings.ColorContrast, 0.0f, 2.0f);
+        m_settings.PostDebugView = std::clamp(m_settings.PostDebugView, 0u, 4u);
         m_settings.ShadowMapSize = std::clamp(m_settings.ShadowMapSize, 512u, 4096u);
     }
 
@@ -1181,6 +1193,12 @@ namespace Disparity
             1.0f / static_cast<float>(std::max(1u, m_width)),
             1.0f / static_cast<float>(std::max(1u, m_height))
         };
+        postConstants.BloomThreshold = m_settings.BloomThreshold;
+        postConstants.AntiAliasingStrength = m_settings.AntiAliasingStrength;
+        postConstants.ColorSaturation = m_settings.ColorSaturation;
+        postConstants.ColorContrast = m_settings.ColorContrast;
+        postConstants.PostDebugView = static_cast<float>(m_settings.PostDebugView);
+        postConstants.AntiAliasingEnabled = m_settings.AntiAliasing ? 1.0f : 0.0f;
         m_context->UpdateSubresource(m_postConstantBuffer.Get(), 0, nullptr, &postConstants, 0, 0);
 
         ID3D11Buffer* postBuffer = m_postConstantBuffer.Get();

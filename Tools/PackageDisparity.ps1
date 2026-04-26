@@ -18,6 +18,7 @@ if (Test-Path $dist) {
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 Copy-Item -LiteralPath (Join-Path $root "bin\x64\$Configuration\DisparityGame.exe") -Destination $dist
 Copy-Item -LiteralPath (Join-Path $root "Assets") -Destination $dist -Recurse
+Copy-Item -LiteralPath (Join-Path $root "Docs") -Destination $dist -Recurse
 Copy-Item -LiteralPath (Join-Path $root "README.md") -Destination $dist
 
 Write-Host "Packaged DISPARITY to $dist"
