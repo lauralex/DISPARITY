@@ -30,7 +30,7 @@ namespace Disparity
 
         void SetLayer(std::unique_ptr<Layer> layer);
         int Run();
-        void RequestExit();
+        void RequestExit(int exitCode = 0);
 
         [[nodiscard]] Renderer& GetRenderer();
         [[nodiscard]] HWND GetWindowHandle() const;
@@ -50,6 +50,7 @@ namespace Disparity
         std::unique_ptr<Layer> m_layer;
         bool m_running = false;
         bool m_rendererInitialized = false;
+        int m_exitCode = 0;
         uint32_t m_width = 0;
         uint32_t m_height = 0;
     };

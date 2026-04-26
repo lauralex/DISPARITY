@@ -61,13 +61,20 @@ The packaged build is written to `dist/DISPARITY-Release`.
 
 ## Verification
 
-Useful local checks:
+Use the full local gate before calling the repository healthy:
 
 ```powershell
-& "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe" .\DISPARITY.sln /m /p:Configuration=Debug /p:Platform=x64
-& "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe" .\DISPARITY.sln /m /p:Configuration=Release /p:Platform=x64
-powershell -ExecutionPolicy Bypass -File .\Tools\SmokeTestDisparity.ps1 -Configuration Debug
-powershell -ExecutionPolicy Bypass -File .\Tools\PackageDisparity.ps1 -Configuration Release
+powershell -ExecutionPolicy Bypass -File .\Tools\VerifyDisparity.ps1
 ```
 
-Crashes write a small report to `Saved/CrashLogs`. GitHub Actions also builds Debug/Release, compiles both shader files, and runs the Release package step.
+The verification script runs `git diff --check`, warning-free Debug and Release builds, MSVC static analysis, all shader entry-point compiles, Debug window smoke, Debug runtime self-verification, Release packaging, packaged window smoke, and packaged runtime self-verification.
+
+Targeted checks are still useful while iterating:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Tools\SmokeTestDisparity.ps1 -Configuration Debug -ExerciseWindow
+powershell -ExecutionPolicy Bypass -File .\Tools\RuntimeVerifyDisparity.ps1 -Configuration Debug -Frames 90
+.\bin\x64\Debug\DisparityGame.exe --verify-runtime --verify-frames=90
+```
+
+Runtime verification writes `Saved/Verification/runtime_verify.txt` and exits non-zero if a runtime invariant fails. Crashes write a small report to `Saved/CrashLogs`. GitHub Actions runs the static side of `Tools/VerifyDisparity.ps1`; interactive runtime smoke remains a local gate.

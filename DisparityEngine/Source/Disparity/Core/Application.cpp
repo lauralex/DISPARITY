@@ -70,6 +70,7 @@ namespace Disparity
         Clock clock;
         double fixedAccumulator = 0.0;
         m_running = true;
+        m_exitCode = 0;
 
         while (m_running)
         {
@@ -82,6 +83,10 @@ namespace Disparity
                 if (message.message == WM_QUIT)
                 {
                     m_running = false;
+                    if (m_exitCode == 0)
+                    {
+                        m_exitCode = static_cast<int>(message.wParam);
+                    }
                     break;
                 }
 
@@ -157,13 +162,14 @@ namespace Disparity
         AudioSystem::Shutdown();
         DestroyMainWindow();
 
-        return 0;
+        return m_exitCode;
     }
 
-    void Application::RequestExit()
+    void Application::RequestExit(int exitCode)
     {
+        m_exitCode = exitCode;
         m_running = false;
-        PostQuitMessage(0);
+        PostQuitMessage(exitCode);
     }
 
     Renderer& Application::GetRenderer()

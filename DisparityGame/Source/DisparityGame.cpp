@@ -10,11 +10,13 @@
 #include <cctype>
 #include <deque>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <limits>
 #include <map>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -161,9 +163,42 @@ namespace
         return asset.MaterialData;
     }
 
+    struct RuntimeVerificationConfig
+    {
+        bool Enabled = false;
+        uint32_t TargetFrames = 90;
+        std::filesystem::path ReportPath = "Saved/Verification/runtime_verify.txt";
+    };
+
+    uint32_t ParseUnsignedArgument(const std::wstring& arguments, const std::wstring& name, uint32_t fallback)
+    {
+        const size_t begin = arguments.find(name);
+        if (begin == std::wstring::npos)
+        {
+            return fallback;
+        }
+
+        const size_t valueBegin = begin + name.size();
+        const size_t valueEnd = arguments.find(L' ', valueBegin);
+        const std::wstring value = arguments.substr(valueBegin, valueEnd == std::wstring::npos ? std::wstring::npos : valueEnd - valueBegin);
+        try
+        {
+            return static_cast<uint32_t>(std::stoul(value));
+        }
+        catch (...)
+        {
+            return fallback;
+        }
+    }
+
     class DisparityGameLayer final : public Disparity::Layer
     {
     public:
+        explicit DisparityGameLayer(RuntimeVerificationConfig runtimeVerification = {})
+            : m_runtimeVerification(std::move(runtimeVerification))
+        {
+        }
+
         bool OnAttach(Disparity::Application& application) override
         {
             m_application = &application;
@@ -208,6 +243,12 @@ namespace
 
             UpdateCamera();
             UpdateEditorCamera(0.0f, true, true);
+            if (m_runtimeVerification.Enabled)
+            {
+                m_editorVisible = false;
+                m_hotReloadEnabled = false;
+                AddRuntimeVerificationNote("Runtime verification mode enabled.");
+            }
             return true;
         }
 
@@ -298,6 +339,7 @@ namespace
             UpdateEditorCamera(dt, editorCapturesMouse, editorCapturesKeyboard);
             Disparity::AudioSystem::SetListenerPosition(GetRenderCamera().GetPosition());
             UpdateStatusTimer(dt);
+            UpdateRuntimeVerification(dt);
         }
 
         void OnRender(Disparity::Renderer& renderer) override
@@ -1774,6 +1816,218 @@ namespace
             m_statusTimer = 2.5f;
         }
 
+        void AddRuntimeVerificationNote(std::string note)
+        {
+            m_runtimeVerificationNotes.push_back(std::move(note));
+        }
+
+        void AddRuntimeVerificationFailure(std::string failure)
+        {
+            if (std::find(m_runtimeVerificationFailures.begin(), m_runtimeVerificationFailures.end(), failure) == m_runtimeVerificationFailures.end())
+            {
+                m_runtimeVerificationFailures.push_back(std::move(failure));
+            }
+        }
+
+        void UpdateRuntimeVerification(float dt)
+        {
+            if (!m_runtimeVerification.Enabled || m_runtimeVerificationFinished)
+            {
+                return;
+            }
+
+            ++m_runtimeVerificationFrame;
+            m_runtimeVerificationElapsed += dt;
+
+            ExerciseRuntimeVerification();
+            if (m_runtimeVerificationFrame >= m_runtimeVerification.TargetFrames || m_runtimeVerificationElapsed >= 20.0f)
+            {
+                CompleteRuntimeVerification();
+            }
+        }
+
+        void ExerciseRuntimeVerification()
+        {
+            if (m_runtimeVerificationFrame == 2)
+            {
+                ValidateRuntimeVerificationState("startup");
+            }
+
+            if (!m_runtimeVerificationReloadedScene && m_runtimeVerificationFrame >= 8)
+            {
+                ReloadSceneAndScript();
+                AddRuntimeVerificationNote("Reloaded scene and script.");
+                m_runtimeVerificationReloadedScene = true;
+            }
+
+            if (!m_runtimeVerificationSavedScene && m_runtimeVerificationFrame >= 14)
+            {
+                SaveRuntimeScene();
+                if (!std::filesystem::exists("Saved/PrototypeRuntime.dscene"))
+                {
+                    AddRuntimeVerificationFailure("Runtime scene snapshot was not written.");
+                }
+                AddRuntimeVerificationNote("Saved runtime scene snapshot.");
+                m_runtimeVerificationSavedScene = true;
+            }
+
+            if (!m_runtimeVerificationExercisedRenderer && m_runtimeVerificationFrame >= 20 && m_renderer)
+            {
+                m_runtimeVerificationOriginalRendererSettings = m_renderer->GetSettings();
+                Disparity::RendererSettings settings = *m_runtimeVerificationOriginalRendererSettings;
+                settings.PostDebugView = 1;
+                settings.Bloom = !settings.Bloom;
+                settings.SSAO = !settings.SSAO;
+                settings.AntiAliasing = !settings.AntiAliasing;
+                m_renderer->SetSettings(settings);
+                m_renderer->SetSettings(*m_runtimeVerificationOriginalRendererSettings);
+                AddRuntimeVerificationNote("Toggled renderer post settings and restored defaults.");
+                m_runtimeVerificationExercisedRenderer = true;
+            }
+
+            if (!m_runtimeVerificationCycledSelection && m_runtimeVerificationFrame >= 26)
+            {
+                CycleSelection();
+                AddRuntimeVerificationNote("Cycled editor selection.");
+                m_runtimeVerificationCycledSelection = true;
+            }
+        }
+
+        void ValidateRuntimeVerificationState(const char* stage)
+        {
+            if (!m_application)
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": application pointer is null.");
+            }
+            if (!m_renderer)
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": renderer pointer is null.");
+                return;
+            }
+
+            if (m_renderer->GetWidth() == 0 || m_renderer->GetHeight() == 0)
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": renderer dimensions are invalid.");
+            }
+            if (m_cubeMesh == 0 || m_planeMesh == 0 || m_terrainMesh == 0 || m_gizmoRingMesh == 0 || m_gizmoPlaneHandleMesh == 0)
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": a required procedural mesh handle is missing.");
+            }
+            if (m_scene.Count() == 0)
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": scene has no objects.");
+            }
+            if (m_sceneEntities.size() != m_scene.Count())
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": ECS scene entity count does not match scene object count.");
+            }
+            if (!std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Shaders/Basic.hlsl")) ||
+                !std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Shaders/PostProcess.hlsl")))
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": required shader assets are missing.");
+            }
+            if (!std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Scenes/Prototype.dscene")) ||
+                !std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Scripts/Prototype.dscript")))
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": required scene or script asset is missing.");
+            }
+
+            if (m_runtimeVerificationFrame > 3 && m_renderer->GetFrameDrawCalls() == 0)
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": renderer reported zero frame draw calls after warmup.");
+            }
+            if (m_runtimeVerificationFrame > 3 && m_renderer->GetSceneDrawCalls() == 0)
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": renderer reported zero scene draw calls after warmup.");
+            }
+            if (m_runtimeVerificationFrame > 3 && m_renderer->GetSettings().Shadows && m_renderer->GetShadowDrawCalls() == 0)
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": shadows are enabled but zero shadow draw calls were recorded.");
+            }
+
+            const Disparity::RenderGraph& graph = m_renderer->GetRenderGraph();
+            if (m_runtimeVerificationFrame > 3)
+            {
+                if (graph.GetPasses().empty() || graph.GetResources().empty() || graph.GetExecutionOrder().empty())
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": render graph has no compiled passes/resources/order.");
+                }
+
+                for (const std::string& error : graph.Validate())
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": render graph validation: " + error);
+                }
+            }
+        }
+
+        void CompleteRuntimeVerification()
+        {
+            ValidateRuntimeVerificationState("final");
+            if (m_runtimeVerificationOriginalRendererSettings.has_value() && m_renderer)
+            {
+                m_renderer->SetSettings(*m_runtimeVerificationOriginalRendererSettings);
+            }
+
+            const bool passed = m_runtimeVerificationFailures.empty();
+            WriteRuntimeVerificationReport(passed);
+            m_runtimeVerificationFinished = true;
+            if (m_application)
+            {
+                m_application->RequestExit(passed ? 0 : 20);
+            }
+        }
+
+        void WriteRuntimeVerificationReport(bool passed) const
+        {
+            const std::filesystem::path reportPath = m_runtimeVerification.ReportPath;
+            if (reportPath.has_parent_path())
+            {
+                std::filesystem::create_directories(reportPath.parent_path());
+            }
+
+            std::ofstream report(reportPath, std::ios::trunc);
+            if (!report)
+            {
+                return;
+            }
+
+            report << (passed ? "PASS" : "FAIL") << "\n";
+            report << "version=" << Disparity::Version::ToString() << "\n";
+            report << "frames=" << m_runtimeVerificationFrame << "\n";
+            report << "elapsed_seconds=" << m_runtimeVerificationElapsed << "\n";
+            report << "scene_objects=" << m_scene.Count() << "\n";
+            report << "scene_entities=" << m_sceneEntities.size() << "\n";
+            report << "draw_calls=" << (m_renderer ? m_renderer->GetFrameDrawCalls() : 0) << "\n";
+            report << "scene_draw_calls=" << (m_renderer ? m_renderer->GetSceneDrawCalls() : 0) << "\n";
+            report << "shadow_draw_calls=" << (m_renderer ? m_renderer->GetShadowDrawCalls() : 0) << "\n";
+            if (m_renderer)
+            {
+                const Disparity::RenderGraph& graph = m_renderer->GetRenderGraph();
+                report << "render_graph_passes=" << graph.GetPasses().size() << "\n";
+                report << "render_graph_resources=" << graph.GetResources().size() << "\n";
+                report << "render_graph_order=" << graph.GetExecutionOrder().size() << "\n";
+            }
+
+            report << "\nnotes:\n";
+            for (const std::string& note : m_runtimeVerificationNotes)
+            {
+                report << "- " << note << "\n";
+            }
+
+            report << "\nfailures:\n";
+            if (m_runtimeVerificationFailures.empty())
+            {
+                report << "- none\n";
+            }
+            else
+            {
+                for (const std::string& failure : m_runtimeVerificationFailures)
+                {
+                    report << "- " << failure << "\n";
+                }
+            }
+        }
+
         EditState CaptureEditState() const
         {
             EditState state;
@@ -2925,7 +3179,10 @@ namespace
         std::deque<std::string> m_commandHistory;
         std::optional<Disparity::NamedSceneObject> m_sceneClipboard;
         std::optional<EditState> m_gizmoDragBeforeState;
+        std::optional<Disparity::RendererSettings> m_runtimeVerificationOriginalRendererSettings;
         std::vector<GizmoDragObject> m_gizmoDragObjects;
+        std::vector<std::string> m_runtimeVerificationNotes;
+        std::vector<std::string> m_runtimeVerificationFailures;
         Disparity::Entity m_playerEntity = 0;
         Disparity::MeshHandle m_cubeMesh = 0;
         Disparity::MeshHandle m_planeMesh = 0;
@@ -2962,15 +3219,23 @@ namespace
         float m_sceneAnimationTime = 0.0f;
         float m_statusTimer = 0.0f;
         float m_hotReloadPollTimer = 0.0f;
+        float m_runtimeVerificationElapsed = 0.0f;
         size_t m_selectedIndex = 0;
+        uint32_t m_runtimeVerificationFrame = 0;
         DirectX::XMFLOAT3 m_editorCameraTarget = { 0.0f, 1.1f, 0.0f };
         DirectX::XMFLOAT2 m_editorLastMousePosition = {};
+        RuntimeVerificationConfig m_runtimeVerification;
         bool m_selectedPlayer = true;
         bool m_editorVisible = true;
         bool m_editorCameraEnabled = false;
         bool m_hotReloadEnabled = true;
         bool m_gltfAnimationPlayback = true;
         bool m_applyingHistory = false;
+        bool m_runtimeVerificationFinished = false;
+        bool m_runtimeVerificationReloadedScene = false;
+        bool m_runtimeVerificationSavedScene = false;
+        bool m_runtimeVerificationExercisedRenderer = false;
+        bool m_runtimeVerificationCycledSelection = false;
         bool m_gizmoDragging = false;
         bool m_gizmoDragMoved = false;
         GizmoAxis m_gizmoDragAxis = GizmoAxis::None;
@@ -2985,13 +3250,17 @@ namespace
     };
 }
 
-int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previousInstance, PWSTR commandLine, int commandShow)
+int WINAPI wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE previousInstance, _In_ PWSTR commandLine, _In_ int commandShow)
 {
     (void)previousInstance;
-    (void)commandLine;
     (void)commandShow;
 
+    RuntimeVerificationConfig runtimeVerification;
+    const std::wstring arguments = commandLine ? commandLine : L"";
+    runtimeVerification.Enabled = arguments.find(L"--verify-runtime") != std::wstring::npos;
+    runtimeVerification.TargetFrames = ParseUnsignedArgument(arguments, L"--verify-frames=", runtimeVerification.TargetFrames);
+
     Disparity::Application app({ instance, L"DISPARITY", 1280, 720 });
-    app.SetLayer(std::make_unique<DisparityGameLayer>());
+    app.SetLayer(std::make_unique<DisparityGameLayer>(runtimeVerification));
     return app.Run();
 }

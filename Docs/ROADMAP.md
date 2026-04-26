@@ -1,6 +1,6 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v9 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
+The current engine now has functional v10 versions of many requested followups. The next milestones should turn those prototypes into durable production systems.
 
 ## Editor
 
@@ -39,5 +39,6 @@ The current engine now has functional v9 versions of many requested followups. T
 
 ## Production
 
-- Extend the new GitHub Actions build/shader/package workflow with packaged smoke tests that launch from `dist` in an interactive desktop environment.
+- Add image-based rendering regression captures, deterministic input playback, and frame-time/per-pass performance budgets to the new verification harness.
+- Extend CI with packaged runtime smoke tests when an interactive desktop runner is available.
 - Add installer-style packaging, symbols handling, versioned release artifacts, and crash upload plumbing beyond local `Saved/CrashLogs` reports.

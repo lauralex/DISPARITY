@@ -144,6 +144,14 @@ Editor UI:
 - Translate mode adds translucent XY/XZ/YZ planar drag handles for moving selected scene objects on two axes at once.
 - Gizmo picking, drag status, snapping, and undo labels now understand both axis handles and plane handles.
 
+## Engine v10 Followups Implemented
+
+- The application can now return explicit non-zero exit codes from runtime self-verification failures.
+- `DisparityGame.exe --verify-runtime --verify-frames=N` runs deterministic runtime checks, exercises scene reload, runtime scene saving, renderer setting toggles, selection changes, draw-call counters, and render-graph validation, then writes `Saved/Verification/runtime_verify.txt`.
+- `Tools/SmokeTestDisparity.ps1` now waits for the actual DISPARITY window, can resize it, and can send basic editor hotkeys before closing.
+- `Tools/RuntimeVerifyDisparity.ps1` and `Tools/VerifyDisparity.ps1` provide repeatable local static/runtime verification, including warning-free Debug/Release builds, optional MSVC static analysis, shader compilation, window smoke, runtime self-test, packaging, and packaged runtime self-test.
+- GitHub Actions now uses the unified verification script for static CI coverage.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
@@ -153,3 +161,4 @@ More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 - Add prefab variants, nested prefabs, dependency-aware apply/revert, and save-game separation.
 - Add production `.glb` cooking, animation retargeting/blending, and GPU skinning palettes.
 - Replace the WinMM prototype audio backend with XAudio2 voices, sends, snapshots, streamed layers, spatial emitters, and meters.
+- Add image-based rendering regression captures, input playback tests, and performance budgets on top of the new runtime verifier.

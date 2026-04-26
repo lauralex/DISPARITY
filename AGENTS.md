@@ -14,7 +14,7 @@ Current shape:
 - Renderer backend is DirectX 11.
 - Dependency policy now allows the vendored Dear ImGui docking branch in `ThirdParty/imgui`; otherwise prefer Win32, DirectX 11, DirectXMath, WIC/WinMM, and the Windows SDK.
 - Geometry includes procedural primitives, procedural terrain, and a glTF 2.0 scene loader path for static mesh primitives, material texture binding, node instancing, skin metadata, joint/weight attributes, and animation sampler data.
-- Editor/runtime v9 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, copy/paste/duplicate/delete scene-object workflows, an independent editor camera with right-drag WASD/QE fly controls, simple transform gizmo buttons plus camera-scaled 3D translate/rotate/scale handles, torus rotate rings, translucent XY/XZ/YZ translate-plane handles, snapping and world/local space, prefab apply/save workflows, visibly stronger post effects with debug views, bus-based audio controls, spatial tone preview, an asset database with import settings and cooked metadata files, a compiled render graph schedule with pass CPU/GPU timings, culled passes, transition diagnostics, alias candidates, resource lifetimes, job system, version reporting, crash logs, and CI/package verification scripts.
+- Editor/runtime v10 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, copy/paste/duplicate/delete scene-object workflows, an independent editor camera with right-drag WASD/QE fly controls, simple transform gizmo buttons plus camera-scaled 3D translate/rotate/scale handles, torus rotate rings, translucent XY/XZ/YZ translate-plane handles, snapping and world/local space, prefab apply/save workflows, visibly stronger post effects with debug views, bus-based audio controls, spatial tone preview, an asset database with import settings and cooked metadata files, a compiled render graph schedule with pass CPU/GPU timings, culled passes, transition diagnostics, alias candidates, resource lifetimes, job system, version reporting, crash logs, runtime self-verification, stronger window smoke tests, and unified static/runtime verification scripts.
 
 ## Important Paths
 
@@ -40,8 +40,10 @@ Current shape:
 - `Assets/Prefabs/Beacon.dprefab`: tiny prefab used by the script.
 - `Assets/Meshes/SampleTriangle.gltf`: embedded-buffer sample glTF mesh for loader validation.
 - `Tools/PackageDisparity.ps1`: Release/Debug packaging helper.
-- `Tools/SmokeTestDisparity.ps1`: launch-and-close runtime smoke helper.
-- `.github/workflows/windows-build.yml`: GitHub Actions Debug/Release build, shader validation, and package validation.
+- `Tools/SmokeTestDisparity.ps1`: launch, window-detect, resize/hotkey, and close runtime smoke helper.
+- `Tools/RuntimeVerifyDisparity.ps1`: launches `DisparityGame.exe --verify-runtime`, waits for the runtime PASS/FAIL report, and fails on non-zero exit.
+- `Tools/VerifyDisparity.ps1`: full local verification gate for static and runtime checks.
+- `.github/workflows/windows-build.yml`: GitHub Actions static verification through `Tools/VerifyDisparity.ps1 -SkipRuntime`.
 - `ThirdParty/imgui`: vendored Dear ImGui source and Win32/DX11 backends.
 - `Docs/ENGINE_FEATURES.md`: current feature/testing guide.
 - `Docs/ROADMAP.md`: next production roadmap.
@@ -61,6 +63,14 @@ Outputs:
 - `bin/x64/Release/DisparityGame.exe`
 
 The Visual Studio debugger working directory is set to the solution directory so `Assets/Shaders/Basic.hlsl` can be found at runtime. The renderer also searches upward from the executable/current directory for assets.
+
+Runtime verification mode:
+
+```powershell
+.\bin\x64\Debug\DisparityGame.exe --verify-runtime --verify-frames=90
+```
+
+It writes `Saved/Verification/runtime_verify.txt`, exercises scene reload, runtime scene save, renderer setting toggles, selection cycling, draw-call counters, and render-graph validation, then exits with code `0` for PASS or `20` for FAIL.
 
 ## Current Controls
 
@@ -91,17 +101,20 @@ The Visual Studio debugger working directory is set to the solution directory so
 
 ## Verified Baseline
 
-On 2026-04-26 after the v9 screen-stable gizmo followup pass:
+On 2026-04-26 after the v10 verification followup pass:
 
 - `Debug|x64` built successfully with 0 warnings and 0 errors.
 - `Release|x64` built successfully with 0 warnings and 0 errors.
+- MSVC static analysis completed successfully.
 - `Assets/Shaders/Basic.hlsl` and `Assets/Shaders/PostProcess.hlsl` compiled successfully for `VSMain` and `PSMain` with `fxc`.
-- `Tools/SmokeTestDisparity.ps1 -Configuration Debug` launched `DisparityGame.exe`, kept it alive for 3 seconds, and closed it cleanly.
+- `Tools/SmokeTestDisparity.ps1 -Configuration Debug -ExerciseWindow` launched `DisparityGame.exe`, found the window, resized it, sent basic editor hotkeys, kept it alive for 3 seconds, and closed it cleanly.
+- `Tools/RuntimeVerifyDisparity.ps1 -Configuration Debug -Frames 90` produced a PASS runtime report.
 - `Tools/PackageDisparity.ps1 -Configuration Release` produced `dist/DISPARITY-Release`.
-- `Tools/SmokeTestDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe` launched the packaged build for 3 seconds and closed it cleanly.
-- The v9 pass was committed only after the above checks and `git status --short` review.
+- `Tools/SmokeTestDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe -ExerciseWindow` launched the packaged build, found/resized/exercised the window, and closed it cleanly.
+- `Tools/RuntimeVerifyDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe -Frames 90` produced a PASS packaged runtime report.
+- The v10 pass was committed only after `Tools/VerifyDisparity.ps1` and `git status --short` review.
 
-After feature work, re-run Debug/Release builds, shader compiles for both HLSL files, runtime smoke, package script, packaged runtime smoke, and `git status --short` before declaring the repo healthy.
+After feature work, run `powershell -ExecutionPolicy Bypass -File .\Tools\VerifyDisparity.ps1` and `git status --short` before declaring the repo healthy.
 
 ## Likely Next Followups
 
@@ -109,6 +122,7 @@ Good next steps for making the engine more modern and AAA-like:
 
 - Move renderer execution onto the compiled render graph with real DX11 resource ownership, alias allocation decisions, async compute candidates, and GPU-driven culling.
 - Add a dedicated editor viewport render target, object-ID selection buffer, object-ID gizmo handle picking, depth-aware hover states, and stronger transform constraints.
+- Add image-based rendering regression captures, deterministic input playback, and performance budgets on top of runtime verification.
 - Upgrade serialization to stable deterministic IDs, schema versions, undo grouping, prefab variants, dependency-aware apply/revert, and save-game separation.
 - Replace prototype glTF runtime loading and metadata cooking with true cooked `.glb` import, animation blending, retargeting, and GPU skinning palette upload.
 - Replace WinMM with XAudio2 or another production backend for voices, sends, snapshots, streamed music, spatial emitters, listener orientation, attenuation curves, and meters.

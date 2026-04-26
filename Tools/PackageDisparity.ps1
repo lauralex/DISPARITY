@@ -7,9 +7,16 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $msbuild = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe"
+if (!(Test-Path -LiteralPath $msbuild)) {
+    $msbuildCommand = Get-Command msbuild.exe -ErrorAction SilentlyContinue
+    if (!$msbuildCommand) {
+        throw "MSBuild.exe was not found."
+    }
+    $msbuild = $msbuildCommand.Source
+}
 $dist = Join-Path $root "dist\DISPARITY-$Configuration"
 
-& $msbuild (Join-Path $root "DISPARITY.sln") /m /p:Configuration=$Configuration /p:Platform=x64
+& $msbuild (Join-Path $root "DISPARITY.sln") /m /p:Configuration=$Configuration /p:Platform=x64 /p:PreferredToolArchitecture=x64
 
 if (Test-Path $dist) {
     Remove-Item -LiteralPath $dist -Recurse -Force
