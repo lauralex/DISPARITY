@@ -2,7 +2,10 @@ param(
     [switch]$SkipCodeAnalysis,
     [switch]$SkipRuntime,
     [switch]$SkipPackage,
-    [int]$RuntimeFrames = 90
+    [int]$RuntimeFrames = 90,
+    [double]$RuntimeCpuFrameBudgetMs = 120.0,
+    [double]$RuntimeGpuFrameBudgetMs = 50.0,
+    [double]$RuntimePassBudgetMs = 60.0
 )
 
 $ErrorActionPreference = "Stop"
@@ -148,7 +151,7 @@ if (!$SkipRuntime) {
     }
 
     Invoke-Step "Debug runtime self-verification" {
-        & (Join-Path $PSScriptRoot "RuntimeVerifyDisparity.ps1") -Configuration Debug -Frames $RuntimeFrames
+        & (Join-Path $PSScriptRoot "RuntimeVerifyDisparity.ps1") -Configuration Debug -Frames $RuntimeFrames -CpuFrameBudgetMs $RuntimeCpuFrameBudgetMs -GpuFrameBudgetMs $RuntimeGpuFrameBudgetMs -PassBudgetMs $RuntimePassBudgetMs
     }
 }
 
@@ -164,7 +167,7 @@ if (!$SkipPackage) {
         }
 
         Invoke-Step "Packaged runtime self-verification" {
-            & (Join-Path $PSScriptRoot "RuntimeVerifyDisparity.ps1") -ExecutablePath $packagedExecutable -Frames $RuntimeFrames
+            & (Join-Path $PSScriptRoot "RuntimeVerifyDisparity.ps1") -ExecutablePath $packagedExecutable -Frames $RuntimeFrames -CpuFrameBudgetMs $RuntimeCpuFrameBudgetMs -GpuFrameBudgetMs $RuntimeGpuFrameBudgetMs -PassBudgetMs $RuntimePassBudgetMs
         }
     }
 }

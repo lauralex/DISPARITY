@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <d3dcompiler.h>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -653,9 +654,20 @@ namespace Disparity
         BeginGraphPass(m_graphEditorPass);
         EditorGui::Render();
         EndGraphPass();
+        if (!m_pendingFrameCapturePath.empty())
+        {
+            m_lastFrameCapture = CaptureBackBuffer(m_pendingFrameCapturePath);
+            m_hasLastFrameCapture = true;
+            m_pendingFrameCapturePath.clear();
+        }
         EndGpuFrameProfile();
         m_swapChain->Present(m_settings.VSync ? 1u : 0u, 0);
         m_frameBegun = false;
+    }
+
+    void Renderer::RequestFrameCapture(std::filesystem::path outputPath)
+    {
+        m_pendingFrameCapturePath = std::move(outputPath);
     }
 
     uint32_t Renderer::GetWidth() const
@@ -711,6 +723,124 @@ namespace Disparity
     bool Renderer::IsGpuTimingAvailable() const
     {
         return m_gpuTimingSupported && m_gpuTimingValid;
+    }
+
+    bool Renderer::HasLastFrameCapture() const
+    {
+        return m_hasLastFrameCapture;
+    }
+
+    const FrameCaptureResult& Renderer::GetLastFrameCapture() const
+    {
+        return m_lastFrameCapture;
+    }
+
+    FrameCaptureResult Renderer::CaptureBackBuffer(const std::filesystem::path& outputPath) const
+    {
+        FrameCaptureResult result;
+        result.Path = outputPath;
+
+        if (!m_device || !m_context || !m_swapChain)
+        {
+            result.Error = "Renderer is not initialized.";
+            return result;
+        }
+
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
+        HRESULT hr = m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));
+        if (FAILED(hr) || !backBuffer)
+        {
+            result.Error = "Back buffer retrieval failed with HRESULT " + HrToString(hr);
+            return result;
+        }
+
+        D3D11_TEXTURE2D_DESC desc = {};
+        backBuffer->GetDesc(&desc);
+        if (desc.Width == 0 || desc.Height == 0 || desc.Format != DXGI_FORMAT_R8G8B8A8_UNORM)
+        {
+            result.Error = "Back buffer has an unsupported capture format.";
+            return result;
+        }
+
+        D3D11_TEXTURE2D_DESC stagingDesc = desc;
+        stagingDesc.BindFlags = 0;
+        stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        stagingDesc.MiscFlags = 0;
+        stagingDesc.Usage = D3D11_USAGE_STAGING;
+
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> stagingTexture;
+        hr = m_device->CreateTexture2D(&stagingDesc, nullptr, stagingTexture.GetAddressOf());
+        if (FAILED(hr) || !stagingTexture)
+        {
+            result.Error = "Capture staging texture creation failed with HRESULT " + HrToString(hr);
+            return result;
+        }
+
+        m_context->CopyResource(stagingTexture.Get(), backBuffer.Get());
+
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        hr = m_context->Map(stagingTexture.Get(), 0, D3D11_MAP_READ, 0, &mapped);
+        if (FAILED(hr))
+        {
+            result.Error = "Capture staging texture map failed with HRESULT " + HrToString(hr);
+            return result;
+        }
+
+        if (outputPath.has_parent_path())
+        {
+            std::filesystem::create_directories(outputPath.parent_path());
+        }
+
+        std::ofstream image(outputPath, std::ios::binary | std::ios::trunc);
+        if (!image)
+        {
+            m_context->Unmap(stagingTexture.Get(), 0);
+            result.Error = "Capture image file could not be opened.";
+            return result;
+        }
+
+        result.Width = desc.Width;
+        result.Height = desc.Height;
+        result.RgbChecksum = 1469598103934665603ull;
+
+        image << "P6\n" << result.Width << " " << result.Height << "\n255\n";
+        for (uint32_t y = 0; y < desc.Height; ++y)
+        {
+            const auto* row = static_cast<const unsigned char*>(mapped.pData) + static_cast<size_t>(mapped.RowPitch) * y;
+            for (uint32_t x = 0; x < desc.Width; ++x)
+            {
+                const unsigned char* pixel = row + static_cast<size_t>(x) * 4u;
+                const unsigned char rgb[3] = { pixel[0], pixel[1], pixel[2] };
+                image.write(reinterpret_cast<const char*>(rgb), sizeof(rgb));
+
+                const uint32_t brightness = static_cast<uint32_t>(rgb[0]) + static_cast<uint32_t>(rgb[1]) + static_cast<uint32_t>(rgb[2]);
+                result.NonBlackPixels += brightness > 8u ? 1u : 0u;
+                result.BrightPixels += brightness > 540u ? 1u : 0u;
+                result.AverageLuma +=
+                    static_cast<double>(rgb[0]) * 0.2126 +
+                    static_cast<double>(rgb[1]) * 0.7152 +
+                    static_cast<double>(rgb[2]) * 0.0722;
+
+                for (const unsigned char channel : rgb)
+                {
+                    result.RgbChecksum ^= static_cast<uint64_t>(channel);
+                    result.RgbChecksum *= 1099511628211ull;
+                }
+            }
+        }
+
+        m_context->Unmap(stagingTexture.Get(), 0);
+        const uint64_t pixelCount = static_cast<uint64_t>(result.Width) * static_cast<uint64_t>(result.Height);
+        if (pixelCount > 0)
+        {
+            result.AverageLuma /= static_cast<double>(pixelCount);
+        }
+        result.Success = image.good();
+        if (!result.Success)
+        {
+            result.Error = "Capture image write failed.";
+        }
+        return result;
     }
 
     void Renderer::BuildFrameRenderGraph()

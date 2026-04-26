@@ -166,9 +166,21 @@ namespace
     struct RuntimeVerificationConfig
     {
         bool Enabled = false;
+        bool CaptureFrame = true;
+        bool InputPlayback = true;
+        bool EnforceBudgets = true;
         uint32_t TargetFrames = 90;
+        double CpuFrameBudgetMs = 120.0;
+        double GpuFrameBudgetMs = 50.0;
+        double PassBudgetMs = 60.0;
         std::filesystem::path ReportPath = "Saved/Verification/runtime_verify.txt";
+        std::filesystem::path CapturePath = "Saved/Verification/runtime_capture.ppm";
     };
+
+    bool HasArgument(const std::wstring& arguments, const std::wstring& name)
+    {
+        return arguments.find(name) != std::wstring::npos;
+    }
 
     uint32_t ParseUnsignedArgument(const std::wstring& arguments, const std::wstring& name, uint32_t fallback)
     {
@@ -184,6 +196,27 @@ namespace
         try
         {
             return static_cast<uint32_t>(std::stoul(value));
+        }
+        catch (...)
+        {
+            return fallback;
+        }
+    }
+
+    double ParseDoubleArgument(const std::wstring& arguments, const std::wstring& name, double fallback)
+    {
+        const size_t begin = arguments.find(name);
+        if (begin == std::wstring::npos)
+        {
+            return fallback;
+        }
+
+        const size_t valueBegin = begin + name.size();
+        const size_t valueEnd = arguments.find(L' ', valueBegin);
+        const std::wstring value = arguments.substr(valueBegin, valueEnd == std::wstring::npos ? std::wstring::npos : valueEnd - valueBegin);
+        try
+        {
+            return std::stod(value);
         }
         catch (...)
         {
@@ -432,6 +465,30 @@ namespace
         {
             std::string Label;
             EditState State;
+        };
+
+        struct RuntimeBudgetStats
+        {
+            uint32_t CpuSamples = 0;
+            uint32_t GpuSamples = 0;
+            double CpuFrameMaxMs = 0.0;
+            double CpuFrameAverageMs = 0.0;
+            double GpuFrameMaxMs = 0.0;
+            double GpuFrameAverageMs = 0.0;
+            double PassCpuMaxMs = 0.0;
+            double PassGpuMaxMs = 0.0;
+            std::string PassCpuMaxName;
+            std::string PassGpuMaxName;
+        };
+
+        struct RuntimePlaybackStats
+        {
+            bool Started = false;
+            bool Finished = false;
+            uint32_t Steps = 0;
+            DirectX::XMFLOAT3 StartPosition = {};
+            DirectX::XMFLOAT3 EndPosition = {};
+            float Distance = 0.0f;
         };
 
         enum class GizmoAxis
@@ -711,6 +768,13 @@ namespace
                 moveInput.x -= 1.0f;
             }
 
+            MovePlayerWithInput(moveInput, dt);
+            m_playerBobOffset = m_playerBob.SampleOffset(dt);
+            SyncPlayerTransformToRegistry();
+        }
+
+        void MovePlayerWithInput(const DirectX::XMFLOAT3& moveInput, float dt)
+        {
             const DirectX::XMFLOAT3 normalizedInput = NormalizeFlat(moveInput);
             if (dt > 0.0f && (std::abs(normalizedInput.x) > 0.0f || std::abs(normalizedInput.z) > 0.0f))
             {
@@ -732,9 +796,10 @@ namespace
                 m_playerPosition = Add(m_playerPosition, Scale(movement, movementSpeed * dt));
                 m_playerYaw = std::atan2(movement.x, movement.z);
             }
+        }
 
-            m_playerBobOffset = m_playerBob.SampleOffset(dt);
-
+        void SyncPlayerTransformToRegistry()
+        {
             if (Disparity::TransformComponent* transform = m_registry.GetTransform(m_playerEntity))
             {
                 transform->Value.Position = m_playerPosition;
@@ -1839,6 +1904,8 @@ namespace
             ++m_runtimeVerificationFrame;
             m_runtimeVerificationElapsed += dt;
 
+            ApplyRuntimeVerificationInputPlayback();
+            CollectRuntimeBudgetStats();
             ExerciseRuntimeVerification();
             if (m_runtimeVerificationFrame >= m_runtimeVerification.TargetFrames || m_runtimeVerificationElapsed >= 20.0f)
             {
@@ -1891,6 +1958,186 @@ namespace
                 AddRuntimeVerificationNote("Cycled editor selection.");
                 m_runtimeVerificationCycledSelection = true;
             }
+
+            const uint32_t captureRequestFrame = m_runtimeVerification.TargetFrames > 6u ? m_runtimeVerification.TargetFrames - 4u : m_runtimeVerification.TargetFrames;
+            if (m_runtimeVerification.CaptureFrame && !m_runtimeVerificationCaptureRequested && m_runtimeVerificationFrame >= captureRequestFrame && m_renderer)
+            {
+                m_renderer->RequestFrameCapture(m_runtimeVerification.CapturePath);
+                AddRuntimeVerificationNote("Requested frame capture.");
+                m_runtimeVerificationCaptureRequested = true;
+            }
+
+            if (m_runtimeVerification.CaptureFrame && m_runtimeVerificationCaptureRequested && !m_runtimeVerificationCaptureValidated && m_renderer && m_renderer->HasLastFrameCapture())
+            {
+                ValidateRuntimeFrameCapture();
+            }
+        }
+
+        void ApplyRuntimeVerificationInputPlayback()
+        {
+            if (!m_runtimeVerification.InputPlayback)
+            {
+                return;
+            }
+
+            if (!m_runtimePlayback.Started && m_runtimeVerificationFrame >= 4)
+            {
+                m_runtimePlayback.Started = true;
+                m_runtimePlayback.StartPosition = m_playerPosition;
+                AddRuntimeVerificationNote("Started deterministic input playback.");
+            }
+
+            if (!m_runtimePlayback.Started || m_runtimePlayback.Finished)
+            {
+                return;
+            }
+
+            DirectX::XMFLOAT3 input = {};
+            if (m_runtimeVerificationFrame < 18)
+            {
+                input.z = 1.0f;
+            }
+            else if (m_runtimeVerificationFrame < 32)
+            {
+                input.x = 1.0f;
+            }
+            else if (m_runtimeVerificationFrame < 44)
+            {
+                input.z = -1.0f;
+            }
+            else
+            {
+                m_runtimePlayback.Finished = true;
+                m_runtimePlayback.EndPosition = m_playerPosition;
+                m_runtimePlayback.Distance = Length(Subtract(m_runtimePlayback.EndPosition, m_runtimePlayback.StartPosition));
+                if (m_runtimePlayback.Distance < 1.0f)
+                {
+                    AddRuntimeVerificationFailure("input playback moved the player less than expected.");
+                }
+                AddRuntimeVerificationNote("Finished deterministic input playback.");
+                return;
+            }
+
+            constexpr float playbackDeltaSeconds = 1.0f / 60.0f;
+            MovePlayerWithInput(input, playbackDeltaSeconds);
+            m_playerBobOffset = m_playerBob.SampleOffset(playbackDeltaSeconds);
+            SyncPlayerTransformToRegistry();
+            m_cameraYaw += 0.0025f;
+            m_cameraPitch = std::clamp(m_cameraPitch + 0.0008f, -0.15f, 0.95f);
+            UpdateCamera();
+            ++m_runtimePlayback.Steps;
+        }
+
+        void CollectRuntimeBudgetStats()
+        {
+            if (!m_runtimeVerification.EnforceBudgets || m_runtimeVerificationFrame < 8 || m_runtimeVerificationCaptureRequested)
+            {
+                return;
+            }
+
+            const Disparity::ProfileSnapshot snapshot = Disparity::Profiler::GetSnapshot();
+            if (snapshot.FrameMilliseconds > 0.0001)
+            {
+                ++m_runtimeBudgetStats.CpuSamples;
+                m_runtimeBudgetStats.CpuFrameMaxMs = std::max(m_runtimeBudgetStats.CpuFrameMaxMs, snapshot.FrameMilliseconds);
+                m_runtimeBudgetStats.CpuFrameAverageMs += (snapshot.FrameMilliseconds - m_runtimeBudgetStats.CpuFrameAverageMs) /
+                    static_cast<double>(m_runtimeBudgetStats.CpuSamples);
+            }
+
+            if (m_renderer && m_renderer->IsGpuTimingAvailable())
+            {
+                const double gpuMs = m_renderer->GetGpuFrameMilliseconds();
+                ++m_runtimeBudgetStats.GpuSamples;
+                m_runtimeBudgetStats.GpuFrameMaxMs = std::max(m_runtimeBudgetStats.GpuFrameMaxMs, gpuMs);
+                m_runtimeBudgetStats.GpuFrameAverageMs += (gpuMs - m_runtimeBudgetStats.GpuFrameAverageMs) /
+                    static_cast<double>(m_runtimeBudgetStats.GpuSamples);
+            }
+
+            if (!m_renderer)
+            {
+                return;
+            }
+
+            for (const Disparity::RenderGraphPass& pass : m_renderer->GetRenderGraph().GetPasses())
+            {
+                if (pass.LastCpuMilliseconds > m_runtimeBudgetStats.PassCpuMaxMs)
+                {
+                    m_runtimeBudgetStats.PassCpuMaxMs = pass.LastCpuMilliseconds;
+                    m_runtimeBudgetStats.PassCpuMaxName = pass.Name;
+                }
+                if (pass.LastGpuMilliseconds > m_runtimeBudgetStats.PassGpuMaxMs)
+                {
+                    m_runtimeBudgetStats.PassGpuMaxMs = pass.LastGpuMilliseconds;
+                    m_runtimeBudgetStats.PassGpuMaxName = pass.Name;
+                }
+            }
+        }
+
+        void ValidateRuntimeBudgets()
+        {
+            if (!m_runtimeVerification.EnforceBudgets)
+            {
+                return;
+            }
+
+            if (m_runtimeBudgetStats.CpuSamples == 0)
+            {
+                AddRuntimeVerificationFailure("performance budget had no CPU frame samples.");
+            }
+            if (m_runtimeBudgetStats.CpuFrameMaxMs > m_runtimeVerification.CpuFrameBudgetMs)
+            {
+                AddRuntimeVerificationFailure("CPU frame budget exceeded.");
+            }
+            if (m_runtimeBudgetStats.PassCpuMaxMs > m_runtimeVerification.PassBudgetMs)
+            {
+                AddRuntimeVerificationFailure("render graph CPU pass budget exceeded.");
+            }
+            if (m_runtimeBudgetStats.GpuSamples > 0 && m_runtimeBudgetStats.GpuFrameMaxMs > m_runtimeVerification.GpuFrameBudgetMs)
+            {
+                AddRuntimeVerificationFailure("GPU frame budget exceeded.");
+            }
+            if (m_runtimeBudgetStats.GpuSamples > 0 && m_runtimeBudgetStats.PassGpuMaxMs > m_runtimeVerification.PassBudgetMs)
+            {
+                AddRuntimeVerificationFailure("render graph GPU pass budget exceeded.");
+            }
+        }
+
+        void ValidateRuntimeFrameCapture()
+        {
+            if (!m_renderer)
+            {
+                return;
+            }
+
+            const Disparity::FrameCaptureResult& capture = m_renderer->GetLastFrameCapture();
+            m_runtimeCapture = capture;
+            m_runtimeVerificationCaptureValidated = true;
+
+            if (!capture.Success)
+            {
+                AddRuntimeVerificationFailure("frame capture failed: " + capture.Error);
+                return;
+            }
+
+            const uint64_t pixelCount = static_cast<uint64_t>(capture.Width) * static_cast<uint64_t>(capture.Height);
+            if (capture.Width != m_renderer->GetWidth() || capture.Height != m_renderer->GetHeight())
+            {
+                AddRuntimeVerificationFailure("frame capture dimensions do not match renderer dimensions.");
+            }
+            if (pixelCount == 0 || capture.NonBlackPixels < pixelCount / 20u)
+            {
+                AddRuntimeVerificationFailure("frame capture appears mostly blank.");
+            }
+            if (capture.AverageLuma < 2.0 || capture.AverageLuma > 245.0)
+            {
+                AddRuntimeVerificationFailure("frame capture average luminance is outside expected bounds.");
+            }
+            if (capture.RgbChecksum == 0)
+            {
+                AddRuntimeVerificationFailure("frame capture checksum is invalid.");
+            }
+
+            AddRuntimeVerificationNote("Validated frame capture " + capture.Path.string() + ".");
         }
 
         void ValidateRuntimeVerificationState(const char* stage)
@@ -1962,6 +2209,15 @@ namespace
 
         void CompleteRuntimeVerification()
         {
+            if (m_runtimeVerification.InputPlayback && !m_runtimePlayback.Finished)
+            {
+                AddRuntimeVerificationFailure("input playback did not finish before runtime verification completed.");
+            }
+            if (m_runtimeVerification.CaptureFrame && !m_runtimeVerificationCaptureValidated)
+            {
+                AddRuntimeVerificationFailure("frame capture was not validated before runtime verification completed.");
+            }
+            ValidateRuntimeBudgets();
             ValidateRuntimeVerificationState("final");
             if (m_runtimeVerificationOriginalRendererSettings.has_value() && m_renderer)
             {
@@ -2007,6 +2263,26 @@ namespace
                 report << "render_graph_resources=" << graph.GetResources().size() << "\n";
                 report << "render_graph_order=" << graph.GetExecutionOrder().size() << "\n";
             }
+            report << "playback_steps=" << m_runtimePlayback.Steps << "\n";
+            report << "playback_distance=" << m_runtimePlayback.Distance << "\n";
+            report << "cpu_frame_samples=" << m_runtimeBudgetStats.CpuSamples << "\n";
+            report << "cpu_frame_max_ms=" << m_runtimeBudgetStats.CpuFrameMaxMs << "\n";
+            report << "cpu_frame_avg_ms=" << m_runtimeBudgetStats.CpuFrameAverageMs << "\n";
+            report << "gpu_frame_samples=" << m_runtimeBudgetStats.GpuSamples << "\n";
+            report << "gpu_frame_max_ms=" << m_runtimeBudgetStats.GpuFrameMaxMs << "\n";
+            report << "gpu_frame_avg_ms=" << m_runtimeBudgetStats.GpuFrameAverageMs << "\n";
+            report << "pass_cpu_max_ms=" << m_runtimeBudgetStats.PassCpuMaxMs << "\n";
+            report << "pass_cpu_max_name=" << m_runtimeBudgetStats.PassCpuMaxName << "\n";
+            report << "pass_gpu_max_ms=" << m_runtimeBudgetStats.PassGpuMaxMs << "\n";
+            report << "pass_gpu_max_name=" << m_runtimeBudgetStats.PassGpuMaxName << "\n";
+            report << "capture_path=" << m_runtimeCapture.Path.string() << "\n";
+            report << "capture_success=" << (m_runtimeCapture.Success ? "true" : "false") << "\n";
+            report << "capture_width=" << m_runtimeCapture.Width << "\n";
+            report << "capture_height=" << m_runtimeCapture.Height << "\n";
+            report << "capture_checksum=" << m_runtimeCapture.RgbChecksum << "\n";
+            report << "capture_non_black_pixels=" << m_runtimeCapture.NonBlackPixels << "\n";
+            report << "capture_bright_pixels=" << m_runtimeCapture.BrightPixels << "\n";
+            report << "capture_average_luma=" << m_runtimeCapture.AverageLuma << "\n";
 
             report << "\nnotes:\n";
             for (const std::string& note : m_runtimeVerificationNotes)
@@ -3183,6 +3459,9 @@ namespace
         std::vector<GizmoDragObject> m_gizmoDragObjects;
         std::vector<std::string> m_runtimeVerificationNotes;
         std::vector<std::string> m_runtimeVerificationFailures;
+        RuntimeBudgetStats m_runtimeBudgetStats;
+        RuntimePlaybackStats m_runtimePlayback;
+        Disparity::FrameCaptureResult m_runtimeCapture;
         Disparity::Entity m_playerEntity = 0;
         Disparity::MeshHandle m_cubeMesh = 0;
         Disparity::MeshHandle m_planeMesh = 0;
@@ -3236,6 +3515,8 @@ namespace
         bool m_runtimeVerificationSavedScene = false;
         bool m_runtimeVerificationExercisedRenderer = false;
         bool m_runtimeVerificationCycledSelection = false;
+        bool m_runtimeVerificationCaptureRequested = false;
+        bool m_runtimeVerificationCaptureValidated = false;
         bool m_gizmoDragging = false;
         bool m_gizmoDragMoved = false;
         GizmoAxis m_gizmoDragAxis = GizmoAxis::None;
@@ -3257,8 +3538,14 @@ int WINAPI wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE previousInstance
 
     RuntimeVerificationConfig runtimeVerification;
     const std::wstring arguments = commandLine ? commandLine : L"";
-    runtimeVerification.Enabled = arguments.find(L"--verify-runtime") != std::wstring::npos;
-    runtimeVerification.TargetFrames = ParseUnsignedArgument(arguments, L"--verify-frames=", runtimeVerification.TargetFrames);
+    runtimeVerification.Enabled = HasArgument(arguments, L"--verify-runtime");
+    runtimeVerification.CaptureFrame = !HasArgument(arguments, L"--verify-no-capture");
+    runtimeVerification.InputPlayback = !HasArgument(arguments, L"--verify-no-input-playback");
+    runtimeVerification.EnforceBudgets = !HasArgument(arguments, L"--verify-no-budgets");
+    runtimeVerification.TargetFrames = std::max(30u, ParseUnsignedArgument(arguments, L"--verify-frames=", runtimeVerification.TargetFrames));
+    runtimeVerification.CpuFrameBudgetMs = std::max(1.0, ParseDoubleArgument(arguments, L"--verify-cpu-budget-ms=", runtimeVerification.CpuFrameBudgetMs));
+    runtimeVerification.GpuFrameBudgetMs = std::max(1.0, ParseDoubleArgument(arguments, L"--verify-gpu-budget-ms=", runtimeVerification.GpuFrameBudgetMs));
+    runtimeVerification.PassBudgetMs = std::max(1.0, ParseDoubleArgument(arguments, L"--verify-pass-budget-ms=", runtimeVerification.PassBudgetMs));
 
     Disparity::Application app({ instance, L"DISPARITY", 1280, 720 });
     app.SetLayer(std::make_unique<DisparityGameLayer>(runtimeVerification));

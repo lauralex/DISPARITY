@@ -13,6 +13,7 @@
 #include <d3d11.h>
 #include <filesystem>
 #include <limits>
+#include <string>
 #include <unordered_map>
 #include <vector>
 #include <windows.h>
@@ -60,6 +61,19 @@ namespace Disparity
         uint32_t ShadowMapSize = 2048;
     };
 
+    struct FrameCaptureResult
+    {
+        bool Success = false;
+        std::filesystem::path Path;
+        std::string Error;
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+        uint64_t RgbChecksum = 0;
+        uint64_t NonBlackPixels = 0;
+        uint64_t BrightPixels = 0;
+        double AverageLuma = 0.0;
+    };
+
     class Renderer
     {
     public:
@@ -86,6 +100,7 @@ namespace Disparity
         void EndShadowPass();
         void DrawMesh(MeshHandle mesh, const Transform& transform, const Material& material);
         void EndFrame();
+        void RequestFrameCapture(std::filesystem::path outputPath);
 
         [[nodiscard]] uint32_t GetWidth() const;
         [[nodiscard]] uint32_t GetHeight() const;
@@ -98,6 +113,8 @@ namespace Disparity
         [[nodiscard]] uint32_t GetShadowDrawCalls() const;
         [[nodiscard]] double GetGpuFrameMilliseconds() const;
         [[nodiscard]] bool IsGpuTimingAvailable() const;
+        [[nodiscard]] bool HasLastFrameCapture() const;
+        [[nodiscard]] const FrameCaptureResult& GetLastFrameCapture() const;
 
     private:
         struct GpuMesh
@@ -141,6 +158,7 @@ namespace Disparity
         void BeginGpuPassProfile(uint32_t passId);
         void EndGpuPassProfile(uint32_t passId);
         void ResolveGpuPassProfiles();
+        [[nodiscard]] FrameCaptureResult CaptureBackBuffer(const std::filesystem::path& outputPath) const;
 
         HWND m_windowHandle = nullptr;
         uint32_t m_width = 1;
@@ -174,6 +192,8 @@ namespace Disparity
         DirectionalLight m_light;
         RendererSettings m_settings;
         RenderGraph m_renderGraph;
+        FrameCaptureResult m_lastFrameCapture;
+        std::filesystem::path m_pendingFrameCapturePath;
         DirectX::XMFLOAT4X4 m_lightViewProjection = {};
 
         Microsoft::WRL::ComPtr<ID3D11Device> m_device;
@@ -217,5 +237,6 @@ namespace Disparity
         TextureHandle m_nextTextureHandle = 1;
         bool m_comInitialized = false;
         bool m_historyValid = false;
+        bool m_hasLastFrameCapture = false;
     };
 }

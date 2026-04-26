@@ -3,6 +3,13 @@ name: Windows Build
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      run_runtime:
+        description: Run interactive runtime verification on this runner
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -18,3 +25,8 @@ jobs:
       - name: Static verification
         shell: pwsh
         run: ./Tools/VerifyDisparity.ps1 -SkipRuntime
+
+      - name: Runtime verification (opt-in)
+        if: github.event_name == 'workflow_dispatch' && inputs.run_runtime
+        shell: pwsh
+        run: ./Tools/VerifyDisparity.ps1 -SkipCodeAnalysis -RuntimeFrames 90

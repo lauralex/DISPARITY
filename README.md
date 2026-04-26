@@ -152,6 +152,14 @@ Editor UI:
 - `Tools/RuntimeVerifyDisparity.ps1` and `Tools/VerifyDisparity.ps1` provide repeatable local static/runtime verification, including warning-free Debug/Release builds, optional MSVC static analysis, shader compilation, window smoke, runtime self-test, packaging, and packaged runtime self-test.
 - GitHub Actions now uses the unified verification script for static CI coverage.
 
+## Engine v11 Followups Implemented
+
+- Runtime verification now drives deterministic player/camera input playback and records playback distance/step counts in `Saved/Verification/runtime_verify.txt`.
+- The DX11 renderer can capture the post-editor back buffer to a portable PPM file and reports capture dimensions, luminance, nonblack pixels, bright pixels, and an RGB checksum.
+- Runtime verification validates `Saved/Verification/runtime_capture.ppm` so the gate catches blank or invalid frames instead of only checking draw-call counters.
+- Runtime verification tracks CPU frame time, GPU frame time when timestamp queries are available, and render-graph pass CPU/GPU maxima against configurable budgets.
+- GitHub Actions includes an opt-in `workflow_dispatch` runtime verification step for machines with an interactive desktop.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
@@ -161,4 +169,4 @@ More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 - Add prefab variants, nested prefabs, dependency-aware apply/revert, and save-game separation.
 - Add production `.glb` cooking, animation retargeting/blending, and GPU skinning palettes.
 - Replace the WinMM prototype audio backend with XAudio2 voices, sends, snapshots, streamed layers, spatial emitters, and meters.
-- Add image-based rendering regression captures, input playback tests, and performance budgets on top of the new runtime verifier.
+- Add golden-image comparison thresholds, deterministic input script files, and historical performance trend tracking on top of the v11 verifier.
