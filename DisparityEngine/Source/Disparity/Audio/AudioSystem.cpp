@@ -21,8 +21,10 @@ namespace Disparity
         std::atomic_bool g_tonePlaying = false;
         std::atomic<float> g_masterVolume = 0.8f;
         std::mutex g_audioMutex;
+        std::mutex g_toneOutputMutex;
         std::unordered_map<std::string, AudioBus> g_buses;
         std::unordered_map<std::string, AudioBusMeter> g_meters;
+        HWAVEOUT g_toneOutput = nullptr;
         bool g_xaudio2Available = false;
         bool g_preferXAudio2 = false;
         std::string g_backendName = "WinMM prototype mixer";
@@ -117,6 +119,84 @@ namespace Disparity
             meter.Rms *= 0.65f;
         }
 
+        WAVEFORMATEX CreateToneFormat()
+        {
+            WAVEFORMATEX format = {};
+            format.wFormatTag = WAVE_FORMAT_PCM;
+            format.nChannels = 2;
+            format.nSamplesPerSec = 44100;
+            format.wBitsPerSample = 16;
+            format.nBlockAlign = format.nChannels * format.wBitsPerSample / 8;
+            format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
+            return format;
+        }
+
+        bool EnsureToneOutputLocked()
+        {
+            if (g_toneOutput)
+            {
+                return true;
+            }
+
+            WAVEFORMATEX format = CreateToneFormat();
+            if (waveOutOpen(&g_toneOutput, WAVE_MAPPER, &format, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR)
+            {
+                g_toneOutput = nullptr;
+                return false;
+            }
+
+            return true;
+        }
+
+        bool WriteToneBuffer(std::vector<short>& samples)
+        {
+            std::scoped_lock lock(g_toneOutputMutex);
+            if (!EnsureToneOutputLocked())
+            {
+                return false;
+            }
+
+            WAVEHDR header = {};
+            header.lpData = reinterpret_cast<LPSTR>(samples.data());
+            header.dwBufferLength = static_cast<DWORD>(samples.size() * sizeof(short));
+
+            if (waveOutPrepareHeader(g_toneOutput, &header, sizeof(header)) != MMSYSERR_NOERROR)
+            {
+                return false;
+            }
+
+            if (waveOutWrite(g_toneOutput, &header, sizeof(header)) != MMSYSERR_NOERROR)
+            {
+                waveOutUnprepareHeader(g_toneOutput, &header, sizeof(header));
+                return false;
+            }
+
+            const int maxAttempts = static_cast<int>(std::max<size_t>(40u, samples.size() / 88u + 80u));
+            for (int attempts = 0; attempts < maxAttempts && (header.dwFlags & WHDR_DONE) == 0; ++attempts)
+            {
+                Sleep(5);
+            }
+
+            if ((header.dwFlags & WHDR_DONE) == 0)
+            {
+                waveOutReset(g_toneOutput);
+            }
+
+            waveOutUnprepareHeader(g_toneOutput, &header, sizeof(header));
+            return true;
+        }
+
+        void CloseToneOutput()
+        {
+            std::scoped_lock lock(g_toneOutputMutex);
+            if (g_toneOutput)
+            {
+                waveOutReset(g_toneOutput);
+                waveOutClose(g_toneOutput);
+                g_toneOutput = nullptr;
+            }
+        }
+
         float GetBusGainUnlocked(const std::string& busName)
         {
             const auto master = g_buses.find("Master");
@@ -152,21 +232,29 @@ namespace Disparity
 
             constexpr DWORD SampleRate = 44100;
             constexpr double Pi = 3.14159265358979323846;
-            const size_t sampleCount = static_cast<size_t>(static_cast<float>(SampleRate) * std::clamp(durationSeconds, 0.04f, 2.0f));
+            const size_t warmupSampleCount = SampleRate / 40u;
+            const size_t toneSampleCount = static_cast<size_t>(static_cast<float>(SampleRate) * std::clamp(durationSeconds, 0.04f, 2.0f));
             const float gain =
                 std::clamp(volume, 0.0f, 1.0f) *
                 std::clamp(g_masterVolume.load(), 0.0f, 1.0f) *
                 GetBusGain(busName);
+            if (gain <= 0.001f)
+            {
+                g_tonePlaying = false;
+                return;
+            }
+
             BeginVoiceMeter(busName, gain, gain * 0.707f);
             const float clampedPan = std::clamp(pan, -1.0f, 1.0f);
             const float leftGain = std::sqrt(0.5f * (1.0f - clampedPan));
             const float rightGain = std::sqrt(0.5f * (1.0f + clampedPan));
 
+            const size_t sampleCount = warmupSampleCount + toneSampleCount;
             std::vector<short> samples(sampleCount * 2u);
-            const double toneDuration = static_cast<double>(sampleCount) / static_cast<double>(SampleRate);
-            for (size_t index = 0; index < sampleCount; ++index)
+            const double toneDuration = static_cast<double>(toneSampleCount) / static_cast<double>(SampleRate);
+            for (size_t index = warmupSampleCount; index < sampleCount; ++index)
             {
-                const double t = static_cast<double>(index) / static_cast<double>(SampleRate);
+                const double t = static_cast<double>(index - warmupSampleCount) / static_cast<double>(SampleRate);
                 const double attack = std::min(1.0, t / 0.006);
                 const double release = std::min(1.0, std::max(0.0, toneDuration - t) / 0.018);
                 const double envelope = attack * release;
@@ -175,39 +263,12 @@ namespace Disparity
                 samples[index * 2u + 1u] = static_cast<short>(sample * rightGain);
             }
 
-            WAVEFORMATEX format = {};
-            format.wFormatTag = WAVE_FORMAT_PCM;
-            format.nChannels = 2;
-            format.nSamplesPerSec = SampleRate;
-            format.wBitsPerSample = 16;
-            format.nBlockAlign = format.nChannels * format.wBitsPerSample / 8;
-            format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
-
-            HWAVEOUT output = nullptr;
-            if (waveOutOpen(&output, WAVE_MAPPER, &format, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR)
+            if (!WriteToneBuffer(samples))
             {
                 EndVoiceMeter(busName);
                 g_tonePlaying = false;
                 return;
             }
-
-            WAVEHDR header = {};
-            header.lpData = reinterpret_cast<LPSTR>(samples.data());
-            header.dwBufferLength = static_cast<DWORD>(samples.size() * sizeof(short));
-
-            if (waveOutPrepareHeader(output, &header, sizeof(header)) == MMSYSERR_NOERROR)
-            {
-                waveOutWrite(output, &header, sizeof(header));
-
-                for (int attempts = 0; attempts < 100 && (header.dwFlags & WHDR_DONE) == 0; ++attempts)
-                {
-                    Sleep(10);
-                }
-
-                waveOutUnprepareHeader(output, &header, sizeof(header));
-            }
-
-            waveOutClose(output);
             EndVoiceMeter(busName);
             g_tonePlaying = false;
         }
@@ -247,6 +308,7 @@ namespace Disparity
     void AudioSystem::Shutdown()
     {
         StopAll();
+        CloseToneOutput();
     }
 
     void AudioSystem::PlayNotification()
@@ -325,6 +387,8 @@ namespace Disparity
     void AudioSystem::StopAll()
     {
         PlaySoundW(nullptr, nullptr, SND_PURGE);
+        CloseToneOutput();
+        g_tonePlaying = false;
     }
 
     void AudioSystem::SetMasterVolume(float volume)

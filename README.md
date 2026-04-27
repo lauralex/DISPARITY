@@ -233,6 +233,10 @@ Editor UI:
 - Showcase and trailer modes no longer trigger generated WinMM cue tones by default, preventing glitchy repeated prototype audio during public capture.
 - The Audio Mixer has an opt-in `Cinematic cue tones` toggle for testing those cues, and generated test tones now use a short attack/release envelope to reduce clicks.
 
+## Engine v18.2 Audio Warm-Up Fix
+
+- Generated WinMM tones now reuse a persistent output device and include a tiny silent pre-roll, so cue playback no longer depends on another app keeping the Windows audio endpoint awake.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups

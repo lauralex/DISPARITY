@@ -66,7 +66,7 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - `F2` plays the UI notification tone.
 - The mixer shows the active backend, per-bus send values, simple peak meters, and active generated voice counts.
 - The mixer detects XAudio2 runtime availability and exposes a preference switch while v16 keeps WinMM as the actual playback path.
-- `Cinematic cue tones` is opt-in; showcase/trailer visual beat pulses still run when this is off, but repeated generated WinMM tones are suppressed to avoid glitches.
+- `Cinematic cue tones` is opt-in; showcase/trailer visual beat pulses still run when this is off, but repeated generated WinMM tones are suppressed to avoid glitches. Generated tones reuse a persistent WinMM output handle and write a short silent pre-roll so cue playback is not dependent on another app keeping the Windows audio endpoint awake.
 - Use `Store Snapshot` and `Recall` to test mixer snapshot capture/restore without playing content.
 - `AudioSystem::StreamMusic` and `PlayWaveFileAsync` provide WinMM-backed async/looped wave playback hooks for future content, while the public surface now has listener orientation and production-style snapshot/meter APIs for the future XAudio2 backend.
 
