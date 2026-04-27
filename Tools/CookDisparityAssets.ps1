@@ -27,6 +27,7 @@ if ($Clean -and (Test-Path -LiteralPath $OutputPath)) {
 New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null
 if ($BinaryPackages) {
     New-Item -ItemType Directory -Force -Path (Join-Path $OutputPath "Binary") | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $OutputPath "Optimized") | Out-Null
 }
 
 function Get-RelativePath {
@@ -94,7 +95,13 @@ function Resolve-DeclaredDependency {
 
     $resolved = $Dependency
     if (![System.IO.Path]::IsPathRooted($resolved)) {
-        $resolved = Join-Path $Owner.DirectoryName $resolved
+        $rootRelative = Join-Path $root $resolved
+        if (Test-Path -LiteralPath $rootRelative) {
+            $resolved = $rootRelative
+        }
+        else {
+            $resolved = Join-Path $Owner.DirectoryName $resolved
+        }
     }
     if (!(Test-Path -LiteralPath $resolved)) {
         return (Get-RelativePath -BasePath $root -Path $resolved).Replace("\", "/")
@@ -129,8 +136,15 @@ function Get-DeclaredDependencies {
     }
     elseif ($Kind -eq "material") {
         foreach ($line in Get-Content -LiteralPath $File.FullName) {
-            if ($line -match "^texture=(.+)$") {
-                $dependencies = Add-Dependency -Dependencies $dependencies -Dependency (Resolve-DeclaredDependency -Owner $File -Dependency $Matches[1].Trim())
+            if ($line -match "^(texture|normal_texture|metallic_roughness_texture|emissive_texture|occlusion_texture)=(.+)$") {
+                $dependencies = Add-Dependency -Dependencies $dependencies -Dependency (Resolve-DeclaredDependency -Owner $File -Dependency $Matches[2].Trim())
+            }
+        }
+    }
+    elseif ($Kind -eq "prefab") {
+        foreach ($line in Get-Content -LiteralPath $File.FullName) {
+            if ($line -match "^(parent|child_prefab)=(.+)$") {
+                $dependencies = Add-Dependency -Dependencies $dependencies -Dependency (Resolve-DeclaredDependency -Owner $File -Dependency $Matches[2].Trim())
             }
         }
     }
@@ -160,6 +174,8 @@ foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
     $metadataPath = Join-Path $OutputPath $metadataName
     $binaryName = ($assetRelativePath -replace "[\\/:\*\?`"<>|]", "_") + ".dassetbin"
     $binaryPath = Join-Path (Join-Path $OutputPath "Binary") $binaryName
+    $optimizedName = ($assetRelativePath -replace "[\\/:\*\?`"<>|]", "_") + ".dglbpack"
+    $optimizedPath = Join-Path (Join-Path $OutputPath "Optimized") $optimizedName
     $importSettings = Join-Path $root ("Assets/ImportSettings/" + $relativePath + ".dimport")
     $dependencies = @()
     if (Test-Path -LiteralPath $importSettings) {
@@ -170,7 +186,7 @@ foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
     }
 
     $cookPayload = "metadata_only"
-    if ($kind -eq "glb_scene") {
+    if ($kind -eq "glb_scene" -or $kind -eq "gltf_scene") {
         $cookPayload = "optimized_glb_package_placeholder"
     }
     elseif ($BinaryPackages) {
@@ -193,6 +209,9 @@ foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
     $binaryRelativePath = ""
     $binaryBytes = 0
     $binaryHash = ""
+    $optimizedRelativePath = ""
+    $optimizedBytes = 0
+    $optimizedHash = ""
     if ($BinaryPackages) {
         $sourceBytes = [System.IO.File]::ReadAllBytes($file.FullName)
         $metadataJson = $metadata | ConvertTo-Json -Depth 4 -Compress
@@ -204,6 +223,17 @@ foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
         $binaryRelativePath = (Get-RelativePath -BasePath $root -Path $binaryPath).Replace("\", "/")
         $binaryBytes = (Get-Item -LiteralPath $binaryPath).Length
         $binaryHash = (Get-FileHash -LiteralPath $binaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
+
+        if ($kind -eq "glb_scene" -or $kind -eq "gltf_scene") {
+            $optimizedHeader = [System.Text.Encoding]::UTF8.GetBytes("DSGLBPK1`n$metadataJson`n---OPTIMIZED-SOURCE---`n")
+            $optimizedPayload = New-Object byte[] ($optimizedHeader.Length + $sourceBytes.Length)
+            [System.Buffer]::BlockCopy($optimizedHeader, 0, $optimizedPayload, 0, $optimizedHeader.Length)
+            [System.Buffer]::BlockCopy($sourceBytes, 0, $optimizedPayload, $optimizedHeader.Length, $sourceBytes.Length)
+            [System.IO.File]::WriteAllBytes($optimizedPath, $optimizedPayload)
+            $optimizedRelativePath = (Get-RelativePath -BasePath $root -Path $optimizedPath).Replace("\", "/")
+            $optimizedBytes = (Get-Item -LiteralPath $optimizedPath).Length
+            $optimizedHash = (Get-FileHash -LiteralPath $optimizedPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        }
     }
 
     $records += [pscustomobject]@{
@@ -215,6 +245,9 @@ foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
         cooked_binary = $binaryRelativePath
         binary_bytes = $binaryBytes
         binary_sha256 = $binaryHash
+        optimized_package = $optimizedRelativePath
+        optimized_package_bytes = $optimizedBytes
+        optimized_package_sha256 = $optimizedHash
         dependencies = $dependencies
     }
 }

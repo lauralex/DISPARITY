@@ -25,8 +25,8 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 ## Trailer And Photo Mode
 
 - Press `F8`, use `DISPARITY > Trailer/Photo Mode`, or click `Start Trailer` in the renderer panel to play authored camera shots from `Assets/Cinematics/Showcase.dshot`.
-- Trailer mode interpolates position, target, focus, depth-of-field strength, lens dirt, and letterbox values so the same vertical-slice camera move is repeatable for recording and verification.
-- Use the `Shot Director` panel to add/edit/capture/reload/save `.dshot` keys while the game is running.
+- Trailer mode interpolates position, target, focus, depth-of-field strength, lens dirt, letterbox, easing, renderer pulse, audio cue, and bookmark metadata so the same vertical-slice camera move is repeatable for recording and verification.
+- Use the `Shot Director` panel to add/edit/capture/reload/save v3 `.dshot` keys while the game is running.
 - Press `F9` or click `Capture PPM+PNG` in the viewport panel to capture the presented frame, then write `Saved/Captures/DISPARITY_photo_source.ppm`, `Saved/Captures/DISPARITY_photo_source.png`, and a 2x upscaled `Saved/Captures/DISPARITY_photo_2x.ppm`.
 - The renderer panel exposes depth of field, lens dirt, vignette, film grain, letterbox, title-safe guides, and presentation pulse controls for public demo capture.
 - Automatic generated cue tones are off by default for clean capture with the current WinMM prototype backend. Enable `Audio Mixer > Cinematic cue tones` only when you want to test the temporary generated cues.
@@ -37,9 +37,9 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - Keep `Hot reload assets` enabled in the `Assets` panel and wait about half a second, or press `F5` to force scene/script reload.
 - Select a scene object, then use `Apply Selection To Beacon Prefab` to write that object shape/material back to `Assets/Prefabs/Beacon.dprefab`.
 - Select a scene object, then use `Save Selection As Runtime Prefab` to write a prefab snapshot under `Saved`.
-- Use `Rescan Database` to rebuild the in-editor asset database. It classifies assets, shows dirty cooked state, tracks glTF buffer/image references, material texture references, script prefab references, and reports dependency graph nodes/edges.
+- Use `Rescan Database` to rebuild the in-editor asset database. It classifies assets, shows dirty cooked state, tracks glTF buffer/image references, material texture-slot references, script prefab references, prefab parent/child references, and reports dependency graph nodes/edges.
 - Use `Cook Dirty Assets` to write metadata cache files under `Saved/CookedAssets` through the engine job system.
-- Use `Export glTF Materials` to convert loaded glTF material metadata into `.dmat` material assets under `Assets/Materials/Imported`.
+- Use `Export glTF Materials` to convert loaded glTF material metadata into `.dmat` material assets under `Assets/Materials/Imported`, including base-color, normal, metallic-roughness, emissive, and occlusion texture-slot metadata.
 - Import settings use `.dimport` files. `Assets/ImportSettings/Assets/Meshes/SampleTriangle.gltf.dimport` is the sample mesh import settings file.
 
 ## glTF
@@ -55,9 +55,9 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - The `Renderer` panel exposes VSync, tone mapping, shadow maps, broader CSM-style shadow coverage, clustered light contribution, bloom, SSAO, anti-aliasing, temporal AA, exposure, shadow strength, bloom threshold/strength, SSAO strength, AA strength, temporal blend, saturation, contrast, depth of field, lens dirt, cinematic overlay, vignette, letterbox, title-safe guides, film grain, presentation pulse, and post debug views.
 - The scene uses a directional light, shadow map, and eight point lights, including animated rift lights.
 - Post-processing uses the HDR scene texture, temporal history texture, and depth SRV.
-- The renderer now owns dedicated editor GPU targets for viewport color, object IDs, and object depth. Scene objects, player meshes, and gizmo handles write IDs/depth to those targets, and the editor can read back the hovered pixel for GPU-backed picking.
+- The renderer now owns dedicated editor GPU targets for viewport color, object IDs, and object depth. Scene objects, player meshes, and gizmo handles write IDs/depth to those targets, and the editor can read back the hovered pixel for GPU-backed picking. The `Viewport` panel presents the dedicated viewport texture through ImGui, and runtime reports include object-ID readback ring request/completion/latency diagnostics.
 - Materials can request double-sided rendering. The DX11 path switches those draws to a no-cull rasterizer state and the scene shader flips back-face normals, keeping imported single-surface meshes like the sample triangle visible during rotation.
-- The `Profiler` panel shows frame timings, job worker count, renderer draw-call counters, GPU frame timing once DX11 timestamp queries warm up, and compiled render-graph schedule/resource lifetime diagnostics. The render graph view also reports per-pass GPU timings, culled passes, read/write transition diagnostics, alias candidates, transient allocation slots, and alias reuse.
+- The `Profiler` panel shows frame timings, job worker count, renderer draw-call counters, GPU frame timing once DX11 timestamp queries warm up, and compiled render-graph schedule/resource lifetime diagnostics. The render graph view also reports per-pass GPU timings, culled passes, graph callback execution, pending capture requests, read/write transition diagnostics, alias candidates, transient allocation slots, and alias reuse.
 - If bloom/SSAO/AA/DOF/lens differences are hard to spot in the final image, use `Renderer > Post debug`: `Bloom` isolates bright bleed, `SSAO mask` shows contact darkening, `AA edges` shows the edge detector, `Depth` visualizes the depth buffer, `DOF` shows the circle-of-confusion mask, and `Lens dirt` isolates the dirt/bloom response.
 - Bloom became more visible because the scene shader no longer clamps lighting before the HDR post pass.
 - Scene materials now include emissive color and emissive intensity, and the rift uses those channels for glow alongside its animated point lights.
@@ -69,6 +69,7 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - `F2` plays the UI notification tone.
 - The mixer shows the active backend, per-bus send values, simple peak meters, and active generated voice counts.
 - The mixer detects XAudio2 runtime availability and exposes a preference switch while v16 keeps WinMM as the actual playback path.
+- The mixer and runtime report expose audio analysis values: peak, RMS, beat envelope, active voices, and whether generated/streamed content has driven the analysis surface.
 - `Cinematic cue tones` is opt-in; showcase/trailer visual beat pulses still run when this is off, but repeated generated WinMM tones are suppressed to avoid glitches. Generated tones reuse a persistent WinMM output handle and write a short silent pre-roll so cue playback is not dependent on another app keeping the Windows audio endpoint awake.
 - Use `Store Snapshot` and `Recall` to test mixer snapshot capture/restore without playing content.
 - `AudioSystem::StreamMusic` and `PlayWaveFileAsync` provide WinMM-backed async/looped wave playback hooks for future content, while the public surface now has listener orientation and production-style snapshot/meter APIs for the future XAudio2 backend.
@@ -81,7 +82,7 @@ Run:
 powershell -ExecutionPolicy Bypass -File .\Tools\CookDisparityAssets.ps1 -Configuration Debug -BinaryPackages
 ```
 
-The cook writes per-source metadata plus `Saved/CookedAssets/manifest.dcook`. With `-BinaryPackages`, it also writes deterministic `.dassetbin` source bundles under `Saved/CookedAssets/Binary` and records package hashes in the manifest. Metadata now includes declared import-setting, glTF URI, material texture, and script prefab dependencies plus a cook payload label. These packages are still source-wrapped bundles rather than optimized runtime mesh/material/animation payloads, but they establish deterministic binary cook output for the real `.glb` pipeline.
+The cook writes per-source metadata plus `Saved/CookedAssets/manifest.dcook`. With `-BinaryPackages`, it writes deterministic `.dassetbin` source bundles under `Saved/CookedAssets/Binary`, deterministic `.dglbpack` optimized-package placeholders for glTF/glB sources under `Saved/CookedAssets/Optimized`, and package hashes in the manifest. Metadata now includes declared import-setting, glTF URI, material texture-slot, script prefab, and prefab parent/child dependencies plus a cook payload label. These packages still need a runtime-optimized mesh/material/animation layout, but the deterministic package and dependency records are now in place.
 
 ## Packaging
 
@@ -127,7 +128,7 @@ Use the full local gate before calling the repository healthy:
 powershell -ExecutionPolicy Bypass -File .\Tools\VerifyDisparity.ps1
 ```
 
-The verification script runs `git diff --check`, a Dear ImGui literal ID conflict check, warning-free Debug and Release builds, MSVC static analysis, all shader entry-point compiles, asset cook manifest/binary package generation, crash upload manifest/upload dry runs, baseline review, Debug window smoke, every runtime verification suite, Release packaging with symbols/archive, symbol indexing, installer payload generation, packaged window smoke, every packaged runtime verification suite, and a performance-history summary against committed baselines.
+The verification script runs `git diff --check`, a Dear ImGui literal ID conflict check, warning-free Debug and Release builds, MSVC static analysis, all shader entry-point compiles, asset cook manifest/binary package generation, crash upload manifest/upload dry runs, baseline review, baseline approval manifest generation, Debug window smoke, every runtime verification suite, Release packaging with symbols/archive, symbol indexing, installer payload generation, packaged window smoke, every packaged runtime verification suite, and a performance-history summary against committed baselines.
 
 Targeted checks are still useful while iterating:
 
@@ -138,7 +139,7 @@ powershell -ExecutionPolicy Bypass -File .\Tools\RuntimeVerifyDisparity.ps1 -Con
 .\bin\x64\Debug\DisparityGame.exe --verify-runtime --verify-frames=90
 ```
 
-Runtime verification writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, runs deterministic input playback, validates capture dimensions/luminance/checksum/nonblank pixels, checks CPU/GPU frame budgets and per-pass render-graph budgets, validates render-graph dispatch order, transient allocation counts, alias reuse, and editor viewport/object-ID/depth target readiness, confirms the imported glTF triangle is double-sided so it does not vanish when rotated, cycles all seven post-debug views, exercises showcase mode and trailer/photo mode with deterministic rift timing, validates the 2x high-resolution capture workflow, validates rift VFX draw counts and beat-pulse counts, validates editor pick/gizmo pick coverage, runs gizmo transform constraint checks, validates audio snapshot capture/restore, downsamples the frame into a thumbnail, compares it against a suite-specific golden PPM, writes a golden diff thumbnail, and exits non-zero if an invariant fails. Budget defaults can be overridden through `RuntimeVerifyDisparity.ps1` or direct flags such as `--verify-cpu-budget-ms=120`, `--verify-gpu-budget-ms=50`, and `--verify-pass-budget-ms=60`.
+Runtime verification writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, runs deterministic input playback, validates capture dimensions/luminance/checksum/nonblank pixels, checks CPU/GPU frame budgets and per-pass render-graph budgets, validates render-graph dispatch order, graph callback execution, transition barriers, transient allocation counts, alias reuse, object-ID readback ring diagnostics, and editor viewport/object-ID/depth target readiness, confirms the imported glTF triangle is double-sided so it does not vanish when rotated, cycles all seven post-debug views, exercises showcase mode and trailer/photo mode with deterministic rift timing, validates the 2x high-resolution capture workflow, validates rift VFX draw counts and VFX system stats, validates beat-pulse counts, validates editor pick/gizmo pick coverage, runs gizmo transform constraint checks, validates async text IO, material texture-slot persistence, prefab variant metadata, shot director easing/bookmarks, animation blending/skinning palette state, audio analysis, and audio snapshot capture/restore, downsamples the frame into a thumbnail, compares it against a suite-specific golden PPM, writes a golden diff thumbnail, and exits non-zero if an invariant fails. Budget defaults can be overridden through `RuntimeVerifyDisparity.ps1` or direct flags such as `--verify-cpu-budget-ms=120`, `--verify-gpu-budget-ms=50`, and `--verify-pass-budget-ms=60`.
 
 Runtime replay and baseline expectations are assetized:
 
@@ -147,13 +148,14 @@ Runtime replay and baseline expectations are assetized:
 - `Assets/Verification/CameraSweep.dreplay` adds a camera-heavy deterministic playback path.
 - `Assets/Verification/EditorPrecision.dreplay` adds editor-picking coverage for stable-ID object picks and gizmo handle picks.
 - `Assets/Verification/PostDebug.dreplay`, `AssetReload.dreplay`, and `GizmoDrag.dreplay` add scenario labels and replay paths for production-style verification coverage.
-- `Assets/Verification/*Baseline.dverify` files define expected capture dimensions, average luminance tolerance, nonblack pixel ratio, minimum replay path distance, editor pick counts, gizmo pick counts, post-debug counts, showcase/trailer frame counts, high-resolution capture counts, rift VFX draw counts, beat-pulse counts, render-graph allocation/alias requirements, editor GPU target requirements, performance budgets, and golden thumbnail tolerances.
+- `Assets/Verification/*Baseline.dverify` files define expected capture dimensions, average luminance tolerance, nonblack pixel ratio, minimum replay path distance, editor pick counts, gizmo pick counts, post-debug counts, showcase/trailer frame counts, high-resolution capture counts, rift VFX draw counts, beat-pulse counts, async IO/material/prefab/shot/audio-analysis/VFX-system/animation-skinning test counts, render-graph callback/barrier/allocation/alias requirements, editor GPU target requirements, performance budgets, and golden thumbnail tolerances.
 - `Assets/Verification/Goldens/*.ppm` stores suite-specific 64x36 golden thumbnails.
 - `Assets/Verification/GoldenProfiles/*.dgoldenprofile` stores per-machine or per-adapter golden tolerance defaults. The runtime verification wrapper detects the primary display adapter and uses a matching profile when present, otherwise it falls back to the default profile.
 - `Assets/Verification/PerformanceBaselines.dperf` stores committed CPU/GPU/pass thresholds per suite for trend comparison.
 - `Tools/CompareCaptureDisparity.ps1` creates or compares capture thumbnails against goldens and writes diff thumbnails.
 - `Tools/SummarizePerformanceHistory.ps1` groups recent local runs by suite/executable and reports CPU/GPU deltas plus editor/gizmo/showcase/trailer/high-res/VFX/beat scenario counters, then compares them against committed performance baselines when available.
 - `Tools/ReviewVerificationBaselines.ps1` checks runtime baselines for required capture, graph, editor target, and golden fields before running the performance summary.
+- `Tools/ApproveVerificationBaseline.ps1` writes `Saved/Verification/baseline_approval.json` with hashes for runtime baselines, performance baselines, golden profiles, and golden thumbnails.
 - `Saved/Verification/performance_history.csv` is appended by `RuntimeVerifyDisparity.ps1` so repeated local runs leave a trend trail without committing generated data.
 
 Crashes write a small report to `Saved/CrashLogs`. GitHub Actions runs the static side of `Tools/VerifyDisparity.ps1` on push and pull request; an opt-in `workflow_dispatch` input can run the runtime gate when a runner has an interactive desktop.

@@ -1,6 +1,7 @@
 #include "Disparity/Assets/AssetDatabase.h"
 
 #include "Disparity/Assets/MaterialAsset.h"
+#include "Disparity/Assets/Prefab.h"
 #include "Disparity/Assets/SimpleJson.h"
 #include "Disparity/Core/FileSystem.h"
 #include "Disparity/Runtime/JobSystem.h"
@@ -114,6 +115,10 @@ namespace Disparity
             }
 
             AddDependency(dependencies, asset.BaseColorTexturePath);
+            AddDependency(dependencies, asset.NormalTexturePath);
+            AddDependency(dependencies, asset.MetallicRoughnessTexturePath);
+            AddDependency(dependencies, asset.EmissiveTexturePath);
+            AddDependency(dependencies, asset.OcclusionTexturePath);
         }
 
         void CollectScriptDependencies(const std::filesystem::path& path, std::vector<std::filesystem::path>& dependencies)
@@ -141,6 +146,21 @@ namespace Disparity
                 {
                     AddDependency(dependencies, dependency);
                 }
+            }
+        }
+
+        void CollectPrefabDependencies(const std::filesystem::path& path, std::vector<std::filesystem::path>& dependencies)
+        {
+            Prefab prefab;
+            if (!PrefabIO::Load(path, prefab))
+            {
+                return;
+            }
+
+            AddDependency(dependencies, prefab.ParentPrefabPath);
+            for (const std::filesystem::path& child : prefab.NestedPrefabPaths)
+            {
+                AddDependency(dependencies, child);
             }
         }
     }
@@ -190,6 +210,10 @@ namespace Disparity
             else if (record.Kind == AssetKind::Script)
             {
                 CollectScriptDependencies(absolutePath, record.Dependencies);
+            }
+            else if (record.Kind == AssetKind::Prefab)
+            {
+                CollectPrefabDependencies(absolutePath, record.Dependencies);
             }
 
             for (std::filesystem::path& dependency : record.Dependencies)

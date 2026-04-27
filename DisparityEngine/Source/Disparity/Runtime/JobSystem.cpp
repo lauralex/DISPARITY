@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <condition_variable>
+#include <fstream>
 #include <mutex>
 #include <queue>
+#include <sstream>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -134,6 +136,28 @@ namespace Disparity
         }
 
         g_jobsAvailable.notify_one();
+    }
+
+    void JobSystem::DispatchReadTextFile(std::filesystem::path path, std::function<void(AsyncTextReadResult)> callback)
+    {
+        Dispatch([path = std::move(path), callback = std::move(callback)]() mutable {
+            AsyncTextReadResult result;
+            result.Path = path;
+
+            std::ifstream file(path);
+            if (file)
+            {
+                std::ostringstream text;
+                text << file.rdbuf();
+                result.Text = text.str();
+                result.Success = true;
+            }
+
+            if (callback)
+            {
+                callback(std::move(result));
+            }
+        });
     }
 
     void JobSystem::WaitIdle()

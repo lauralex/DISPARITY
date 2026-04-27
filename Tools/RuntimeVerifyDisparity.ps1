@@ -306,7 +306,7 @@ if (!$DisablePerfHistory) {
         New-Item -ItemType Directory -Force -Path $historyParent | Out-Null
     }
 
-    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance,playback_net_distance,editor_pick_tests,editor_pick_failures,gizmo_pick_tests,gizmo_pick_failures,gizmo_drag_tests,gizmo_drag_failures,scene_reload_tests,scene_save_tests,post_debug_view_tests,showcase_frames,trailer_frames,high_res_capture_tests,rift_vfx_draws,audio_beat_pulses,audio_snapshot_tests,render_graph_allocations,render_graph_aliased_resources,render_graph_dispatch_valid,editor_viewport_ready,editor_object_id_ready,editor_object_depth_ready,audio_xaudio2_available"
+    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance,playback_net_distance,editor_pick_tests,editor_pick_failures,gizmo_pick_tests,gizmo_pick_failures,gizmo_drag_tests,gizmo_drag_failures,scene_reload_tests,scene_save_tests,post_debug_view_tests,showcase_frames,trailer_frames,high_res_capture_tests,rift_vfx_draws,audio_beat_pulses,audio_snapshot_tests,async_io_tests,material_texture_slot_tests,prefab_variant_tests,shot_director_tests,audio_analysis_tests,vfx_system_tests,animation_skinning_tests,render_graph_allocations,render_graph_aliased_resources,render_graph_barriers,render_graph_callbacks_bound,render_graph_callbacks_executed,render_graph_dispatch_valid,object_id_readback_ring_size,object_id_readback_requests,object_id_readback_completions,object_id_readback_latency_frames,editor_viewport_ready,editor_viewport_presented_in_imgui,editor_object_id_ready,editor_object_depth_ready,audio_xaudio2_available,audio_analysis_peak,audio_analysis_beat_envelope"
     if (Test-Path -LiteralPath $HistoryPath) {
         $currentHeader = Get-Content -LiteralPath $HistoryPath -First 1
         if ($currentHeader -ne $historyHeader) {
@@ -354,13 +354,30 @@ if (!$DisablePerfHistory) {
         $metrics["rift_vfx_draws"],
         $metrics["audio_beat_pulses"],
         $metrics["audio_snapshot_tests"],
+        $metrics["async_io_tests"],
+        $metrics["material_texture_slot_tests"],
+        $metrics["prefab_variant_tests"],
+        $metrics["shot_director_tests"],
+        $metrics["audio_analysis_tests"],
+        $metrics["vfx_system_tests"],
+        $metrics["animation_skinning_tests"],
         $metrics["render_graph_allocations"],
         $metrics["render_graph_aliased_resources"],
+        $metrics["render_graph_barriers"],
+        $metrics["render_graph_callbacks_bound"],
+        $metrics["render_graph_callbacks_executed"],
         $metrics["render_graph_dispatch_valid"],
+        $metrics["object_id_readback_ring_size"],
+        $metrics["object_id_readback_requests"],
+        $metrics["object_id_readback_completions"],
+        $metrics["object_id_readback_latency_frames"],
         $metrics["editor_viewport_ready"],
+        $metrics["editor_viewport_presented_in_imgui"],
         $metrics["editor_object_id_ready"],
         $metrics["editor_object_depth_ready"],
-        $metrics["audio_xaudio2_available"]
+        $metrics["audio_xaudio2_available"],
+        $metrics["audio_analysis_peak"],
+        $metrics["audio_analysis_beat_envelope"]
     ) | ForEach-Object {
         '"' + ([string]$_ -replace '"', '""') + '"'
     }

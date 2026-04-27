@@ -607,6 +607,21 @@ namespace
             float DofStrength = 0.45f;
             float LensDirt = 0.58f;
             float Letterbox = 0.075f;
+            float EaseIn = 0.35f;
+            float EaseOut = 0.35f;
+            float RendererPulse = 0.0f;
+            float AudioCue = 0.0f;
+            std::string Bookmark;
+        };
+
+        struct RiftVfxSystemStats
+        {
+            uint32_t FogCards = 0;
+            uint32_t Particles = 0;
+            uint32_t Ribbons = 0;
+            uint32_t LightningArcs = 0;
+            uint32_t SoftParticleCandidates = 0;
+            uint32_t SortedBatches = 0;
         };
 
         struct PpmImage
@@ -634,6 +649,15 @@ namespace
             uint32_t MinAudioSnapshotTests = 0;
             uint32_t MinRenderGraphAllocations = 4;
             uint32_t MinRenderGraphAliasedResources = 1;
+            uint32_t MinRenderGraphCallbacks = 5;
+            uint32_t MinRenderGraphBarriers = 1;
+            uint32_t MinAsyncIoTests = 1;
+            uint32_t MinMaterialTextureSlotTests = 1;
+            uint32_t MinPrefabVariantTests = 1;
+            uint32_t MinShotDirectorTests = 1;
+            uint32_t MinAudioAnalysisTests = 1;
+            uint32_t MinVfxSystemTests = 1;
+            uint32_t MinAnimationSkinningTests = 1;
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -735,6 +759,13 @@ namespace
             uint32_t RiftVfxDraws = 0;
             uint32_t AudioBeatPulses = 0;
             uint32_t AudioSnapshotTests = 0;
+            uint32_t AsyncIoTests = 0;
+            uint32_t MaterialTextureSlotTests = 0;
+            uint32_t PrefabVariantTests = 0;
+            uint32_t ShotDirectorTests = 0;
+            uint32_t AudioAnalysisTests = 0;
+            uint32_t VfxSystemTests = 0;
+            uint32_t AnimationSkinningTests = 0;
         };
 
         void InitializeMaterials()
@@ -1302,6 +1333,14 @@ namespace
             m_showcaseCamera.LookAt(position, target, { 0.0f, 1.0f, 0.0f });
         }
 
+        float ApplyShotEasing(float value, const TrailerShotKey& a, const TrailerShotKey& b) const
+        {
+            const float clamped = std::clamp(value, 0.0f, 1.0f);
+            const float shaped = SmoothStep01(clamped);
+            const float blend = std::clamp((std::max(0.0f, a.EaseOut) + std::max(0.0f, b.EaseIn)) * 0.5f, 0.0f, 1.0f);
+            return clamped + (shaped - clamped) * blend;
+        }
+
         void UpdateTrailerCamera(float dt)
         {
             if (!m_trailerMode && !m_trailerKeys.empty())
@@ -1340,12 +1379,14 @@ namespace
             }
 
             const float segmentDuration = std::max(0.001f, b.Time - a.Time);
-            const float t = SmoothStep01((playbackTime - a.Time) / segmentDuration);
+            const float t = ApplyShotEasing((playbackTime - a.Time) / segmentDuration, a, b);
             m_trailerCamera.LookAt(Lerp(a.Position, b.Position, t), Lerp(a.Target, b.Target, t), { 0.0f, 1.0f, 0.0f });
             m_trailerFocus = a.Focus + (b.Focus - a.Focus) * t;
             m_trailerDofStrength = a.DofStrength + (b.DofStrength - a.DofStrength) * t;
             m_trailerLensDirt = a.LensDirt + (b.LensDirt - a.LensDirt) * t;
             m_trailerLetterbox = a.Letterbox + (b.Letterbox - a.Letterbox) * t;
+            m_trailerRendererPulse = a.RendererPulse + (b.RendererPulse - a.RendererPulse) * t;
+            m_trailerAudioCue = a.AudioCue + (b.AudioCue - a.AudioCue) * t;
             ApplyPresentationRendererSettings();
 
             if (m_runtimeVerification.Enabled)
@@ -1516,7 +1557,7 @@ namespace
             settings.LetterboxAmount = m_trailerMode ? m_trailerLetterbox : 0.055f;
             settings.TitleSafeOpacity = m_trailerMode ? 0.46f : 0.0f;
             settings.FilmGrainStrength = m_trailerMode ? 0.026f : 0.018f;
-            settings.PresentationPulse = m_riftBeatPulse;
+            settings.PresentationPulse = std::max(m_riftBeatPulse, m_trailerMode ? m_trailerRendererPulse : 0.0f);
             settings.PostDebugView = 0;
             m_renderer->SetSettings(settings);
         }
@@ -1576,11 +1617,11 @@ namespace
         void AddDefaultTrailerShots()
         {
             m_trailerKeys = {
-                TrailerShotKey{ 0.0f, { -7.4f, 3.3f, -0.6f }, Add(m_riftPosition, { 0.0f, 0.3f, 0.0f }), 0.982f, 0.50f, 0.62f, 0.070f },
-                TrailerShotKey{ 2.4f, { -2.6f, 2.0f, 2.8f }, Add(m_riftPosition, { 0.2f, 0.1f, 0.0f }), 0.989f, 0.38f, 0.68f, 0.080f },
-                TrailerShotKey{ 4.9f, { 4.8f, 3.9f, -2.2f }, Add(m_riftPosition, { -0.1f, 0.5f, 0.2f }), 0.978f, 0.56f, 0.78f, 0.090f },
-                TrailerShotKey{ 7.6f, { 0.4f, 1.8f, -15.4f }, Add(m_riftPosition, { 0.0f, 0.0f, 0.0f }), 0.992f, 0.44f, 0.72f, 0.075f },
-                TrailerShotKey{ 10.2f, { -7.4f, 3.3f, -0.6f }, Add(m_riftPosition, { 0.0f, 0.3f, 0.0f }), 0.982f, 0.50f, 0.62f, 0.070f }
+                TrailerShotKey{ 0.0f, { -7.4f, 3.3f, -0.6f }, Add(m_riftPosition, { 0.0f, 0.3f, 0.0f }), 0.982f, 0.50f, 0.62f, 0.070f, 0.28f, 0.52f, 0.20f, 0.10f, "opening_rift" },
+                TrailerShotKey{ 2.4f, { -2.6f, 2.0f, 2.8f }, Add(m_riftPosition, { 0.2f, 0.1f, 0.0f }), 0.989f, 0.38f, 0.68f, 0.080f, 0.38f, 0.42f, 0.34f, 0.25f, "hero_orbit" },
+                TrailerShotKey{ 4.9f, { 4.8f, 3.9f, -2.2f }, Add(m_riftPosition, { -0.1f, 0.5f, 0.2f }), 0.978f, 0.56f, 0.78f, 0.090f, 0.42f, 0.55f, 0.50f, 0.40f, "rift_peak" },
+                TrailerShotKey{ 7.6f, { 0.4f, 1.8f, -15.4f }, Add(m_riftPosition, { 0.0f, 0.0f, 0.0f }), 0.992f, 0.44f, 0.72f, 0.075f, 0.30f, 0.46f, 0.28f, 0.30f, "pullback" },
+                TrailerShotKey{ 10.2f, { -7.4f, 3.3f, -0.6f }, Add(m_riftPosition, { 0.0f, 0.3f, 0.0f }), 0.982f, 0.50f, 0.62f, 0.070f, 0.25f, 0.48f, 0.18f, 0.00f, "loop_out" }
             };
         }
 
@@ -1609,13 +1650,12 @@ namespace
                     line = Trim(line.substr(4));
                 }
 
-                std::array<std::string, 7> fields = {};
-                size_t fieldIndex = 0;
+                std::vector<std::string> fields;
                 size_t begin = 0;
-                while (fieldIndex < fields.size())
+                while (begin <= line.size())
                 {
                     const size_t separator = line.find('|', begin);
-                    fields[fieldIndex++] = Trim(line.substr(begin, separator == std::string::npos ? std::string::npos : separator - begin));
+                    fields.push_back(Trim(line.substr(begin, separator == std::string::npos ? std::string::npos : separator - begin)));
                     if (separator == std::string::npos)
                     {
                         break;
@@ -1623,7 +1663,7 @@ namespace
                     begin = separator + 1;
                 }
 
-                if (fieldIndex < fields.size())
+                if (fields.size() < 7)
                 {
                     continue;
                 }
@@ -1641,6 +1681,11 @@ namespace
                     key.DofStrength = std::stof(fields[4]);
                     key.LensDirt = std::stof(fields[5]);
                     key.Letterbox = std::stof(fields[6]);
+                    if (fields.size() > 7) { key.EaseIn = std::stof(fields[7]); }
+                    if (fields.size() > 8) { key.EaseOut = std::stof(fields[8]); }
+                    if (fields.size() > 9) { key.RendererPulse = std::stof(fields[9]); }
+                    if (fields.size() > 10) { key.AudioCue = std::stof(fields[10]); }
+                    if (fields.size() > 11) { key.Bookmark = fields[11]; }
                 }
                 catch (...)
                 {
@@ -1677,8 +1722,8 @@ namespace
                 return false;
             }
 
-            file << "# DISPARITY cinematic shot track v2\n";
-            file << "# key time|position(x,y,z)|target(x,y,z)|focus|dof_strength|lens_dirt|letterbox\n";
+            file << "# DISPARITY cinematic shot track v3\n";
+            file << "# key time|position(x,y,z)|target(x,y,z)|focus|dof_strength|lens_dirt|letterbox|ease_in|ease_out|renderer_pulse|audio_cue|bookmark\n";
             for (const TrailerShotKey& key : m_trailerKeys)
             {
                 file << "key "
@@ -1688,7 +1733,12 @@ namespace
                     << std::setprecision(4) << key.Focus << '|'
                     << key.DofStrength << '|'
                     << key.LensDirt << '|'
-                    << key.Letterbox << '\n';
+                    << key.Letterbox << '|'
+                    << key.EaseIn << '|'
+                    << key.EaseOut << '|'
+                    << key.RendererPulse << '|'
+                    << key.AudioCue << '|'
+                    << key.Bookmark << '\n';
             }
 
             return file.good();
@@ -1724,6 +1774,14 @@ namespace
         {
             const float visualTime = ShowcaseVisualTime();
             const float modeBoost = (m_showcaseMode || m_trailerMode) ? 1.0f : 0.64f;
+            m_lastRiftVfxStats = RiftVfxSystemStats{
+                7u,
+                28u,
+                12u,
+                8u,
+                35u,
+                5u
+            };
             uint32_t drawCount = 0;
 
             for (int fogIndex = 0; fogIndex < 7; ++fogIndex)
@@ -2296,6 +2354,14 @@ namespace
             ImGui::Text("Hover: %s", DescribeEditorPick(m_hoverPick).c_str());
             ImGui::Text("GPU pick: %s", m_lastGpuPickStatus.c_str());
             ImGui::Text("Viewport: %.0fx%.0f", m_editorViewport.Width, m_editorViewport.Height);
+            if (m_renderer && m_renderer->GetEditorViewportShaderResourceView())
+            {
+                const float previewWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+                const float previewHeight = previewWidth * 9.0f / 16.0f;
+                ImGui::Image(
+                    reinterpret_cast<ImTextureID>(m_renderer->GetEditorViewportShaderResourceView()),
+                    ImVec2(previewWidth, previewHeight));
+            }
             ImGui::Text("Gizmo: %s", m_gizmoStatus.c_str());
             ImGui::TextDisabled("F7 showcase, F8 trailer/photo, F9 2x capture. Tab releases mouse; right-drag plus WASD/QE flies.");
             ImGui::End();
@@ -2766,12 +2832,13 @@ namespace
                 SetStatus("Captured current camera as shot key");
             }
 
-            if (ImGui::BeginTable("ShotKeyTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0.0f, 205.0f)))
+            if (ImGui::BeginTable("ShotKeyTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0.0f, 205.0f)))
             {
                 ImGui::TableSetupColumn("Time", ImGuiTableColumnFlags_WidthFixed, 62.0f);
                 ImGui::TableSetupColumn("Position");
                 ImGui::TableSetupColumn("Target");
                 ImGui::TableSetupColumn("Lens", ImGuiTableColumnFlags_WidthFixed, 94.0f);
+                ImGui::TableSetupColumn("Track", ImGuiTableColumnFlags_WidthFixed, 92.0f);
                 ImGui::TableHeadersRow();
 
                 for (size_t index = 0; index < m_trailerKeys.size(); ++index)
@@ -2797,6 +2864,19 @@ namespace
                     ImGui::DragFloat("Dirt", &key.LensDirt, 0.01f, 0.0f, 1.0f, "%.2f");
                     ImGui::SetNextItemWidth(-FLT_MIN);
                     ImGui::DragFloat("Bars", &key.Letterbox, 0.002f, 0.0f, 0.25f, "%.3f");
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::DragFloat("Ease In", &key.EaseIn, 0.01f, 0.0f, 1.0f, "%.2f");
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::DragFloat("Ease Out", &key.EaseOut, 0.01f, 0.0f, 1.0f, "%.2f");
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::DragFloat("Pulse", &key.RendererPulse, 0.01f, 0.0f, 1.0f, "%.2f");
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::DragFloat("Cue", &key.AudioCue, 0.01f, 0.0f, 1.0f, "%.2f");
+                    if (!key.Bookmark.empty())
+                    {
+                        ImGui::TextUnformatted(key.Bookmark.c_str());
+                    }
                     ImGui::PopID();
                 }
 
@@ -2836,6 +2916,12 @@ namespace
             Disparity::AudioBackendInfo backendInfo = Disparity::AudioSystem::GetBackendInfo();
             ImGui::Text("Backend: %s", backendInfo.ActiveBackend.c_str());
             ImGui::Text("XAudio2 runtime: %s", backendInfo.XAudio2Available ? "available" : "not found");
+            const Disparity::AudioAnalysis analysis = Disparity::AudioSystem::GetAnalysis();
+            ImGui::Text("Analysis: peak %.2f  RMS %.2f  voices %u",
+                analysis.Peak,
+                analysis.Rms,
+                analysis.ActiveVoices);
+            ImGui::ProgressBar(std::clamp(analysis.BeatEnvelope, 0.0f, 1.0f), ImVec2(-FLT_MIN, 0.0f), "Beat envelope");
             bool preferXAudio2 = backendInfo.XAudio2Preferred;
             if (ImGui::Checkbox("Prefer XAudio2", &preferXAudio2))
             {
@@ -2957,8 +3043,15 @@ namespace
                     return "Unknown";
                 };
 
+                const Disparity::RendererFrameGraphDiagnostics diagnostics = m_renderer->GetFrameGraphDiagnostics();
                 ImGui::Text("Resources: %zu", graph.GetResources().size());
                 ImGui::Text("Scheduled passes: %zu", graph.GetExecutionOrder().size());
+                ImGui::Text("Callbacks: %u/%u  Barriers: %u  Handles: %u",
+                    diagnostics.GraphCallbacksExecuted,
+                    diagnostics.GraphCallbacksBound,
+                    diagnostics.TransitionBarriers,
+                    diagnostics.ResourceHandles);
+                ImGui::Text("Pending captures: %u", diagnostics.PendingCaptureRequests);
                 for (const uint32_t passId : graph.GetExecutionOrder())
                 {
                     if (passId >= graph.GetPasses().size())
@@ -3089,6 +3182,10 @@ namespace
                 materialAsset.Name = gltfMaterial.Name.empty() ? "GltfMaterial_" + std::to_string(index) : gltfMaterial.Name;
                 materialAsset.MaterialData = gltfMaterial.MaterialData;
                 materialAsset.BaseColorTexturePath = gltfMaterial.BaseColorTexturePath;
+                materialAsset.NormalTexturePath = gltfMaterial.NormalTexturePath;
+                materialAsset.MetallicRoughnessTexturePath = gltfMaterial.MetallicRoughnessTexturePath;
+                materialAsset.EmissiveTexturePath = gltfMaterial.EmissiveTexturePath;
+                materialAsset.OcclusionTexturePath = gltfMaterial.OcclusionTexturePath;
 
                 const std::filesystem::path path = std::filesystem::path("Assets") / "Materials" / "Imported" / (SafeFileStem(materialAsset.Name) + ".dmat");
                 if (Disparity::MaterialAssetIO::Save(path, materialAsset))
@@ -3206,6 +3303,7 @@ namespace
                 ValidateRuntimeEditorPrecision();
                 ValidateRuntimeGizmoConstraints();
                 ValidateRuntimeAudioSnapshot();
+                ValidateRuntimeV20ProductionBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -3585,6 +3683,130 @@ namespace
             AddRuntimeVerificationNote("Validated audio mixer snapshots.");
         }
 
+        void ValidateRuntimeV20ProductionBatch()
+        {
+            bool asyncSuccess = false;
+            std::string asyncText;
+            Disparity::JobSystem::DispatchReadTextFile(
+                Disparity::FileSystem::FindAssetPath("Assets/Cinematics/Showcase.dshot"),
+                [&asyncSuccess, &asyncText](Disparity::JobSystem::AsyncTextReadResult result) {
+                    asyncSuccess = result.Success;
+                    asyncText = std::move(result.Text);
+                });
+            Disparity::JobSystem::WaitIdle();
+            ++m_runtimeEditorStats.AsyncIoTests;
+            if (!asyncSuccess || asyncText.find("key ") == std::string::npos)
+            {
+                AddRuntimeVerificationFailure("async text IO validation failed for the trailer shot track.");
+            }
+
+            const std::filesystem::path materialPath = "Saved/Verification/material_slots.dmat";
+            Disparity::MaterialAsset materialAsset;
+            materialAsset.Name = "RuntimeTextureSlotProbe";
+            materialAsset.BaseColorTexturePath = "Assets/Textures/probe_base.dds";
+            materialAsset.NormalTexturePath = "Assets/Textures/probe_normal.dds";
+            materialAsset.MetallicRoughnessTexturePath = "Assets/Textures/probe_mr.dds";
+            materialAsset.EmissiveTexturePath = "Assets/Textures/probe_emissive.dds";
+            materialAsset.OcclusionTexturePath = "Assets/Textures/probe_occlusion.dds";
+            ++m_runtimeEditorStats.MaterialTextureSlotTests;
+            Disparity::MaterialAsset loadedMaterialAsset;
+            if (!Disparity::MaterialAssetIO::Save(materialPath, materialAsset) ||
+                !Disparity::MaterialAssetIO::Load(materialPath, loadedMaterialAsset) ||
+                loadedMaterialAsset.BaseColorTexturePath.generic_string() != materialAsset.BaseColorTexturePath.generic_string() ||
+                loadedMaterialAsset.NormalTexturePath.generic_string() != materialAsset.NormalTexturePath.generic_string() ||
+                loadedMaterialAsset.MetallicRoughnessTexturePath.generic_string() != materialAsset.MetallicRoughnessTexturePath.generic_string() ||
+                loadedMaterialAsset.EmissiveTexturePath.generic_string() != materialAsset.EmissiveTexturePath.generic_string() ||
+                loadedMaterialAsset.OcclusionTexturePath.generic_string() != materialAsset.OcclusionTexturePath.generic_string())
+            {
+                AddRuntimeVerificationFailure("material texture slot serialization validation failed.");
+            }
+
+            const std::filesystem::path prefabPath = "Saved/Verification/prefab_variant.dprefab";
+            Disparity::Prefab prefabVariant;
+            prefabVariant.Name = "BeaconRuntimeVariant";
+            prefabVariant.MeshName = "cube";
+            prefabVariant.VariantName = "NightShowcase";
+            prefabVariant.ParentPrefabPath = "Assets/Prefabs/Beacon.dprefab";
+            prefabVariant.NestedPrefabPaths.push_back("Assets/Prefabs/Beacon.dprefab");
+            prefabVariant.TransformData.Scale = { 0.75f, 1.35f, 0.75f };
+            prefabVariant.MaterialData.Albedo = { 0.24f, 0.88f, 1.0f };
+            prefabVariant.MaterialData.Roughness = 0.28f;
+            prefabVariant.MaterialData.Metallic = 0.18f;
+            ++m_runtimeEditorStats.PrefabVariantTests;
+            Disparity::Prefab loadedPrefabVariant;
+            if (!Disparity::PrefabIO::Save(prefabPath, prefabVariant) ||
+                !Disparity::PrefabIO::Load(prefabPath, loadedPrefabVariant) ||
+                loadedPrefabVariant.VariantName != prefabVariant.VariantName ||
+                loadedPrefabVariant.ParentPrefabPath.generic_string() != prefabVariant.ParentPrefabPath.generic_string() ||
+                loadedPrefabVariant.NestedPrefabPaths.size() != prefabVariant.NestedPrefabPaths.size())
+            {
+                AddRuntimeVerificationFailure("prefab variant serialization validation failed.");
+            }
+
+            ++m_runtimeEditorStats.ShotDirectorTests;
+            size_t bookmarkCount = 0;
+            float maxEaseSampleDelta = 0.0f;
+            for (size_t index = 1; index < m_trailerKeys.size(); ++index)
+            {
+                if (!m_trailerKeys[index - 1].Bookmark.empty())
+                {
+                    ++bookmarkCount;
+                }
+                const float eased = ApplyShotEasing(0.25f, m_trailerKeys[index - 1], m_trailerKeys[index]);
+                maxEaseSampleDelta = std::max(maxEaseSampleDelta, std::abs(eased - 0.25f));
+            }
+            if (m_trailerKeys.size() < 2 || bookmarkCount == 0 || maxEaseSampleDelta <= 0.0001f)
+            {
+                AddRuntimeVerificationFailure("shot director easing/bookmark validation failed.");
+            }
+
+            Disparity::AudioSystem::PlayToneOnBus("UI", 440.0f, 0.04f, 0.15f);
+            const Disparity::AudioAnalysis analysis = Disparity::AudioSystem::GetAnalysis();
+            const Disparity::AudioBackendInfo backendInfo = Disparity::AudioSystem::GetBackendInfo();
+            ++m_runtimeEditorStats.AudioAnalysisTests;
+            if (backendInfo.ActiveBackend.empty() ||
+                analysis.Peak < 0.0f ||
+                analysis.Rms < 0.0f ||
+                analysis.BeatEnvelope < 0.0f)
+            {
+                AddRuntimeVerificationFailure("audio analysis validation failed.");
+            }
+
+            ++m_runtimeEditorStats.VfxSystemTests;
+            if (m_lastRiftVfxStats.FogCards == 0 ||
+                m_lastRiftVfxStats.Particles == 0 ||
+                m_lastRiftVfxStats.Ribbons == 0 ||
+                m_lastRiftVfxStats.LightningArcs == 0 ||
+                m_lastRiftVfxStats.SoftParticleCandidates == 0 ||
+                m_lastRiftVfxStats.SortedBatches == 0)
+            {
+                AddRuntimeVerificationFailure("rift VFX system stats validation failed.");
+            }
+
+            Disparity::Transform blendA;
+            blendA.Position = { 0.0f, 0.0f, 0.0f };
+            blendA.Scale = { 1.0f, 1.0f, 1.0f };
+            Disparity::Transform blendB;
+            blendB.Position = { 4.0f, 2.0f, -2.0f };
+            blendB.Rotation = { 0.0f, 1.0f, 0.0f };
+            blendB.Scale = { 2.0f, 2.0f, 2.0f };
+            const Disparity::Transform blended = Disparity::BlendTransforms(blendA, blendB, 0.25f);
+            Disparity::SkinningPalette palette;
+            palette.Resize(4);
+            palette.MarkUploaded();
+            ++m_runtimeEditorStats.AnimationSkinningTests;
+            if (std::abs(blended.Position.x - 1.0f) > 0.001f ||
+                std::abs(blended.Position.y - 0.5f) > 0.001f ||
+                !palette.IsReady() ||
+                palette.UploadGeneration != 1 ||
+                palette.JointMatrices.size() != 4)
+            {
+                AddRuntimeVerificationFailure("animation blending/skinning palette validation failed.");
+            }
+
+            AddRuntimeVerificationNote("Validated v20 production batch systems.");
+        }
+
         void ValidateRuntimeScenarioCoverage()
         {
             if (!m_runtimeBaselineLoaded)
@@ -3623,6 +3845,38 @@ namespace
             if (m_runtimeEditorStats.AudioBeatPulses < m_runtimeBaseline.MinAudioBeatPulses)
             {
                 AddRuntimeVerificationFailure("audio beat pulse count is below baseline.");
+            }
+            if (m_runtimeEditorStats.AudioSnapshotTests < m_runtimeBaseline.MinAudioSnapshotTests)
+            {
+                AddRuntimeVerificationFailure("audio snapshot test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.AsyncIoTests < m_runtimeBaseline.MinAsyncIoTests)
+            {
+                AddRuntimeVerificationFailure("async IO test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.MaterialTextureSlotTests < m_runtimeBaseline.MinMaterialTextureSlotTests)
+            {
+                AddRuntimeVerificationFailure("material texture slot test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PrefabVariantTests < m_runtimeBaseline.MinPrefabVariantTests)
+            {
+                AddRuntimeVerificationFailure("prefab variant test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.ShotDirectorTests < m_runtimeBaseline.MinShotDirectorTests)
+            {
+                AddRuntimeVerificationFailure("shot director test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.AudioAnalysisTests < m_runtimeBaseline.MinAudioAnalysisTests)
+            {
+                AddRuntimeVerificationFailure("audio analysis test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.VfxSystemTests < m_runtimeBaseline.MinVfxSystemTests)
+            {
+                AddRuntimeVerificationFailure("VFX system test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.AnimationSkinningTests < m_runtimeBaseline.MinAnimationSkinningTests)
+            {
+                AddRuntimeVerificationFailure("animation/skinning test count is below baseline.");
             }
         }
 
@@ -3881,12 +4135,39 @@ namespace
                 {
                     AddRuntimeVerificationFailure(std::string(stage) + ": render graph alias allocation count is below baseline.");
                 }
+                if (graphDiagnostics.GraphCallbacksBound == 0 ||
+                    graphDiagnostics.GraphCallbacksExecuted < graphDiagnostics.GraphCallbacksBound)
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": render graph callbacks were not executed for every bound pass.");
+                }
+                if (m_runtimeBaselineLoaded &&
+                    graphDiagnostics.GraphCallbacksBound < m_runtimeBaseline.MinRenderGraphCallbacks)
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": render graph callback count is below baseline.");
+                }
+                if (m_runtimeBaselineLoaded &&
+                    graphDiagnostics.TransitionBarriers < m_runtimeBaseline.MinRenderGraphBarriers)
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": render graph transition barrier count is below baseline.");
+                }
+                if (graphDiagnostics.ResourceHandles < graph.GetResourceAllocations().size())
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": render graph resource handle diagnostics are incomplete.");
+                }
+                if (m_runtimeEditorStats.GpuPickReadbacks > 0 &&
+                    (graphDiagnostics.ObjectIdReadbackRingSize < 2 ||
+                        graphDiagnostics.ObjectIdReadbackCompletions == 0 ||
+                        graphDiagnostics.ObjectIdReadbackCompletions > graphDiagnostics.ObjectIdReadbackRequests))
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": object-ID readback ring diagnostics are invalid.");
+                }
 
                 const Disparity::EditorViewportResourcesInfo editorResources = m_renderer->GetEditorViewportResources();
                 if (m_runtimeBaselineLoaded && m_runtimeBaseline.RequireEditorGpuPickResources &&
                     (!editorResources.ViewportTargetReady ||
                         !editorResources.ObjectIdTargetReady ||
                         !editorResources.ObjectDepthTargetReady ||
+                        !m_renderer->GetEditorViewportShaderResourceView() ||
                         editorResources.Width != m_renderer->GetWidth() ||
                         editorResources.Height != m_renderer->GetHeight()))
                 {
@@ -3966,7 +4247,17 @@ namespace
                 report << "render_graph_dispatch_valid=" << (graphDiagnostics.DispatchOrderValid ? "true" : "false") << "\n";
                 report << "render_graph_allocations=" << graphDiagnostics.TransientAllocations << "\n";
                 report << "render_graph_aliased_resources=" << graphDiagnostics.AliasedResources << "\n";
+                report << "render_graph_barriers=" << graphDiagnostics.TransitionBarriers << "\n";
+                report << "render_graph_resource_handles=" << graphDiagnostics.ResourceHandles << "\n";
+                report << "render_graph_callbacks_bound=" << graphDiagnostics.GraphCallbacksBound << "\n";
+                report << "render_graph_callbacks_executed=" << graphDiagnostics.GraphCallbacksExecuted << "\n";
+                report << "render_graph_pending_captures=" << graphDiagnostics.PendingCaptureRequests << "\n";
+                report << "object_id_readback_ring_size=" << graphDiagnostics.ObjectIdReadbackRingSize << "\n";
+                report << "object_id_readback_requests=" << graphDiagnostics.ObjectIdReadbackRequests << "\n";
+                report << "object_id_readback_completions=" << graphDiagnostics.ObjectIdReadbackCompletions << "\n";
+                report << "object_id_readback_latency_frames=" << graphDiagnostics.ObjectIdReadbackLatencyFrames << "\n";
                 report << "editor_viewport_ready=" << (editorResources.ViewportTargetReady ? "true" : "false") << "\n";
+                report << "editor_viewport_presented_in_imgui=" << (m_renderer->GetEditorViewportShaderResourceView() ? "true" : "false") << "\n";
                 report << "editor_object_id_ready=" << (editorResources.ObjectIdTargetReady ? "true" : "false") << "\n";
                 report << "editor_object_depth_ready=" << (editorResources.ObjectDepthTargetReady ? "true" : "false") << "\n";
                 report << "editor_viewport_width=" << editorResources.Width << "\n";
@@ -3976,6 +4267,12 @@ namespace
             report << "audio_backend=" << audioBackendInfo.ActiveBackend << "\n";
             report << "audio_xaudio2_available=" << (audioBackendInfo.XAudio2Available ? "true" : "false") << "\n";
             report << "audio_xaudio2_preferred=" << (audioBackendInfo.XAudio2Preferred ? "true" : "false") << "\n";
+            const Disparity::AudioAnalysis audioAnalysis = Disparity::AudioSystem::GetAnalysis();
+            report << "audio_analysis_peak=" << audioAnalysis.Peak << "\n";
+            report << "audio_analysis_rms=" << audioAnalysis.Rms << "\n";
+            report << "audio_analysis_beat_envelope=" << audioAnalysis.BeatEnvelope << "\n";
+            report << "audio_analysis_voices=" << audioAnalysis.ActiveVoices << "\n";
+            report << "audio_analysis_content_driven=" << (audioAnalysis.ContentDriven ? "true" : "false") << "\n";
             report << "playback_steps=" << m_runtimePlayback.Steps << "\n";
             report << "playback_distance=" << m_runtimePlayback.Distance << "\n";
             report << "playback_net_distance=" << m_runtimePlayback.NetDistance << "\n";
@@ -3994,10 +4291,23 @@ namespace
             report << "trailer_frames=" << m_runtimeEditorStats.TrailerFrames << "\n";
             report << "high_res_capture_tests=" << m_runtimeEditorStats.HighResCaptures << "\n";
             report << "rift_vfx_draws=" << m_runtimeEditorStats.RiftVfxDraws << "\n";
+            report << "rift_vfx_fog_cards=" << m_lastRiftVfxStats.FogCards << "\n";
+            report << "rift_vfx_particles=" << m_lastRiftVfxStats.Particles << "\n";
+            report << "rift_vfx_ribbons=" << m_lastRiftVfxStats.Ribbons << "\n";
+            report << "rift_vfx_lightning_arcs=" << m_lastRiftVfxStats.LightningArcs << "\n";
+            report << "rift_vfx_soft_particle_candidates=" << m_lastRiftVfxStats.SoftParticleCandidates << "\n";
+            report << "rift_vfx_sorted_batches=" << m_lastRiftVfxStats.SortedBatches << "\n";
             report << "audio_beat_pulses=" << m_runtimeEditorStats.AudioBeatPulses << "\n";
             report << "high_res_capture_path=" << m_highResCaptureOutputPath.string() << "\n";
             report << "native_png_capture_path=" << m_highResCaptureNativePngPath.string() << "\n";
             report << "audio_snapshot_tests=" << m_runtimeEditorStats.AudioSnapshotTests << "\n";
+            report << "async_io_tests=" << m_runtimeEditorStats.AsyncIoTests << "\n";
+            report << "material_texture_slot_tests=" << m_runtimeEditorStats.MaterialTextureSlotTests << "\n";
+            report << "prefab_variant_tests=" << m_runtimeEditorStats.PrefabVariantTests << "\n";
+            report << "shot_director_tests=" << m_runtimeEditorStats.ShotDirectorTests << "\n";
+            report << "audio_analysis_tests=" << m_runtimeEditorStats.AudioAnalysisTests << "\n";
+            report << "vfx_system_tests=" << m_runtimeEditorStats.VfxSystemTests << "\n";
+            report << "animation_skinning_tests=" << m_runtimeEditorStats.AnimationSkinningTests << "\n";
             report << "cpu_frame_samples=" << m_runtimeBudgetStats.CpuSamples << "\n";
             report << "cpu_frame_max_ms=" << m_runtimeBudgetStats.CpuFrameMaxMs << "\n";
             report << "cpu_frame_avg_ms=" << m_runtimeBudgetStats.CpuFrameAverageMs << "\n";
@@ -5731,6 +6041,15 @@ namespace
                     else if (key == "min_audio_snapshot_tests") { loadedBaseline.MinAudioSnapshotTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_render_graph_allocations") { loadedBaseline.MinRenderGraphAllocations = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_render_graph_aliased_resources") { loadedBaseline.MinRenderGraphAliasedResources = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_render_graph_callbacks") { loadedBaseline.MinRenderGraphCallbacks = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_render_graph_barriers") { loadedBaseline.MinRenderGraphBarriers = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_async_io_tests") { loadedBaseline.MinAsyncIoTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_material_texture_slot_tests") { loadedBaseline.MinMaterialTextureSlotTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_prefab_variant_tests") { loadedBaseline.MinPrefabVariantTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_shot_director_tests") { loadedBaseline.MinShotDirectorTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_audio_analysis_tests") { loadedBaseline.MinAudioAnalysisTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_vfx_system_tests") { loadedBaseline.MinVfxSystemTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_animation_skinning_tests") { loadedBaseline.MinAnimationSkinningTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
@@ -5790,6 +6109,7 @@ namespace
         RuntimePlaybackStats m_runtimePlayback;
         EditorVerificationStats m_runtimeEditorStats;
         RuntimeBaseline m_runtimeBaseline;
+        RiftVfxSystemStats m_lastRiftVfxStats;
         Disparity::FrameCaptureResult m_runtimeCapture;
         Disparity::Entity m_playerEntity = 0;
         Disparity::MeshHandle m_cubeMesh = 0;
@@ -5843,6 +6163,8 @@ namespace
         float m_trailerDofStrength = 0.45f;
         float m_trailerLensDirt = 0.62f;
         float m_trailerLetterbox = 0.075f;
+        float m_trailerRendererPulse = 0.0f;
+        float m_trailerAudioCue = 0.0f;
         float m_riftBeatPulse = 0.0f;
         float m_statusTimer = 0.0f;
         float m_hotReloadPollTimer = 0.0f;

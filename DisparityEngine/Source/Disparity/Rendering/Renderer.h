@@ -93,6 +93,15 @@ namespace Disparity
         uint32_t ExecutedPasses = 0;
         uint32_t TransientAllocations = 0;
         uint32_t AliasedResources = 0;
+        uint32_t TransitionBarriers = 0;
+        uint32_t ResourceHandles = 0;
+        uint32_t GraphCallbacksBound = 0;
+        uint32_t GraphCallbacksExecuted = 0;
+        uint32_t PendingCaptureRequests = 0;
+        uint32_t ObjectIdReadbackRingSize = 0;
+        uint32_t ObjectIdReadbackRequests = 0;
+        uint32_t ObjectIdReadbackCompletions = 0;
+        uint32_t ObjectIdReadbackLatencyFrames = 0;
     };
 
     struct EditorViewportResourcesInfo
@@ -154,6 +163,7 @@ namespace Disparity
         [[nodiscard]] uint32_t GetShadowDrawCalls() const;
         [[nodiscard]] RendererFrameGraphDiagnostics GetFrameGraphDiagnostics() const;
         [[nodiscard]] EditorViewportResourcesInfo GetEditorViewportResources() const;
+        [[nodiscard]] ID3D11ShaderResourceView* GetEditorViewportShaderResourceView() const;
         [[nodiscard]] EditorObjectIdReadback ReadEditorObjectId(uint32_t x, uint32_t y) const;
         [[nodiscard]] double GetGpuFrameMilliseconds() const;
         [[nodiscard]] bool IsGpuTimingAvailable() const;
@@ -233,6 +243,14 @@ namespace Disparity
         bool m_graphDispatchOrderValid = false;
         uint32_t m_graphTransientAllocations = 0;
         uint32_t m_graphAliasedResources = 0;
+        uint32_t m_graphTransitionBarriers = 0;
+        uint32_t m_graphResourceHandles = 0;
+        uint32_t m_graphCallbacksBound = 0;
+        uint32_t m_graphCallbacksExecuted = 0;
+        mutable uint32_t m_objectIdReadbackRingCursor = 0;
+        mutable uint32_t m_objectIdReadbackRequests = 0;
+        mutable uint32_t m_objectIdReadbackCompletions = 0;
+        mutable uint32_t m_objectIdReadbackLatencyFrames = 0;
         std::chrono::steady_clock::time_point m_graphPassStart;
         double m_gpuFrameMilliseconds = 0.0;
         uint64_t m_gpuTimestampFrequency = 0;

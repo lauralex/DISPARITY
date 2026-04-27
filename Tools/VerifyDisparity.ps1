@@ -221,6 +221,10 @@ Invoke-Step "Verification baseline review" {
     & (Join-Path $PSScriptRoot "ReviewVerificationBaselines.ps1") -HistoryPath (Join-Path $root "Saved\Verification\performance_history.csv") -PerformanceBaselinePath $PerformanceBaselinePath -ListGoldenProfiles
 }
 
+Invoke-Step "Baseline approval manifest" {
+    & (Join-Path $PSScriptRoot "ApproveVerificationBaseline.ps1") -DryRun
+}
+
 if (!$SkipRuntime) {
     $runtimeSuites = Get-RuntimeSuites
     Invoke-Step "Debug runtime window smoke" {

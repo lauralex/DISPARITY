@@ -81,4 +81,37 @@ namespace Disparity
         Time += deltaSeconds;
         return Amplitude * std::sin(Time * Frequency);
     }
+
+    Transform BlendTransforms(const Transform& a, const Transform& b, float weight)
+    {
+        const float t = std::clamp(weight, 0.0f, 1.0f);
+        Transform result;
+        result.Position = Lerp3(a.Position, b.Position, t);
+        result.Rotation = Lerp3(a.Rotation, b.Rotation, t);
+        result.Scale = Lerp3(a.Scale, b.Scale, t);
+        return result;
+    }
+
+    void SkinningPalette::Resize(size_t jointCount)
+    {
+        JointMatrices.resize(jointCount);
+        for (DirectX::XMFLOAT4X4& matrix : JointMatrices)
+        {
+            DirectX::XMStoreFloat4x4(&matrix, DirectX::XMMatrixIdentity());
+        }
+        UploadGeneration = 0;
+    }
+
+    void SkinningPalette::MarkUploaded()
+    {
+        if (!JointMatrices.empty())
+        {
+            ++UploadGeneration;
+        }
+    }
+
+    bool SkinningPalette::IsReady() const
+    {
+        return !JointMatrices.empty() && UploadGeneration > 0;
+    }
 }

@@ -882,6 +882,27 @@ namespace Disparity
             }
         }
 
+        const auto resolveTexturePath = [&textureSources, &imagePaths](const JsonValue* textureInfo) -> std::filesystem::path {
+            if (!textureInfo)
+            {
+                return {};
+            }
+
+            const int textureIndex = textureInfo->Find("index") ? textureInfo->Find("index")->AsInt(-1) : -1;
+            if (textureIndex < 0 || textureIndex >= static_cast<int>(textureSources.size()))
+            {
+                return {};
+            }
+
+            const int source = textureSources[static_cast<size_t>(textureIndex)];
+            if (source < 0 || source >= static_cast<int>(imagePaths.size()))
+            {
+                return {};
+            }
+
+            return imagePaths[static_cast<size_t>(source)];
+        };
+
         if (const JsonValue* materials = root.Find("materials"))
         {
             for (const JsonValue& materialValue : materials->Array)
@@ -903,19 +924,13 @@ namespace Disparity
                     material.MaterialData.Roughness = static_cast<float>(pbr->Find("roughnessFactor") ? pbr->Find("roughnessFactor")->AsNumber(0.65) : 0.65);
                     material.MaterialData.Metallic = static_cast<float>(pbr->Find("metallicFactor") ? pbr->Find("metallicFactor")->AsNumber(0.0) : 0.0);
 
-                    if (const JsonValue* baseColorTexture = pbr->Find("baseColorTexture"))
-                    {
-                        const int textureIndex = baseColorTexture->Find("index") ? baseColorTexture->Find("index")->AsInt(-1) : -1;
-                        if (textureIndex >= 0 && textureIndex < static_cast<int>(textureSources.size()))
-                        {
-                            const int source = textureSources[static_cast<size_t>(textureIndex)];
-                            if (source >= 0 && source < static_cast<int>(imagePaths.size()))
-                            {
-                                material.BaseColorTexturePath = imagePaths[static_cast<size_t>(source)];
-                            }
-                        }
-                    }
+                    material.BaseColorTexturePath = resolveTexturePath(pbr->Find("baseColorTexture"));
+                    material.MetallicRoughnessTexturePath = resolveTexturePath(pbr->Find("metallicRoughnessTexture"));
                 }
+
+                material.NormalTexturePath = resolveTexturePath(materialValue.Find("normalTexture"));
+                material.EmissiveTexturePath = resolveTexturePath(materialValue.Find("emissiveTexture"));
+                material.OcclusionTexturePath = resolveTexturePath(materialValue.Find("occlusionTexture"));
 
                 outScene.Materials.push_back(std::move(material));
             }

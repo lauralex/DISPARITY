@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace Disparity
 {
@@ -12,6 +13,9 @@ namespace Disparity
     {
         std::string Name = "Prefab";
         std::string MeshName = "cube";
+        std::string VariantName;
+        std::filesystem::path ParentPrefabPath;
+        std::vector<std::filesystem::path> NestedPrefabPaths;
         Transform TransformData;
         Material MaterialData;
     };

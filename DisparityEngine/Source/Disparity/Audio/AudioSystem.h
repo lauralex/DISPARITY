@@ -37,6 +37,15 @@ namespace Disparity
         bool XAudio2Preferred = false;
     };
 
+    struct AudioAnalysis
+    {
+        float Peak = 0.0f;
+        float Rms = 0.0f;
+        float BeatEnvelope = 0.0f;
+        uint32_t ActiveVoices = 0;
+        bool ContentDriven = false;
+    };
+
     class AudioSystem
     {
     public:
@@ -68,6 +77,7 @@ namespace Disparity
         [[nodiscard]] static float GetBusSend(const std::string& busName);
         [[nodiscard]] static std::vector<AudioBus> GetBuses();
         [[nodiscard]] static std::vector<AudioBusMeter> GetMeters();
+        [[nodiscard]] static AudioAnalysis GetAnalysis();
         [[nodiscard]] static AudioSnapshot CaptureSnapshot();
         static void ApplySnapshot(const AudioSnapshot& snapshot);
         static void SetListenerPosition(const DirectX::XMFLOAT3& position);

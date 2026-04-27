@@ -1,6 +1,21 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v19 versions of many requested followups. The next milestones should turn the new GPU picking, shot editing, capture, and dependency scaffolds into durable production systems while continuing toward a modern content pipeline and renderer architecture.
+The current engine now has functional v20 versions of many requested followups. The next milestones should deepen the new graph, editor viewport, shot-track, VFX, asset, audio-analysis, and verification scaffolds into fully durable production systems.
+
+## v20 Completed Production Batch
+
+- Renderer passes now execute graph-owned callbacks, report callback execution/bound counts, transition barrier counts, resource handle counts, pending capture requests, and object-ID readback ring diagnostics in runtime reports and performance history.
+- The editor `Viewport` panel presents the dedicated renderer-owned viewport texture through Dear ImGui instead of only inspecting the swap-chain image.
+- Object-ID/depth picking now exposes a lightweight readback-ring diagnostic surface with request/completion/latency counters, keeping the current picker stable while preparing the non-blocking path.
+- `.dshot` shot keys moved to v3 with easing, renderer pulse, audio cue, and bookmark metadata. Trailer playback uses the easing metadata and runtime verification validates shot-director coverage.
+- The rift VFX layer now reports dedicated particle/ribbon/fog/lightning/soft-particle/sorted-batch stats, and runtime verification validates the VFX system surface in addition to raw draw counts.
+- Material assets and glTF material export now preserve base-color, normal, metallic-roughness, emissive, and occlusion texture slots.
+- Prefabs now store variant, parent, and nested prefab dependency metadata; the asset database and cook pipeline include those dependencies.
+- The job system gained an async text file read helper, and runtime verification exercises it against the trailer shot track.
+- The animation module now exposes transform blending and a small skinning palette upload-generation surface, with runtime verification coverage.
+- The audio layer exposes content analysis values (peak, RMS, beat envelope, active voices), and the mixer/runtime report display them for the future XAudio2 backend.
+- Asset cooking can emit deterministic optimized `.dglbpack` placeholders for glTF/glB sources alongside `.dassetbin`, dependency metadata, hashes, and cook payload labels.
+- Verification baselines now require the new async IO, material slot, prefab variant, shot director, audio analysis, VFX system, animation/skinning, render-graph callback, and barrier counters. Adapter golden profiles and a baseline approval manifest script were added to the full verification gate.
 
 ## v19 Completed Production Batch
 
@@ -51,48 +66,48 @@ The current engine now has functional v19 versions of many requested followups. 
 
 ## Editor
 
-- Move GPU object-ID/depth picking to an async readback ring with hover latency diagnostics and last-frame/object cache visualization.
-- Make editor viewport compositing use the dedicated viewport texture as the visible ImGui image instead of the swap-chain back buffer.
+- Replace the diagnostic object-ID readback ring with fully non-blocking GPU staging resources, hover latency histograms, and last-frame/object cache visualization.
+- Add viewport toolbar overlays for camera mode, render mode, object-ID/depth debug images, and capture status on top of the dedicated ImGui viewport texture.
 - Expand the current mesh/ring/plane gizmo handles with depth-aware hover occlusion, constraint previews, numerical transform entry, pivot/orientation controls, and richer object-ID handle metadata.
 - Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command filters, and a filterable command history panel.
-- Add nested prefabs, prefab variants, multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
+- Promote the new prefab variant/parent/nested metadata into nested-prefab instancing, multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
 
 ## Asset Pipeline
 
-- Replace `.dassetbin` source bundles with optimized cooked `.glb` mesh/material/animation payloads and runtime dependency graph invalidation.
-- Expand glTF-to-material export with texture slots for base color, normal, metallic-roughness, emissive, and occlusion.
-- Add animation clips, skeleton assets, animation blending, retargeting, and GPU skinning palette upload.
+- Replace the new deterministic `.dglbpack` placeholders with optimized cooked mesh/material/animation payloads loaded directly by runtime resources.
+- Promote exported texture slots into real texture binding for normal, metallic-roughness, emissive, and occlusion maps instead of metadata-only persistence.
+- Expand the new blend/skinning API into animation clips, skeleton assets, retargeting, state machines, and GPU skinning constant/structured-buffer uploads.
 - Use the dependency graph for hot-reload invalidation so reloading one source asset updates all dependent runtime resources, not only the current prototype scene/script/material set.
 
 ## Rendering
 
-- Move renderer execution fully onto graph-owned pass callbacks and bind transient resources from allocation handles instead of renderer member variables.
+- Bind transient resources from graph allocation handles instead of renderer member variables now that passes have graph-owned callbacks.
 - Turn render-graph transition diagnostics into explicit DX11 bind/unbind barriers and add resource alias lifetime validation around the new physical allocation slots.
 - Add GPU frustum/occlusion culling and real clustered or Forward+ light binning.
 - Replace the single shadow-map coverage mode with true cascaded shadow maps.
 - Add normal/depth pre-pass options, SSR/SSGI experiments, motion vectors, and a more correct temporal AA resolve beyond the current FXAA-style resolve plus history blend.
 - Replace the remaining CPU 2x PPM photo path with graph-owned offscreen high-resolution render targets, multi-sample resolves, tiled supersampling, and async capture workers.
-- Upgrade the rift VFX from mesh/billboard draw calls to a dedicated particle/ribbon renderer with soft particles, depth fade, sorting controls, and GPU simulation options.
+- Upgrade the VFX stats surface into a dedicated particle/ribbon renderer with soft particles, depth fade, sorting controls, GPU simulation options, motion vectors, and temporal reprojection.
 - Add motion vectors, temporal VFX reprojection, better TAA resolve, and exposure curves tuned for trailer captures.
 - Investigate a DX12 or Vulkan backend once the DX11 renderer has a stable render graph contract.
 
 ## Runtime
 
-- Use the new job system for async file IO, asset streaming, and frame pacing diagnostics.
+- Extend the job-system async IO helper into asset streaming, cancellation, priorities, file watching, and frame pacing diagnostics.
 - Add serialization versioning, save-game separation, and deterministic scene IDs.
 - Add physics, collision queries, controller movement, animation-driven character logic, and gameplay event routing.
 - Add scripting reload boundaries, script state preservation, and a safer script asset format.
-- Expand the shot-director editor with camera splines, easing curves, renderer setting tracks, audio cue tracks, shot thumbnails, bookmarks, and non-modal preview scrubbing.
+- Expand the v3 shot metadata into camera splines, editable easing curves, multi-track renderer/audio timelines, shot thumbnails, and non-modal preview scrubbing.
 
 ## Audio
 
-- Replace WinMM playback with XAudio2 behind the v16 snapshot/meter/listener/backend-selection surface.
-- Add real mixer voices, sends, snapshots, streamed music layers, spatial emitters, attenuation curves, debugging meters, and amplitude analysis that can drive VFX pulses from actual content.
+- Replace WinMM playback with XAudio2 behind the current snapshot/meter/listener/backend-selection/analysis surface.
+- Add real mixer voices, sends, snapshots, streamed music layers, spatial emitters, attenuation curves, production meters, and content-driven amplitude analysis that drives VFX pulses from actual audio.
 
 ## Production
 
-- Add committed per-GPU/driver golden tolerance profiles for known adapters and tighter local overrides.
-- Turn the local baseline review and performance history summary into automated commit-to-commit regression gates with explicit baseline update approvals.
+- Add more committed per-GPU/driver golden tolerance profiles from real verification machines and tighter local overrides.
+- Turn the baseline approval manifest into an explicit signed approval workflow for golden/performance updates.
 - Extend CI with packaged runtime smoke tests by default when an interactive desktop runner is available.
 - Replace the installer payload manifest with a real installer bootstrapper, add symbol-server publishing, and add authenticated crash upload with retry/backoff.
 - Expand trailer automation into OBS profile/scene generation, watermark toggles, capture metadata approval, and packaged vertical-slice launch presets.

@@ -1,0 +1,7 @@
+# DISPARITY adapter golden tolerance profile v1
+profile_name=Microsoft_Basic_Render_Driver
+golden_thumbnail_width=64
+golden_thumbnail_height=36
+golden_mean_tolerance=20.0
+golden_bad_pixel_delta=45.0
+golden_bad_pixel_ratio=0.38

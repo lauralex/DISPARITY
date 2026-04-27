@@ -253,17 +253,31 @@ Editor UI:
 - The asset database exposes dependency graph totals in the Assets panel. `Tools/CookDisparityAssets.ps1` now records declared glTF buffer/image, material texture, script prefab, and import-setting dependencies plus cook payload metadata.
 - `Tools/LaunchTrailerCapture.ps1` writes `Saved/Trailer/trailer_launch_preset.json` and can launch Debug, Release, or packaged DISPARITY for repeatable recording sessions.
 
+## Engine v20 Production Followups Implemented
+
+- Render passes now run graph-owned callbacks and report callback, barrier, resource-handle, capture-queue, and object-ID readback-ring diagnostics.
+- The editor `Viewport` panel displays the renderer-owned editor viewport texture directly through Dear ImGui.
+- `Assets/Cinematics/Showcase.dshot` is now v3 with easing, renderer pulse, audio cue, and bookmark metadata. Trailer playback and runtime verification use those fields.
+- The rift VFX layer exposes particle/ribbon/fog/lightning/soft-particle/sorted-batch stats in runtime verification.
+- Material assets and glTF material export preserve base-color, normal, metallic-roughness, emissive, and occlusion texture slots.
+- Prefabs store variant, parent, and nested prefab metadata, and the asset database/cook pipeline track those dependencies.
+- The job system has an async text-read helper used by runtime verification.
+- Animation now includes transform blending and a skinning palette upload-generation surface.
+- Audio now exposes peak/RMS/beat-envelope analysis values for the future XAudio2 mixer.
+- Asset cooking can emit deterministic `.dglbpack` optimized-package placeholders for glTF/glB sources.
+- Verification now requires v20 coverage counters and writes a baseline approval manifest with hashes for baselines and goldens.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Execute all renderer passes through graph-owned callbacks and bind resources from graph allocation handles instead of renderer member variables.
-- Move GPU viewport picking to an async readback ring, expose hover latency diagnostics, and render the dedicated editor viewport texture inside ImGui.
-- Replace `.dassetbin` source bundles with true cooked mesh/material/animation payloads, dependency invalidation, and runtime streaming.
-- Add prefab variants, nested prefabs, multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
-- Replace the WinMM playback path with XAudio2 voices, sends, streamed music, spatial emitters, attenuation curves, and live meters.
+- Bind renderer resources from graph allocation handles instead of renderer member variables.
+- Replace the object-ID diagnostic ring with fully non-blocking GPU readback and hover cache visualization.
+- Replace `.dglbpack` placeholders with true cooked mesh/material/animation payloads, dependency invalidation, and runtime streaming.
+- Promote prefab variant metadata into nested prefab instancing, multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
+- Replace the WinMM playback path with XAudio2 voices, sends, streamed music, spatial emitters, attenuation curves, content analysis, and live meters.
 - Add real installer bootstrapper output, symbol-server indexing, crash upload authentication/retry, and packaged runtime smoke on interactive CI runners.
 - Replace the current 2x PPM upscaler with offscreen high-resolution render targets, multi-sample resolve options, tiled supersampling, and async capture workers.
-- Expand the in-editor cinematic timeline with shot thumbnails, renderer/audio cue tracks, easing curves, bookmarks, and non-modal preview scrubbing.
+- Expand the v3 shot metadata into spline editing, shot thumbnails, multi-track timeline UI, and non-modal preview scrubbing.
 - Add GPU particle simulation, soft particles, signed-distance fog volumes, motion vectors, and temporal VFX reprojection for the rift.
 - Add OBS/trailer tooling: deterministic camera bookmarks, build watermark toggles, capture metadata, and OBS profile/scene automation.

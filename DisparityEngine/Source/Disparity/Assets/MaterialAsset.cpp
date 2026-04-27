@@ -33,6 +33,7 @@ namespace Disparity
 
     bool MaterialAssetIO::Load(const std::filesystem::path& path, MaterialAsset& outMaterial)
     {
+        outMaterial = MaterialAsset{};
         std::string text;
         if (!FileSystem::ReadTextFile(path, text))
         {
@@ -93,6 +94,22 @@ namespace Disparity
             {
                 outMaterial.BaseColorTexturePath = value;
             }
+            else if (key == "normal_texture" && !StartsWith(value, "#"))
+            {
+                outMaterial.NormalTexturePath = value;
+            }
+            else if (key == "metallic_roughness_texture" && !StartsWith(value, "#"))
+            {
+                outMaterial.MetallicRoughnessTexturePath = value;
+            }
+            else if (key == "emissive_texture" && !StartsWith(value, "#"))
+            {
+                outMaterial.EmissiveTexturePath = value;
+            }
+            else if (key == "occlusion_texture" && !StartsWith(value, "#"))
+            {
+                outMaterial.OcclusionTexturePath = value;
+            }
         }
 
         return true;
@@ -101,7 +118,7 @@ namespace Disparity
     bool MaterialAssetIO::Save(const std::filesystem::path& path, const MaterialAsset& material)
     {
         std::ostringstream output;
-        output << "# DISPARITY material v1\n";
+        output << "# DISPARITY material v2\n";
         output << "name=" << material.Name << '\n';
         output << "albedo=" << material.MaterialData.Albedo.x << ',' << material.MaterialData.Albedo.y << ',' << material.MaterialData.Albedo.z << '\n';
         output << "roughness=" << material.MaterialData.Roughness << '\n';
@@ -111,6 +128,10 @@ namespace Disparity
         output << "emissive_intensity=" << material.MaterialData.EmissiveIntensity << '\n';
         output << "double_sided=" << (material.MaterialData.DoubleSided ? 1 : 0) << '\n';
         output << "texture=" << material.BaseColorTexturePath.string() << '\n';
+        output << "normal_texture=" << material.NormalTexturePath.string() << '\n';
+        output << "metallic_roughness_texture=" << material.MetallicRoughnessTexturePath.string() << '\n';
+        output << "emissive_texture=" << material.EmissiveTexturePath.string() << '\n';
+        output << "occlusion_texture=" << material.OcclusionTexturePath.string() << '\n';
         return FileSystem::WriteTextFile(path, output.str());
     }
 }

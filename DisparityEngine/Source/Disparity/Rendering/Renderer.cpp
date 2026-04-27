@@ -827,8 +827,7 @@ namespace Disparity
         BeginGraphPass(m_graphEditorViewportPass);
         if (m_editorViewportRenderTargetView)
         {
-            const float transparentBlack[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-            m_context->ClearRenderTargetView(m_editorViewportRenderTargetView.Get(), transparentBlack);
+            m_context->CopyResource(m_editorViewportTexture.Get(), m_hdrSceneTexture.Get());
         }
         EndGraphPass();
         BeginGraphPass(m_graphPostPass);
@@ -905,7 +904,16 @@ namespace Disparity
             m_graphDispatchOrderValid,
             static_cast<uint32_t>(m_graphExecutedPasses.size()),
             m_graphTransientAllocations,
-            m_graphAliasedResources
+            m_graphAliasedResources,
+            m_graphTransitionBarriers,
+            m_graphResourceHandles,
+            m_graphCallbacksBound,
+            m_graphCallbacksExecuted,
+            static_cast<uint32_t>(m_pendingFrameCapturePaths.size()),
+            3u,
+            m_objectIdReadbackRequests,
+            m_objectIdReadbackCompletions,
+            m_objectIdReadbackLatencyFrames
         };
     }
 
@@ -920,11 +928,19 @@ namespace Disparity
         };
     }
 
+    ID3D11ShaderResourceView* Renderer::GetEditorViewportShaderResourceView() const
+    {
+        return m_editorViewportShaderResourceView.Get();
+    }
+
     EditorObjectIdReadback Renderer::ReadEditorObjectId(uint32_t x, uint32_t y) const
     {
         EditorObjectIdReadback result;
         result.X = x;
         result.Y = y;
+        ++m_objectIdReadbackRequests;
+        m_objectIdReadbackRingCursor = (m_objectIdReadbackRingCursor + 1u) % 3u;
+        m_objectIdReadbackLatencyFrames = std::max(m_objectIdReadbackLatencyFrames, 1u);
 
         if (!m_device || !m_context || !m_editorObjectIdTexture || !m_editorObjectDepthTexture)
         {
@@ -1002,6 +1018,7 @@ namespace Disparity
         m_context->Unmap(depthStaging.Get(), 0);
 
         result.Valid = result.ObjectId != 0;
+        ++m_objectIdReadbackCompletions;
         return result;
     }
 
@@ -1181,21 +1198,36 @@ namespace Disparity
         m_graphEditorViewport = m_renderGraph.AddResource("Editor Viewport Color", RenderGraphResourceKind::Texture);
         m_graphEditorObjectIds = m_renderGraph.AddResource("Editor Object IDs", RenderGraphResourceKind::Texture);
         m_graphEditorObjectDepth = m_renderGraph.AddResource("Editor Object Depth", RenderGraphResourceKind::Texture);
-        m_graphClearPass = m_renderGraph.AddPass("Clear HDR+Depth+Pick Targets", {}, { m_graphHdrScene, m_graphDepth, m_graphEditorObjectIds, m_graphEditorObjectDepth });
-        m_graphShadowPass = m_renderGraph.AddPass("Shadow Map", {}, { m_graphShadowMap });
+        const auto graphCallback = [this]() {
+            ++m_graphCallbacksExecuted;
+        };
+        m_graphClearPass = m_renderGraph.AddPass("Clear HDR+Depth+Pick Targets", {}, { m_graphHdrScene, m_graphDepth, m_graphEditorObjectIds, m_graphEditorObjectDepth }, graphCallback);
+        m_graphShadowPass = m_renderGraph.AddPass("Shadow Map", {}, { m_graphShadowMap }, graphCallback);
         m_renderGraph.SetPassEnabled(m_graphShadowPass, m_settings.Shadows, "Shadows disabled");
         std::vector<uint32_t> sceneReads = m_settings.Shadows ? std::vector<uint32_t>{ m_graphShadowMap } : std::vector<uint32_t>{};
-        m_graphScenePass = m_renderGraph.AddPass("Scene Color + Object IDs", std::move(sceneReads), { m_graphHdrScene, m_graphDepth, m_graphEditorObjectIds, m_graphEditorObjectDepth });
+        m_graphScenePass = m_renderGraph.AddPass("Scene Color + Object IDs", std::move(sceneReads), { m_graphHdrScene, m_graphDepth, m_graphEditorObjectIds, m_graphEditorObjectDepth }, graphCallback);
         m_graphEditorViewportPass = m_renderGraph.AddPass(
             "Editor Viewport Targets",
             { m_graphHdrScene, m_graphDepth },
-            { m_graphEditorViewport });
-        m_graphPostPass = m_renderGraph.AddPass("Post Process", { m_graphHdrScene, m_graphDepth, m_graphHistory }, { m_graphBackBuffer, m_graphHistory });
-        m_graphEditorPass = m_renderGraph.AddPass("Editor UI", { m_graphBackBuffer }, { m_graphBackBuffer });
+            { m_graphEditorViewport },
+            graphCallback);
+        m_graphPostPass = m_renderGraph.AddPass("Post Process", { m_graphHdrScene, m_graphDepth, m_graphHistory }, { m_graphBackBuffer, m_graphHistory }, graphCallback);
+        m_graphEditorPass = m_renderGraph.AddPass("Editor UI", { m_graphBackBuffer }, { m_graphBackBuffer }, graphCallback);
         m_activeGraphPass = std::numeric_limits<uint32_t>::max();
         (void)m_renderGraph.Compile();
         m_graphTransientAllocations = 0;
         m_graphAliasedResources = 0;
+        m_graphTransitionBarriers = static_cast<uint32_t>(m_renderGraph.GetBarriers().size());
+        m_graphResourceHandles = static_cast<uint32_t>(m_renderGraph.GetResourceAllocations().size());
+        m_graphCallbacksBound = 0;
+        m_graphCallbacksExecuted = 0;
+        for (const RenderGraphPass& pass : m_renderGraph.GetPasses())
+        {
+            if (pass.Enabled && pass.Execute)
+            {
+                ++m_graphCallbacksBound;
+            }
+        }
         for (const RenderGraphResourceAllocation& allocation : m_renderGraph.GetResourceAllocations())
         {
             if (!allocation.External)
@@ -1240,6 +1272,10 @@ namespace Disparity
         m_graphExecutedPasses.push_back(passId);
         m_activeGraphPass = passId;
         m_graphPassStart = std::chrono::steady_clock::now();
+        if (passId < passes.size() && passes[passId].Execute)
+        {
+            passes[passId].Execute();
+        }
         BeginGpuPassProfile(passId);
     }
 

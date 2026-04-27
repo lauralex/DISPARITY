@@ -20,6 +20,7 @@ namespace Disparity
 
     bool PrefabIO::Load(const std::filesystem::path& path, Prefab& outPrefab)
     {
+        outPrefab = Prefab{};
         std::string text;
         if (!FileSystem::ReadTextFile(path, text))
         {
@@ -52,6 +53,18 @@ namespace Disparity
             {
                 outPrefab.MeshName = value;
             }
+            else if (key == "variant")
+            {
+                outPrefab.VariantName = value;
+            }
+            else if (key == "parent")
+            {
+                outPrefab.ParentPrefabPath = value;
+            }
+            else if (key == "child_prefab")
+            {
+                outPrefab.NestedPrefabPaths.push_back(value);
+            }
             else if (key == "scale")
             {
                 outPrefab.TransformData.Scale = ParseFloat3(value, outPrefab.TransformData.Scale);
@@ -80,9 +93,15 @@ namespace Disparity
     bool PrefabIO::Save(const std::filesystem::path& path, const Prefab& prefab)
     {
         std::ostringstream output;
-        output << "# DISPARITY prefab v1\n";
+        output << "# DISPARITY prefab v2\n";
         output << "name=" << prefab.Name << '\n';
         output << "mesh=" << prefab.MeshName << '\n';
+        output << "variant=" << prefab.VariantName << '\n';
+        output << "parent=" << prefab.ParentPrefabPath.string() << '\n';
+        for (const std::filesystem::path& child : prefab.NestedPrefabPaths)
+        {
+            output << "child_prefab=" << child.string() << '\n';
+        }
         output << "scale="
             << prefab.TransformData.Scale.x << ','
             << prefab.TransformData.Scale.y << ','
@@ -102,6 +121,7 @@ namespace Disparity
         Prefab prefab;
         prefab.Name = object.Name;
         prefab.MeshName = object.MeshName;
+        prefab.VariantName = object.Name + "_Variant";
         prefab.TransformData = object.Object.TransformData;
         prefab.TransformData.Position = {};
         prefab.MaterialData = object.Object.MaterialData;

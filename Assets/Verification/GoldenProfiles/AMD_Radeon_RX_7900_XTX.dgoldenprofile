@@ -1,0 +1,7 @@
+# DISPARITY adapter golden tolerance profile v1
+profile_name=AMD_Radeon_RX_7900_XTX
+golden_thumbnail_width=64
+golden_thumbnail_height=36
+golden_mean_tolerance=17.0
+golden_bad_pixel_delta=41.0
+golden_bad_pixel_ratio=0.34

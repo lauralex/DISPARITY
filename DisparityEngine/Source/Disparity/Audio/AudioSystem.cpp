@@ -24,6 +24,7 @@ namespace Disparity
         std::mutex g_toneOutputMutex;
         std::unordered_map<std::string, AudioBus> g_buses;
         std::unordered_map<std::string, AudioBusMeter> g_meters;
+        AudioAnalysis g_analysis;
         HWAVEOUT g_toneOutput = nullptr;
         bool g_xaudio2Available = false;
         bool g_preferXAudio2 = false;
@@ -104,6 +105,11 @@ namespace Disparity
             meter.Peak = std::max(meter.Peak * 0.82f, std::clamp(peak, 0.0f, 1.0f));
             meter.Rms = std::max(meter.Rms * 0.82f, std::clamp(rms, 0.0f, 1.0f));
             ++meter.ActiveVoices;
+            g_analysis.Peak = std::max(g_analysis.Peak * 0.82f, std::clamp(peak, 0.0f, 1.0f));
+            g_analysis.Rms = std::max(g_analysis.Rms * 0.82f, std::clamp(rms, 0.0f, 1.0f));
+            g_analysis.BeatEnvelope = std::max(g_analysis.BeatEnvelope * 0.74f, std::clamp(peak - rms * 0.35f, 0.0f, 1.0f));
+            ++g_analysis.ActiveVoices;
+            g_analysis.ContentDriven = true;
         }
 
         void EndVoiceMeter(const std::string& busName)
@@ -117,6 +123,13 @@ namespace Disparity
             }
             meter.Peak *= 0.65f;
             meter.Rms *= 0.65f;
+            if (g_analysis.ActiveVoices > 0)
+            {
+                --g_analysis.ActiveVoices;
+            }
+            g_analysis.Peak *= 0.65f;
+            g_analysis.Rms *= 0.65f;
+            g_analysis.BeatEnvelope *= 0.65f;
         }
 
         WAVEFORMATEX CreateToneFormat()
@@ -492,6 +505,16 @@ namespace Disparity
             return a.BusName < b.BusName;
         });
         return meters;
+    }
+
+    AudioAnalysis AudioSystem::GetAnalysis()
+    {
+        EnsureDefaultBuses();
+        std::scoped_lock lock(g_audioMutex);
+        g_analysis.Peak *= 0.98f;
+        g_analysis.Rms *= 0.98f;
+        g_analysis.BeatEnvelope *= 0.96f;
+        return g_analysis;
     }
 
     AudioSnapshot AudioSystem::CaptureSnapshot()
