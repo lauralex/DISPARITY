@@ -1,0 +1,14 @@
+# DISPARITY public demo generated cue manifest.
+# Format: cue <name> <bus> <frequency_hz> <duration_seconds> <volume>
+cue shard_pickup SFX 584 0.070 0.16
+cue anchor_align SFX 704 0.090 0.14
+cue gate_tune SFX 776 0.095 0.14
+cue relay_stabilize SFX 916 0.085 0.13
+cue relay_overcharge SFX 420 0.035 0.07
+cue traversal_dash SFX 980 0.060 0.12
+cue enemy_evade SFX 660 0.055 0.11
+cue enemy_contact SFX 220 0.080 0.13
+cue failure_retry SFX 260 0.120 0.15
+cue extraction_complete SFX 880 0.155 0.18
+cue menu_confirm UI 620 0.050 0.08
+cue footstep SFX 145 0.025 0.035

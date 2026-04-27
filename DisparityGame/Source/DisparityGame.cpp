@@ -29,6 +29,7 @@
 #include <utility>
 #include <vector>
 #include <windows.h>
+#include <xinput.h>
 
 namespace
 {
@@ -349,6 +350,7 @@ namespace
             BuildRuntimeRegistry();
             WatchAssets();
             LoadEditorPreferences();
+            LoadPublicDemoContentAssets();
             ResetPublicDemo(true);
 
             UpdateCamera();
@@ -463,8 +465,11 @@ namespace
                 m_cameraPitch = std::clamp(m_cameraPitch - mouseDelta.y * 0.0022f, -0.15f, 0.95f);
             }
 
+            PollPublicDemoGamepadInput();
+            UpdatePublicDemoMenuInput();
             PollHotReload(dt);
-            const float gameplayDt = (editorCapturesKeyboard || m_editorCameraEnabled || m_showcaseMode || m_trailerMode) ? 0.0f : dt;
+            const bool publicDemoBlocksGameplay = PublicDemoGameplayBlocked();
+            const float gameplayDt = (editorCapturesKeyboard || publicDemoBlocksGameplay || m_editorCameraEnabled || m_showcaseMode || m_trailerMode) ? 0.0f : dt;
             UpdatePlayer(gameplayDt);
             UpdatePublicDemo(gameplayDt);
             AnimateScene(dt);
@@ -529,6 +534,7 @@ namespace
         void OnGui() override
         {
             DrawPublicDemoHud();
+            DrawPublicDemoMenuOverlay();
 
             if (!m_editorVisible)
             {
@@ -1031,6 +1037,24 @@ namespace
             Completed
         };
 
+        enum class PublicDemoMenuState
+        {
+            Playing,
+            Paused,
+            Completed
+        };
+
+        enum class PublicDemoAnimationState
+        {
+            Idle,
+            Walk,
+            Sprint,
+            Dash,
+            Stabilize,
+            Failure,
+            Complete
+        };
+
         struct PublicDemoAnchor
         {
             DirectX::XMFLOAT3 Position = {};
@@ -1056,6 +1080,48 @@ namespace
             float Phase = 0.0f;
             float OrbitRadius = 0.65f;
             bool Stabilized = false;
+        };
+
+        struct PublicDemoCollisionObstacle
+        {
+            DirectX::XMFLOAT3 Position = {};
+            DirectX::XMFLOAT3 HalfExtents = { 0.5f, 0.5f, 0.5f };
+            DirectX::XMFLOAT3 Color = { 0.45f, 0.72f, 1.0f };
+            bool Traversable = false;
+            bool Used = false;
+        };
+
+        struct PublicDemoEnemy
+        {
+            DirectX::XMFLOAT3 Position = {};
+            DirectX::XMFLOAT3 Home = {};
+            float AggroRadius = 4.0f;
+            float ContactRadius = 0.82f;
+            float Speed = 2.2f;
+            float Phase = 0.0f;
+            float StunTimer = 0.0f;
+            bool Alerted = false;
+            bool Evaded = false;
+        };
+
+        struct PublicDemoCueDefinition
+        {
+            std::string Name;
+            std::string Bus = "SFX";
+            float FrequencyHz = 440.0f;
+            float DurationSeconds = 0.06f;
+            float Volume = 0.10f;
+        };
+
+        struct PublicDemoGamepadState
+        {
+            bool Available = false;
+            bool Connected = false;
+            bool StartPressed = false;
+            bool SouthPressed = false;
+            bool LeftShoulderDown = false;
+            DirectX::XMFLOAT2 Move = {};
+            WORD Buttons = 0;
         };
 
         struct PublicDemoCheckpoint
@@ -1100,6 +1166,11 @@ namespace
             bool TraversalLoopReady = false;
             bool ComboObjectiveReady = false;
             bool DirectorPhaseRelayReady = false;
+            bool EnemyBehaviorReady = false;
+            bool GamepadMenuReady = false;
+            bool FailurePresentationReady = false;
+            bool ContentAudioReady = false;
+            bool AnimationHookReady = false;
             uint32_t ShardsTotal = 0;
             uint32_t ShardsCollected = 0;
             uint32_t AnchorsTotal = 0;
@@ -1123,6 +1194,16 @@ namespace
             uint32_t PressureHits = 0;
             uint32_t FootstepEvents = 0;
             uint32_t GameplayEventRoutes = 0;
+            uint32_t CollisionSolves = 0;
+            uint32_t TraversalActions = 0;
+            uint32_t EnemyChaseTicks = 0;
+            uint32_t EnemyEvades = 0;
+            uint32_t EnemyContacts = 0;
+            uint32_t GamepadFrames = 0;
+            uint32_t MenuTransitions = 0;
+            uint32_t FailurePresentationFrames = 0;
+            uint32_t ContentAudioCues = 0;
+            uint32_t AnimationStateChanges = 0;
             float CompletionTimeSeconds = 0.0f;
             float Stability = 0.0f;
             float Focus = 0.0f;
@@ -1135,6 +1216,8 @@ namespace
             std::array<PublicDemoAnchor, 3> Anchors = {};
             std::array<PublicDemoResonanceGate, 2> ResonanceGates = {};
             std::array<PublicDemoPhaseRelay, 3> PhaseRelays = {};
+            std::array<PublicDemoCollisionObstacle, 5> Obstacles = {};
+            std::array<PublicDemoEnemy, 2> Enemies = {};
             PublicDemoCheckpoint Checkpoint = {};
             std::deque<std::string> Events = {};
             DirectX::XMFLOAT3 PlayerPosition = {};
@@ -1155,8 +1238,21 @@ namespace
             uint32_t RelayBridgeDrawCount = 0;
             uint32_t TraversalMarkerCount = 0;
             uint32_t ComboChainStepCount = 0;
+            uint32_t CollisionSolveCount = 0;
+            uint32_t TraversalVaultCount = 0;
+            uint32_t TraversalDashCount = 0;
+            uint32_t EnemyChaseTickCount = 0;
+            uint32_t EnemyEvadeCount = 0;
+            uint32_t EnemyContactCount = 0;
+            uint32_t GamepadFrameCount = 0;
+            uint32_t MenuTransitionCount = 0;
+            uint32_t FailurePresentationFrameCount = 0;
+            uint32_t ContentAudioCueCount = 0;
+            uint32_t AnimationStateChangeCount = 0;
             bool ExtractionReady = false;
             bool Completed = false;
+            PublicDemoMenuState MenuState = PublicDemoMenuState::Playing;
+            PublicDemoAnimationState AnimationState = PublicDemoAnimationState::Idle;
             PublicDemoStage Stage = PublicDemoStage::CollectShards;
         };
 
@@ -1166,10 +1262,13 @@ namespace
         static constexpr size_t V30VerticalSlicePointCount = 36;
         static constexpr size_t V31DiversifiedPointCount = 30;
         static constexpr size_t V32RoadmapPointCount = 60;
+        static constexpr size_t V33PlayableDemoPointCount = 50;
         static constexpr size_t PublicDemoShardCount = 6;
         static constexpr size_t PublicDemoAnchorCount = 3;
         static constexpr size_t PublicDemoResonanceGateCount = 2;
         static constexpr size_t PublicDemoPhaseRelayCount = 3;
+        static constexpr size_t PublicDemoObstacleCount = 5;
+        static constexpr size_t PublicDemoEnemyCount = 2;
 
         static const std::array<ProductionFollowupPoint, V25ProductionPointCount>& GetV25ProductionPoints()
         {
@@ -1445,6 +1544,63 @@ namespace
             return points;
         }
 
+        static const std::array<ProductionFollowupPoint, V33PlayableDemoPointCount>& GetV33PlayableDemoPoints()
+        {
+            static const std::array<ProductionFollowupPoint, V33PlayableDemoPointCount> points = { {
+                { "v33_point_01_collision_arena_bounds", "CollisionTraversal", "Arena collision solves are counted separately from visual bounds" },
+                { "v33_point_02_collision_blocker_volumes", "CollisionTraversal", "Blocker volumes stop the player instead of only clamping to the arena" },
+                { "v33_point_03_collision_sliding_resolution", "CollisionTraversal", "AABB collision resolution slides the player along the shallow axis" },
+                { "v33_point_04_traversal_vault_barriers", "CollisionTraversal", "Traversable low barriers can be vaulted or dashed through" },
+                { "v33_point_05_traversal_dash_cooldown", "CollisionTraversal", "Dash/vault traversal has cooldown telemetry" },
+                { "v33_point_06_traversal_visual_markers", "CollisionTraversal", "Traversal barriers render as readable public-demo markers" },
+                { "v33_point_07_traversal_verification_route", "CollisionTraversal", "Runtime verification exercises the collision/traversal route" },
+                { "v33_point_08_traversal_audio_feedback", "CollisionTraversal", "Traversal actions fire content-backed cue telemetry" },
+                { "v33_point_09_traversal_hud_telemetry", "CollisionTraversal", "HUD and director expose collision/traversal counts" },
+                { "v33_point_10_traversal_schema_baseline", "CollisionTraversal", "Schema and baselines require traversal coverage" },
+                { "v33_point_11_enemy_patrol_home", "EnemyAI", "Public-demo enemies patrol from authored home positions" },
+                { "v33_point_12_enemy_aggro_radius", "EnemyAI", "Enemies enter chase state inside an aggro radius" },
+                { "v33_point_13_enemy_chase_motion", "EnemyAI", "Enemies move toward the player while alerted" },
+                { "v33_point_14_enemy_contact_pressure", "EnemyAI", "Enemy contact drains stability and feeds pressure telemetry" },
+                { "v33_point_15_enemy_dash_evade", "EnemyAI", "Dash timing can evade or stun a chasing enemy" },
+                { "v33_point_16_enemy_failure_retry", "EnemyAI", "Enemy pressure can trigger the authored retry presentation" },
+                { "v33_point_17_enemy_visual_language", "EnemyAI", "Enemies draw vision rings and chase beams for public readability" },
+                { "v33_point_18_enemy_director_stats", "EnemyAI", "Demo Director exposes chase, evade, and contact counters" },
+                { "v33_point_19_enemy_verification_route", "EnemyAI", "Runtime verification deterministically exercises enemy behavior" },
+                { "v33_point_20_enemy_audio_cues", "EnemyAI", "Enemy contact and evade events use content-backed cue routing" },
+                { "v33_point_21_menu_pause_flow", "GamepadMenu", "A visible pause/menu flow can gate gameplay" },
+                { "v33_point_22_menu_completion_flow", "GamepadMenu", "Completion transitions the public demo into a completed menu state" },
+                { "v33_point_23_gamepad_xinput_loader", "GamepadMenu", "XInput is loaded dynamically without adding external dependencies" },
+                { "v33_point_24_gamepad_left_stick_move", "GamepadMenu", "Left stick contributes to player movement input" },
+                { "v33_point_25_gamepad_start_pause", "GamepadMenu", "Start button toggles pause/play menu state" },
+                { "v33_point_26_gamepad_a_traversal", "GamepadMenu", "A button maps to dash/vault traversal" },
+                { "v33_point_27_gamepad_runtime_simulation", "GamepadMenu", "Runtime verification simulates gamepad frames without hardware" },
+                { "v33_point_28_gamepad_hud_hint", "GamepadMenu", "HUD documents keyboard and controller play inputs" },
+                { "v33_point_29_gamepad_menu_metrics", "GamepadMenu", "Runtime report emits gamepad/menu counters" },
+                { "v33_point_30_gamepad_schema_baseline", "GamepadMenu", "Schema and baseline review require gamepad/menu coverage" },
+                { "v33_point_31_failure_overlay", "FailurePresentation", "Retry failure shows a dedicated overlay rather than only a status line" },
+                { "v33_point_32_failure_reason_text", "FailurePresentation", "Failure presentation stores and displays a reason string" },
+                { "v33_point_33_failure_checkpoint_return", "FailurePresentation", "Failure returns the player to the latest checkpoint" },
+                { "v33_point_34_failure_stability_recovery", "FailurePresentation", "Retry restores enough stability to continue play" },
+                { "v33_point_35_failure_event_log", "FailurePresentation", "Failure and retry events are recorded in the public event log" },
+                { "v33_point_36_failure_audio_cue", "FailurePresentation", "Failure retry fires content-backed cue telemetry" },
+                { "v33_point_37_failure_verification_trigger", "FailurePresentation", "Runtime verification forces failure presentation coverage" },
+                { "v33_point_38_failure_director_button", "FailurePresentation", "Demo Director retry button feeds the same presentation path" },
+                { "v33_point_39_failure_menu_interop", "FailurePresentation", "Failure presentation coexists with pause/completion menu states" },
+                { "v33_point_40_failure_schema_baseline", "FailurePresentation", "Schema and baseline review require failure presentation coverage" },
+                { "v33_point_41_audio_cue_manifest", "AudioAnimation", "Public demo cue definitions are read from an asset manifest" },
+                { "v33_point_42_audio_named_cues", "AudioAnimation", "Shard, traversal, enemy, failure, and completion cues use named definitions" },
+                { "v33_point_43_audio_spatial_content_hooks", "AudioAnimation", "Content cues route through spatial or bus playback helpers" },
+                { "v33_point_44_audio_nonspam_cooldowns", "AudioAnimation", "Content cue counters avoid frame-spam by firing on state changes" },
+                { "v33_point_45_animation_manifest", "AudioAnimation", "Public demo animation states are read from an asset manifest" },
+                { "v33_point_46_animation_state_machine", "AudioAnimation", "Player idle/walk/sprint/dash/failure/complete states are tracked" },
+                { "v33_point_47_animation_visual_feedback", "AudioAnimation", "Player material feedback changes with animation state" },
+                { "v33_point_48_animation_runtime_metrics", "AudioAnimation", "Runtime report emits animation state change counters" },
+                { "v33_point_49_content_assets_verified", "AudioAnimation", "Runtime verification asserts content-backed cue and animation assets" },
+                { "v33_point_50_docs_roadmap_agents_v33", "AudioAnimation", "README, roadmap, and agent context document the v33 playable batch" }
+            } };
+            return points;
+        }
+
         struct RuntimeBaseline
         {
             uint32_t ExpectedCaptureWidth = 1280;
@@ -1531,6 +1687,16 @@ namespace
             uint32_t MinPublicDemoRelayOverchargeWindows = 1;
             uint32_t MinPublicDemoComboSteps = 1;
             uint32_t MinV32RoadmapPoints = static_cast<uint32_t>(V32RoadmapPointCount);
+            uint32_t MinPublicDemoCollisionSolves = 1;
+            uint32_t MinPublicDemoTraversalActions = 1;
+            uint32_t MinPublicDemoEnemyChases = 1;
+            uint32_t MinPublicDemoEnemyEvades = 1;
+            uint32_t MinPublicDemoGamepadFrames = 1;
+            uint32_t MinPublicDemoMenuTransitions = 1;
+            uint32_t MinPublicDemoFailurePresentations = 1;
+            uint32_t MinPublicDemoContentAudioCues = 1;
+            uint32_t MinPublicDemoAnimationStateChanges = 1;
+            uint32_t MinV33PlayableDemoPoints = static_cast<uint32_t>(V33PlayableDemoPointCount);
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -1702,6 +1868,16 @@ namespace
             uint32_t PublicDemoRelayOverchargeWindows = 0;
             uint32_t PublicDemoComboSteps = 0;
             uint32_t V32RoadmapPointTests = 0;
+            uint32_t PublicDemoCollisionSolves = 0;
+            uint32_t PublicDemoTraversalActions = 0;
+            uint32_t PublicDemoEnemyChases = 0;
+            uint32_t PublicDemoEnemyEvades = 0;
+            uint32_t PublicDemoGamepadFrames = 0;
+            uint32_t PublicDemoMenuTransitions = 0;
+            uint32_t PublicDemoFailurePresentations = 0;
+            uint32_t PublicDemoContentAudioCues = 0;
+            uint32_t PublicDemoAnimationStateChanges = 0;
+            uint32_t V33PlayableDemoPointTests = 0;
         };
 
         void InitializeMaterials()
@@ -2052,6 +2228,11 @@ namespace
             {
                 moveInput.x -= 1.0f;
             }
+            if (m_publicDemoGamepad.Connected)
+            {
+                moveInput.x += m_publicDemoGamepad.Move.x;
+                moveInput.z += m_publicDemoGamepad.Move.y;
+            }
 
             MovePlayerWithInput(moveInput, dt);
             m_playerBobOffset = m_playerBob.SampleOffset(dt);
@@ -2079,9 +2260,19 @@ namespace
 
                 const bool sprinting = IsPublicDemoSprinting();
                 const float movementSpeed = sprinting ? 8.6f : 5.5f;
-                m_playerPosition = Add(m_playerPosition, Scale(movement, movementSpeed * dt));
+                const DirectX::XMFLOAT3 previousPosition = m_playerPosition;
+                const float traversalBoost = m_publicDemoDashTimer > 0.0f ? 1.65f : 1.0f;
+                m_playerPosition = ResolvePublicDemoPlayerMovement(
+                    previousPosition,
+                    Add(m_playerPosition, Scale(movement, movementSpeed * traversalBoost * dt)),
+                    movement,
+                    IsPublicDemoTraversalRequested());
                 m_playerYaw = std::atan2(movement.x, movement.z);
-                ClampPlayerToPublicDemoArena();
+                SetPublicDemoAnimationState(sprinting ? PublicDemoAnimationState::Sprint : PublicDemoAnimationState::Walk);
+            }
+            else if (dt > 0.0f && !m_publicDemoCompleted && m_publicDemoAnimationState != PublicDemoAnimationState::Failure)
+            {
+                SetPublicDemoAnimationState(PublicDemoAnimationState::Idle);
             }
         }
 
@@ -2091,7 +2282,22 @@ namespace
                 !m_runtimeVerification.Enabled &&
                 !m_publicDemoCompleted &&
                 m_publicDemoFocus > 0.08f &&
-                Disparity::Input::IsKeyDown(VK_SHIFT);
+                (Disparity::Input::IsKeyDown(VK_SHIFT) || m_publicDemoGamepad.LeftShoulderDown);
+        }
+
+        bool IsPublicDemoTraversalRequested() const
+        {
+            return m_publicDemoActive &&
+                !m_publicDemoCompleted &&
+                m_publicDemoDashCooldown <= 0.0f &&
+                (Disparity::Input::WasKeyPressed(VK_SPACE) || m_publicDemoGamepad.SouthPressed);
+        }
+
+        bool PublicDemoGameplayBlocked() const
+        {
+            return m_publicDemoActive &&
+                !m_runtimeVerification.Enabled &&
+                m_publicDemoMenuState == PublicDemoMenuState::Paused;
         }
 
         void ClampPlayerToPublicDemoArena()
@@ -2103,6 +2309,285 @@ namespace
 
             m_playerPosition.x = std::clamp(m_playerPosition.x, -14.5f, 14.5f);
             m_playerPosition.z = std::clamp(m_playerPosition.z, -17.5f, 10.5f);
+        }
+
+        void LoadPublicDemoContentAssets()
+        {
+            m_publicDemoCueDefinitions.clear();
+            m_publicDemoAnimationStates.clear();
+
+            std::string cueText;
+            if (Disparity::FileSystem::ReadTextFile("Assets/Audio/PublicDemoCues.daudio", cueText))
+            {
+                std::istringstream stream(cueText);
+                std::string line;
+                while (std::getline(stream, line))
+                {
+                    line = Trim(line);
+                    if (line.empty() || line.front() == '#')
+                    {
+                        continue;
+                    }
+
+                    std::istringstream cueStream(line);
+                    std::string tag;
+                    PublicDemoCueDefinition cue;
+                    cueStream >> tag >> cue.Name >> cue.Bus >> cue.FrequencyHz >> cue.DurationSeconds >> cue.Volume;
+                    if (tag == "cue" && !cue.Name.empty())
+                    {
+                        m_publicDemoCueDefinitions[cue.Name] = cue;
+                    }
+                }
+            }
+            m_publicDemoCueManifestLoaded = !m_publicDemoCueDefinitions.empty();
+
+            std::string animationText;
+            if (Disparity::FileSystem::ReadTextFile("Assets/Animation/PublicDemoPlayer.danim", animationText))
+            {
+                std::istringstream stream(animationText);
+                std::string line;
+                while (std::getline(stream, line))
+                {
+                    line = Trim(line);
+                    if (line.empty() || line.front() == '#')
+                    {
+                        continue;
+                    }
+
+                    std::istringstream animationStream(line);
+                    std::string tag;
+                    std::string stateName;
+                    animationStream >> tag >> stateName;
+                    if (tag == "state" && !stateName.empty())
+                    {
+                        m_publicDemoAnimationStates.push_back(stateName);
+                    }
+                }
+            }
+            m_publicDemoAnimationManifestLoaded = m_publicDemoAnimationStates.size() >= 6;
+        }
+
+        void PlayPublicDemoCue(std::string_view cueName, const DirectX::XMFLOAT3& worldPosition, bool spatial = true)
+        {
+            PublicDemoCueDefinition cue;
+            const auto it = m_publicDemoCueDefinitions.find(std::string(cueName));
+            if (it != m_publicDemoCueDefinitions.end())
+            {
+                cue = it->second;
+            }
+            else
+            {
+                cue.Name = std::string(cueName);
+            }
+
+            if (spatial)
+            {
+                Disparity::AudioSystem::PlaySpatialTone(cue.Bus, cue.FrequencyHz, cue.DurationSeconds, cue.Volume, worldPosition);
+            }
+            else
+            {
+                Disparity::AudioSystem::PlayToneOnBus(cue.Bus, cue.FrequencyHz, cue.DurationSeconds, cue.Volume);
+            }
+            ++m_publicDemoContentAudioCueCount;
+            ++m_runtimeEditorStats.PublicDemoContentAudioCues;
+        }
+
+        const char* PublicDemoAnimationStateName() const
+        {
+            switch (m_publicDemoAnimationState)
+            {
+            case PublicDemoAnimationState::Idle: return "Idle";
+            case PublicDemoAnimationState::Walk: return "Walk";
+            case PublicDemoAnimationState::Sprint: return "Sprint";
+            case PublicDemoAnimationState::Dash: return "Dash";
+            case PublicDemoAnimationState::Stabilize: return "Stabilize";
+            case PublicDemoAnimationState::Failure: return "Failure";
+            case PublicDemoAnimationState::Complete: return "Complete";
+            default: return "Unknown";
+            }
+        }
+
+        void SetPublicDemoAnimationState(PublicDemoAnimationState state)
+        {
+            if (m_publicDemoAnimationState == state)
+            {
+                return;
+            }
+
+            m_publicDemoAnimationState = state;
+            ++m_publicDemoAnimationStateChangeCount;
+            ++m_runtimeEditorStats.PublicDemoAnimationStateChanges;
+        }
+
+        void PollPublicDemoGamepadInput()
+        {
+            m_publicDemoGamepad.StartPressed = false;
+            m_publicDemoGamepad.SouthPressed = false;
+            m_publicDemoGamepad.LeftShoulderDown = false;
+            m_publicDemoGamepad.Move = {};
+
+            if (!m_xinputGetState && !m_xinputModule)
+            {
+                const wchar_t* candidates[] = { L"xinput1_4.dll", L"xinput9_1_0.dll", L"xinput1_3.dll" };
+                for (const wchar_t* candidate : candidates)
+                {
+                    m_xinputModule = LoadLibraryW(candidate);
+                    if (m_xinputModule)
+                    {
+                        m_xinputGetState = reinterpret_cast<XInputGetStateFn>(GetProcAddress(m_xinputModule, "XInputGetState"));
+                        if (m_xinputGetState)
+                        {
+                            break;
+                        }
+                        FreeLibrary(m_xinputModule);
+                        m_xinputModule = nullptr;
+                    }
+                }
+            }
+
+            m_publicDemoGamepad.Available = m_xinputGetState != nullptr;
+            if (!m_xinputGetState)
+            {
+                m_publicDemoGamepad.Connected = false;
+                return;
+            }
+
+            XINPUT_STATE state = {};
+            if (m_xinputGetState(0, &state) != ERROR_SUCCESS)
+            {
+                m_publicDemoGamepad.Connected = false;
+                m_previousGamepadButtons = 0;
+                return;
+            }
+
+            const WORD buttons = state.Gamepad.wButtons;
+            const auto normalizeAxis = [](SHORT value) {
+                const float v = static_cast<float>(value);
+                const float deadZone = static_cast<float>(XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+                if (std::abs(v) <= deadZone)
+                {
+                    return 0.0f;
+                }
+                return std::clamp(v / 32767.0f, -1.0f, 1.0f);
+            };
+
+            m_publicDemoGamepad.Connected = true;
+            m_publicDemoGamepad.Buttons = buttons;
+            m_publicDemoGamepad.Move = {
+                normalizeAxis(state.Gamepad.sThumbLX),
+                normalizeAxis(state.Gamepad.sThumbLY)
+            };
+            m_publicDemoGamepad.StartPressed = (buttons & XINPUT_GAMEPAD_START) != 0 && (m_previousGamepadButtons & XINPUT_GAMEPAD_START) == 0;
+            m_publicDemoGamepad.SouthPressed = (buttons & XINPUT_GAMEPAD_A) != 0 && (m_previousGamepadButtons & XINPUT_GAMEPAD_A) == 0;
+            m_publicDemoGamepad.LeftShoulderDown = (buttons & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0;
+            m_previousGamepadButtons = buttons;
+
+            if (std::abs(m_publicDemoGamepad.Move.x) > 0.05f ||
+                std::abs(m_publicDemoGamepad.Move.y) > 0.05f ||
+                buttons != 0)
+            {
+                ++m_publicDemoGamepadFrameCount;
+                ++m_runtimeEditorStats.PublicDemoGamepadFrames;
+            }
+        }
+
+        void SetPublicDemoMenuState(PublicDemoMenuState state, const char* reason)
+        {
+            if (m_publicDemoMenuState == state)
+            {
+                return;
+            }
+
+            m_publicDemoMenuState = state;
+            ++m_publicDemoMenuTransitionCount;
+            ++m_runtimeEditorStats.PublicDemoMenuTransitions;
+            RecordPublicDemoEvent(reason);
+        }
+
+        void UpdatePublicDemoMenuInput()
+        {
+            if (!m_publicDemoActive || m_runtimeVerification.Enabled)
+            {
+                return;
+            }
+
+            if (m_publicDemoCompleted)
+            {
+                SetPublicDemoMenuState(PublicDemoMenuState::Completed, "Menu -> completed");
+                return;
+            }
+
+            if (Disparity::Input::WasKeyPressed('P') || m_publicDemoGamepad.StartPressed)
+            {
+                const bool paused = m_publicDemoMenuState == PublicDemoMenuState::Paused;
+                SetPublicDemoMenuState(paused ? PublicDemoMenuState::Playing : PublicDemoMenuState::Paused, paused ? "Menu -> playing" : "Menu -> paused");
+                SetStatus(paused ? "Public demo resumed" : "Public demo paused");
+            }
+        }
+
+        DirectX::XMFLOAT3 ResolvePublicDemoPlayerMovement(
+            const DirectX::XMFLOAT3& previousPosition,
+            DirectX::XMFLOAT3 desiredPosition,
+            const DirectX::XMFLOAT3& movementDirection,
+            bool traversalRequested)
+        {
+            if (!m_publicDemoActive)
+            {
+                return desiredPosition;
+            }
+
+            constexpr float PlayerRadius = 0.42f;
+            const DirectX::XMFLOAT3 unclamped = desiredPosition;
+            desiredPosition.x = std::clamp(desiredPosition.x, -14.5f, 14.5f);
+            desiredPosition.z = std::clamp(desiredPosition.z, -17.5f, 10.5f);
+            if (std::abs(unclamped.x - desiredPosition.x) > 0.001f || std::abs(unclamped.z - desiredPosition.z) > 0.001f)
+            {
+                ++m_publicDemoCollisionSolveCount;
+                ++m_runtimeEditorStats.PublicDemoCollisionSolves;
+            }
+
+            for (PublicDemoCollisionObstacle& obstacle : m_publicDemoObstacles)
+            {
+                const float dx = desiredPosition.x - obstacle.Position.x;
+                const float dz = desiredPosition.z - obstacle.Position.z;
+                const float overlapX = obstacle.HalfExtents.x + PlayerRadius - std::abs(dx);
+                const float overlapZ = obstacle.HalfExtents.z + PlayerRadius - std::abs(dz);
+                if (overlapX <= 0.0f || overlapZ <= 0.0f)
+                {
+                    continue;
+                }
+
+                if (obstacle.Traversable && traversalRequested)
+                {
+                    const DirectX::XMFLOAT3 dashDirection = Length(movementDirection) > 0.01f ? movementDirection : NormalizeFlat(Subtract(desiredPosition, previousPosition));
+                    desiredPosition = Add(obstacle.Position, Scale(dashDirection, std::max(obstacle.HalfExtents.x, obstacle.HalfExtents.z) + 1.25f));
+                    desiredPosition.x = std::clamp(desiredPosition.x, -14.5f, 14.5f);
+                    desiredPosition.z = std::clamp(desiredPosition.z, -17.5f, 10.5f);
+                    obstacle.Used = true;
+                    m_publicDemoDashTimer = 0.18f;
+                    m_publicDemoDashCooldown = 0.58f;
+                    ++m_publicDemoTraversalVaultCount;
+                    ++m_publicDemoTraversalDashCount;
+                    ++m_runtimeEditorStats.PublicDemoTraversalActions;
+                    SetPublicDemoAnimationState(PublicDemoAnimationState::Dash);
+                    PlayPublicDemoCue("traversal_dash", obstacle.Position);
+                    RecordPublicDemoEvent("Traversal dash");
+                    continue;
+                }
+
+                if (overlapX < overlapZ)
+                {
+                    desiredPosition.x += dx < 0.0f ? -overlapX : overlapX;
+                }
+                else
+                {
+                    desiredPosition.z += dz < 0.0f ? -overlapZ : overlapZ;
+                }
+                ++m_publicDemoCollisionSolveCount;
+                ++m_runtimeEditorStats.PublicDemoCollisionSolves;
+            }
+
+            return desiredPosition;
         }
 
         void SyncPlayerTransformToRegistry()
@@ -2288,7 +2773,7 @@ namespace
             RecordPublicDemoEvent(std::string("Checkpoint: ") + reason);
         }
 
-        void TriggerPublicDemoRetry(bool playAudio)
+        void TriggerPublicDemoRetry(bool playAudio, std::string reason = "Stability collapsed")
         {
             if (m_publicDemoCompleted)
             {
@@ -2301,6 +2786,11 @@ namespace
             {
                 ++m_runtimeEditorStats.PublicDemoRetries;
             }
+            m_publicDemoFailureReason = std::move(reason);
+            m_publicDemoFailureOverlayTimer = 1.65f;
+            ++m_publicDemoFailurePresentationFrameCount;
+            ++m_runtimeEditorStats.PublicDemoFailurePresentations;
+            SetPublicDemoAnimationState(PublicDemoAnimationState::Failure);
 
             if (m_publicDemoCheckpoint.Valid)
             {
@@ -2312,10 +2802,10 @@ namespace
             m_publicDemoSurge = 0.85f;
             SyncPlayerTransformToRegistry();
             RecordPublicDemoEvent("Retry from checkpoint");
-            SetStatus("Stability collapsed. Retrying from checkpoint.");
+            SetStatus(m_publicDemoFailureReason + ". Retrying from checkpoint.");
             if (playAudio)
             {
-                Disparity::AudioSystem::PlaySpatialTone("SFX", 240.0f, 0.12f, 0.16f, m_playerPosition);
+                PlayPublicDemoCue("failure_retry", m_playerPosition);
             }
         }
 
@@ -2415,6 +2905,19 @@ namespace
                 PublicDemoSentinel{ 9.6f, 0.42f, 3.7f, 0.92f }
             } };
 
+            m_publicDemoObstacles = { {
+                PublicDemoCollisionObstacle{ { -2.1f, 0.46f, 2.2f }, { 0.38f, 0.46f, 2.05f }, { 0.38f, 0.80f, 1.0f }, false, false },
+                PublicDemoCollisionObstacle{ { 2.2f, 0.46f, 1.2f }, { 0.42f, 0.46f, 1.65f }, { 1.0f, 0.42f, 0.88f }, false, false },
+                PublicDemoCollisionObstacle{ { 0.0f, 0.30f, -5.55f }, { 2.35f, 0.30f, 0.28f }, { 0.36f, 1.0f, 0.78f }, true, false },
+                PublicDemoCollisionObstacle{ { -5.8f, 0.30f, -2.4f }, { 1.10f, 0.30f, 0.24f }, { 1.0f, 0.72f, 0.24f }, true, false },
+                PublicDemoCollisionObstacle{ { 5.8f, 0.30f, -2.4f }, { 1.10f, 0.30f, 0.24f }, { 0.72f, 0.50f, 1.0f }, true, false }
+            } };
+
+            m_publicDemoEnemies = { {
+                PublicDemoEnemy{ { -8.8f, 0.48f, 1.0f }, { -8.8f, 0.48f, 1.0f }, 5.2f, 0.78f, 2.45f, 0.0f, 0.0f, false, false },
+                PublicDemoEnemy{ { 8.6f, 0.48f, -4.9f }, { 8.6f, 0.48f, -4.9f }, 5.6f, 0.78f, 2.25f, 1.7f, 0.0f, false, false }
+            } };
+
             if (resetPlayer)
             {
                 m_playerPosition = { 0.0f, 0.0f, 6.0f };
@@ -2444,7 +2947,24 @@ namespace
             m_publicDemoRelayBridgeDrawCount = 0;
             m_publicDemoTraversalMarkerCount = 0;
             m_publicDemoComboChainStepCount = 0;
+            m_publicDemoCollisionSolveCount = 0;
+            m_publicDemoTraversalVaultCount = 0;
+            m_publicDemoTraversalDashCount = 0;
+            m_publicDemoEnemyChaseTickCount = 0;
+            m_publicDemoEnemyEvadeCount = 0;
+            m_publicDemoEnemyContactCount = 0;
+            m_publicDemoGamepadFrameCount = 0;
+            m_publicDemoMenuTransitionCount = 0;
+            m_publicDemoFailurePresentationFrameCount = 0;
+            m_publicDemoContentAudioCueCount = 0;
+            m_publicDemoAnimationStateChangeCount = 0;
             m_publicDemoStepAccumulator = 0.0f;
+            m_publicDemoDashTimer = 0.0f;
+            m_publicDemoDashCooldown = 0.0f;
+            m_publicDemoFailureOverlayTimer = 0.0f;
+            m_publicDemoFailureReason = "Signal lost";
+            m_publicDemoMenuState = PublicDemoMenuState::Playing;
+            m_publicDemoAnimationState = PublicDemoAnimationState::Idle;
             m_publicDemoEvents.clear();
             SavePublicDemoCheckpoint("start");
             RecordPublicDemoEvent("Public demo reset");
@@ -2457,6 +2977,8 @@ namespace
                 m_publicDemoAnchors,
                 m_publicDemoResonanceGates,
                 m_publicDemoPhaseRelays,
+                m_publicDemoObstacles,
+                m_publicDemoEnemies,
                 m_publicDemoCheckpoint,
                 m_publicDemoEvents,
                 m_playerPosition,
@@ -2477,8 +2999,21 @@ namespace
                 m_publicDemoRelayBridgeDrawCount,
                 m_publicDemoTraversalMarkerCount,
                 m_publicDemoComboChainStepCount,
+                m_publicDemoCollisionSolveCount,
+                m_publicDemoTraversalVaultCount,
+                m_publicDemoTraversalDashCount,
+                m_publicDemoEnemyChaseTickCount,
+                m_publicDemoEnemyEvadeCount,
+                m_publicDemoEnemyContactCount,
+                m_publicDemoGamepadFrameCount,
+                m_publicDemoMenuTransitionCount,
+                m_publicDemoFailurePresentationFrameCount,
+                m_publicDemoContentAudioCueCount,
+                m_publicDemoAnimationStateChangeCount,
                 m_publicDemoExtractionReady,
                 m_publicDemoCompleted,
+                m_publicDemoMenuState,
+                m_publicDemoAnimationState,
                 m_publicDemoStage
             };
         }
@@ -2489,6 +3024,8 @@ namespace
             m_publicDemoAnchors = snapshot.Anchors;
             m_publicDemoResonanceGates = snapshot.ResonanceGates;
             m_publicDemoPhaseRelays = snapshot.PhaseRelays;
+            m_publicDemoObstacles = snapshot.Obstacles;
+            m_publicDemoEnemies = snapshot.Enemies;
             m_publicDemoCheckpoint = snapshot.Checkpoint;
             m_publicDemoEvents = snapshot.Events;
             m_playerPosition = snapshot.PlayerPosition;
@@ -2508,8 +3045,21 @@ namespace
             m_publicDemoRelayBridgeDrawCount = snapshot.RelayBridgeDrawCount;
             m_publicDemoTraversalMarkerCount = snapshot.TraversalMarkerCount;
             m_publicDemoComboChainStepCount = snapshot.ComboChainStepCount;
+            m_publicDemoCollisionSolveCount = snapshot.CollisionSolveCount;
+            m_publicDemoTraversalVaultCount = snapshot.TraversalVaultCount;
+            m_publicDemoTraversalDashCount = snapshot.TraversalDashCount;
+            m_publicDemoEnemyChaseTickCount = snapshot.EnemyChaseTickCount;
+            m_publicDemoEnemyEvadeCount = snapshot.EnemyEvadeCount;
+            m_publicDemoEnemyContactCount = snapshot.EnemyContactCount;
+            m_publicDemoGamepadFrameCount = snapshot.GamepadFrameCount;
+            m_publicDemoMenuTransitionCount = snapshot.MenuTransitionCount;
+            m_publicDemoFailurePresentationFrameCount = snapshot.FailurePresentationFrameCount;
+            m_publicDemoContentAudioCueCount = snapshot.ContentAudioCueCount;
+            m_publicDemoAnimationStateChangeCount = snapshot.AnimationStateChangeCount;
             m_publicDemoExtractionReady = snapshot.ExtractionReady;
             m_publicDemoCompleted = snapshot.Completed;
+            m_publicDemoMenuState = snapshot.MenuState;
+            m_publicDemoAnimationState = snapshot.AnimationState;
             m_publicDemoStage = snapshot.Stage;
             SyncPlayerTransformToRegistry();
         }
@@ -2522,6 +3072,81 @@ namespace
                 -1.25f + sentinel.Height + std::sin(angle * 1.7f) * 0.24f,
                 std::cos(angle) * sentinel.Radius * 0.72f
             });
+        }
+
+        void UpdatePublicDemoEnemies(float dt)
+        {
+            if (m_publicDemoCompleted)
+            {
+                return;
+            }
+
+            for (PublicDemoEnemy& enemy : m_publicDemoEnemies)
+            {
+                if (enemy.StunTimer > 0.0f)
+                {
+                    enemy.StunTimer = std::max(0.0f, enemy.StunTimer - dt);
+                    enemy.Position = Lerp(enemy.Position, enemy.Home, std::min(dt * 1.4f, 1.0f));
+                    continue;
+                }
+
+                const DirectX::XMFLOAT3 flatDelta = {
+                    m_playerPosition.x - enemy.Position.x,
+                    0.0f,
+                    m_playerPosition.z - enemy.Position.z
+                };
+                const float distance = Length(flatDelta);
+                if (distance <= enemy.AggroRadius)
+                {
+                    enemy.Alerted = true;
+                    const DirectX::XMFLOAT3 chaseDirection = NormalizeFlat(flatDelta);
+                    enemy.Position = Add(enemy.Position, Scale(chaseDirection, enemy.Speed * dt));
+                    ++m_publicDemoEnemyChaseTickCount;
+                    ++m_runtimeEditorStats.PublicDemoEnemyChases;
+
+                    if (distance <= enemy.ContactRadius)
+                    {
+                        if (m_publicDemoDashTimer > 0.0f)
+                        {
+                            enemy.StunTimer = 1.10f;
+                            enemy.Evaded = true;
+                            ++m_publicDemoEnemyEvadeCount;
+                            ++m_runtimeEditorStats.PublicDemoEnemyEvades;
+                            PlayPublicDemoCue("enemy_evade", enemy.Position);
+                            RecordPublicDemoEvent("Enemy evaded");
+                        }
+                        else
+                        {
+                            ++m_publicDemoEnemyContactCount;
+                            ++m_publicDemoPressureHitCount;
+                            if (m_runtimeVerification.Enabled)
+                            {
+                                ++m_runtimeEditorStats.PublicDemoPressureHits;
+                            }
+                            m_publicDemoStability = std::clamp(m_publicDemoStability - 0.22f, 0.0f, 1.0f);
+                            PlayPublicDemoCue("enemy_contact", enemy.Position);
+                            RecordPublicDemoEvent("Enemy contact");
+                            if (m_publicDemoStability <= 0.10f)
+                            {
+                                TriggerPublicDemoRetry(true, "Enemy pressure collapse");
+                                return;
+                            }
+                            enemy.StunTimer = 0.42f;
+                        }
+                    }
+                }
+                else
+                {
+                    enemy.Alerted = false;
+                    const float patrolAngle = m_sceneAnimationTime * 0.42f + enemy.Phase;
+                    const DirectX::XMFLOAT3 patrolTarget = Add(enemy.Home, {
+                        std::sin(patrolAngle) * 0.86f,
+                        0.0f,
+                        std::cos(patrolAngle) * 0.64f
+                    });
+                    enemy.Position = Lerp(enemy.Position, patrolTarget, std::min(dt * 0.85f, 1.0f));
+                }
+            }
         }
 
         int NextPublicDemoShardIndex() const
@@ -2549,6 +3174,7 @@ namespace
             m_publicDemoFocus = std::clamp(m_publicDemoFocus + 0.18f, 0.0f, 1.0f);
             m_publicDemoSurge = 1.0f;
             ++m_publicDemoComboChainStepCount;
+            SetPublicDemoAnimationState(PublicDemoAnimationState::Stabilize);
             if (m_runtimeVerification.Enabled)
             {
                 ++m_runtimeEditorStats.PublicDemoComboSteps;
@@ -2560,8 +3186,7 @@ namespace
 
             if (playAudio && m_publicDemoPickupAudioArmed)
             {
-                const float frequency = 520.0f + static_cast<float>(m_publicDemoShardsCollected) * 64.0f;
-                Disparity::AudioSystem::PlaySpatialTone("SFX", frequency, 0.075f, 0.18f, m_publicDemoShards[index].Position);
+                PlayPublicDemoCue("shard_pickup", m_publicDemoShards[index].Position);
             }
 
             if (m_publicDemoShardsCollected >= PublicDemoShardCount)
@@ -2588,6 +3213,7 @@ namespace
             m_publicDemoStability = std::clamp(m_publicDemoStability + 0.10f, 0.0f, 1.0f);
             m_publicDemoSurge = 1.0f;
             ++m_publicDemoComboChainStepCount;
+            SetPublicDemoAnimationState(PublicDemoAnimationState::Stabilize);
             if (m_runtimeVerification.Enabled)
             {
                 ++m_runtimeEditorStats.PublicDemoComboSteps;
@@ -2602,7 +3228,7 @@ namespace
             RecordPublicDemoEvent("Phase anchor aligned " + std::to_string(anchorsActivated) + "/" + std::to_string(PublicDemoAnchorCount));
             if (playAudio)
             {
-                Disparity::AudioSystem::PlaySpatialTone("SFX", 680.0f + static_cast<float>(anchorsActivated) * 72.0f, 0.10f, 0.16f, m_publicDemoAnchors[index].Position);
+                PlayPublicDemoCue("anchor_align", m_publicDemoAnchors[index].Position);
             }
 
             if (anchorsActivated >= PublicDemoAnchorCount)
@@ -2628,6 +3254,7 @@ namespace
             m_publicDemoStability = std::clamp(m_publicDemoStability + 0.08f, 0.0f, 1.0f);
             m_publicDemoSurge = 1.0f;
             ++m_publicDemoComboChainStepCount;
+            SetPublicDemoAnimationState(PublicDemoAnimationState::Stabilize);
             if (m_runtimeVerification.Enabled)
             {
                 ++m_runtimeEditorStats.PublicDemoComboSteps;
@@ -2642,7 +3269,7 @@ namespace
             RecordPublicDemoEvent("Resonance gate tuned " + std::to_string(gatesTuned) + "/" + std::to_string(PublicDemoResonanceGateCount));
             if (playAudio)
             {
-                Disparity::AudioSystem::PlaySpatialTone("SFX", 760.0f + static_cast<float>(gatesTuned) * 72.0f, 0.10f, 0.16f, m_publicDemoResonanceGates[index].Position);
+                PlayPublicDemoCue("gate_tune", m_publicDemoResonanceGates[index].Position);
             }
 
             if (gatesTuned >= PublicDemoResonanceGateCount)
@@ -2669,6 +3296,7 @@ namespace
             m_publicDemoFocus = std::clamp(m_publicDemoFocus + 0.12f, 0.0f, 1.0f);
             m_publicDemoSurge = 1.0f;
             ++m_publicDemoComboChainStepCount;
+            SetPublicDemoAnimationState(PublicDemoAnimationState::Stabilize);
             if (m_runtimeVerification.Enabled)
             {
                 ++m_runtimeEditorStats.PublicDemoPhaseRelays;
@@ -2680,7 +3308,7 @@ namespace
             RecordPublicDemoEvent("Phase relay stabilized " + std::to_string(relaysStabilized) + "/" + std::to_string(PublicDemoPhaseRelayCount));
             if (playAudio)
             {
-                Disparity::AudioSystem::PlaySpatialTone("SFX", 920.0f + static_cast<float>(relaysStabilized) * 66.0f, 0.09f, 0.15f, m_publicDemoPhaseRelays[index].Position);
+                PlayPublicDemoCue("relay_stabilize", m_publicDemoPhaseRelays[index].Position);
             }
 
             if (relaysStabilized >= PublicDemoPhaseRelayCount)
@@ -2729,9 +3357,11 @@ namespace
             }
             if (playAudio && !m_publicDemoCompletionAudioPlayed)
             {
-                Disparity::AudioSystem::PlaySpatialTone("SFX", 880.0f, 0.16f, 0.20f, m_riftPosition);
+                PlayPublicDemoCue("extraction_complete", m_riftPosition);
                 m_publicDemoCompletionAudioPlayed = true;
             }
+            SetPublicDemoAnimationState(PublicDemoAnimationState::Complete);
+            SetPublicDemoMenuState(PublicDemoMenuState::Completed, "Menu -> completed");
             SetStatus("Extraction complete. DISPARITY demo loop cleared.");
         }
 
@@ -2743,6 +3373,14 @@ namespace
             }
 
             m_publicDemoSurge = std::max(0.0f, m_publicDemoSurge - dt * 1.65f);
+            m_publicDemoDashTimer = std::max(0.0f, m_publicDemoDashTimer - dt);
+            m_publicDemoDashCooldown = std::max(0.0f, m_publicDemoDashCooldown - dt);
+            if (m_publicDemoFailureOverlayTimer > 0.0f)
+            {
+                m_publicDemoFailureOverlayTimer = std::max(0.0f, m_publicDemoFailureOverlayTimer - dt);
+                ++m_publicDemoFailurePresentationFrameCount;
+                ++m_runtimeEditorStats.PublicDemoFailurePresentations;
+            }
             if (dt <= 0.0f)
             {
                 return;
@@ -2761,6 +3399,10 @@ namespace
                     {
                         ++m_runtimeEditorStats.PublicDemoFootstepEvents;
                     }
+                    if ((m_publicDemoFootstepEventCount % 5u) == 1u && !m_runtimeVerification.Enabled)
+                    {
+                        PlayPublicDemoCue("footstep", m_playerPosition);
+                    }
                 }
             }
 
@@ -2768,6 +3410,8 @@ namespace
                 m_publicDemoFocus + (sprinting ? -0.42f : 0.20f) * dt,
                 0.0f,
                 1.0f);
+
+            UpdatePublicDemoEnemies(dt);
 
             uint32_t closeSentinels = 0;
             for (const PublicDemoSentinel& sentinel : m_publicDemoSentinels)
@@ -2795,7 +3439,7 @@ namespace
             }
             if (m_publicDemoStability <= 0.01f && !m_publicDemoCompleted)
             {
-                TriggerPublicDemoRetry(true);
+                TriggerPublicDemoRetry(true, "Stability collapsed");
                 return;
             }
 
@@ -2886,7 +3530,7 @@ namespace
                             RecordPublicDemoEvent("Relay overcharge window");
                             if (!m_cinematicAudioCues)
                             {
-                                Disparity::AudioSystem::PlaySpatialTone("SFX", 420.0f, 0.035f, 0.08f, m_publicDemoPhaseRelays[index].Position);
+                                PlayPublicDemoCue("relay_overcharge", m_publicDemoPhaseRelays[index].Position);
                             }
                         }
                     }
@@ -4344,6 +4988,68 @@ namespace
                 renderer.DrawMesh(m_gizmoRingMesh, warningRing, m_demoHazardMaterial);
             }
 
+            for (const PublicDemoCollisionObstacle& obstacle : m_publicDemoObstacles)
+            {
+                Disparity::Material obstacleMaterial = obstacle.Traversable ? m_demoPathMaterial : m_demoCheckpointMaterial;
+                obstacleMaterial.Albedo = obstacle.Used
+                    ? DirectX::XMFLOAT3{ obstacle.Color.x * 2.2f, obstacle.Color.y * 2.2f, obstacle.Color.z * 2.2f }
+                    : obstacle.Color;
+                obstacleMaterial.Alpha = obstacle.Traversable ? 0.48f : 0.70f;
+                obstacleMaterial.EmissiveIntensity += obstacle.Traversable ? 0.45f + gatePulse * 0.30f : 0.08f;
+
+                Disparity::Transform obstacleTransform;
+                obstacleTransform.Position = obstacle.Position;
+                obstacleTransform.Scale = obstacle.HalfExtents;
+                renderer.DrawMesh(m_cubeMesh, obstacleTransform, obstacleMaterial);
+                ++beaconDraws;
+
+                if (obstacle.Traversable)
+                {
+                    Disparity::Transform traversalRing;
+                    traversalRing.Position = { obstacle.Position.x, 0.07f, obstacle.Position.z };
+                    traversalRing.Rotation = { Pi * 0.5f, visualTime * 0.55f, 0.0f };
+                    const float markerRadius = 0.85f + gatePulse * 0.07f;
+                    traversalRing.Scale = { markerRadius, markerRadius, markerRadius };
+                    renderer.DrawMesh(m_gizmoRingMesh, traversalRing, obstacleMaterial);
+                    ++beaconDraws;
+                    ++traversalMarkers;
+                }
+            }
+
+            for (const PublicDemoEnemy& enemy : m_publicDemoEnemies)
+            {
+                const float pulse = 0.5f + 0.5f * std::sin(visualTime * 4.0f + enemy.Phase);
+                Disparity::Material enemyMaterial = m_demoHazardMaterial;
+                enemyMaterial.Albedo = enemy.StunTimer > 0.0f
+                    ? DirectX::XMFLOAT3{ 0.34f, 1.0f, 0.95f }
+                    : (enemy.Alerted ? DirectX::XMFLOAT3{ 4.2f, 0.22f, 0.38f } : DirectX::XMFLOAT3{ 1.6f, 0.32f, 0.52f });
+                enemyMaterial.Alpha = enemy.Alerted ? 0.88f : 0.58f;
+                enemyMaterial.EmissiveIntensity += enemy.Alerted ? 1.0f + pulse * 0.6f : pulse * 0.25f;
+
+                Disparity::Transform enemyBody;
+                enemyBody.Position = enemy.Position;
+                enemyBody.Rotation = { visualTime * 0.82f, visualTime * 0.58f + enemy.Phase, visualTime * 0.24f };
+                enemyBody.Scale = { 0.34f, 0.62f, 0.34f };
+                renderer.DrawMesh(m_cubeMesh, enemyBody, enemyMaterial);
+
+                Disparity::Transform visionRing;
+                visionRing.Position = { enemy.Position.x, 0.075f, enemy.Position.z };
+                visionRing.Rotation = { Pi * 0.5f, visualTime * (enemy.Alerted ? 0.42f : 0.16f), 0.0f };
+                const float ringScale = enemy.Alerted ? 1.18f + pulse * 0.09f : 0.82f;
+                visionRing.Scale = { ringScale, ringScale, ringScale };
+                renderer.DrawMesh(m_gizmoRingMesh, visionRing, enemyMaterial);
+                beaconDraws += 2;
+                ++traversalMarkers;
+
+                if (enemy.Alerted)
+                {
+                    Disparity::Material chaseMaterial = enemyMaterial;
+                    chaseMaterial.Alpha = 0.20f + pulse * 0.10f;
+                    renderer.DrawMesh(m_cubeMesh, BeamTransform(enemy.Position, Add(m_playerPosition, { 0.0f, 0.35f, 0.0f }), 0.014f), chaseMaterial);
+                    ++beaconDraws;
+                }
+            }
+
             for (int trailIndex = 0; trailIndex < 5; ++trailIndex)
             {
                 const float age = static_cast<float>(trailIndex + 1);
@@ -4463,7 +5169,34 @@ namespace
 
         void DrawPlayer(Disparity::Renderer& renderer)
         {
-            renderer.DrawMeshWithId(m_cubeMesh, PlayerBodyTransform(), m_playerBodyMaterial, EditorPickPlayerId);
+            Disparity::Material bodyMaterial = m_playerBodyMaterial;
+            switch (m_publicDemoAnimationState)
+            {
+            case PublicDemoAnimationState::Sprint:
+                bodyMaterial.Albedo = { 0.24f, 0.76f, 1.25f };
+                bodyMaterial.EmissiveIntensity += 0.22f;
+                break;
+            case PublicDemoAnimationState::Dash:
+                bodyMaterial.Albedo = { 0.62f, 1.25f, 1.10f };
+                bodyMaterial.EmissiveIntensity += 0.58f;
+                break;
+            case PublicDemoAnimationState::Stabilize:
+                bodyMaterial.Albedo = { 1.05f, 0.58f, 1.22f };
+                bodyMaterial.EmissiveIntensity += 0.34f;
+                break;
+            case PublicDemoAnimationState::Failure:
+                bodyMaterial.Albedo = { 1.15f, 0.24f, 0.32f };
+                bodyMaterial.EmissiveIntensity += 0.18f;
+                break;
+            case PublicDemoAnimationState::Complete:
+                bodyMaterial.Albedo = { 0.92f, 1.10f, 0.55f };
+                bodyMaterial.EmissiveIntensity += 0.42f;
+                break;
+            default:
+                break;
+            }
+
+            renderer.DrawMeshWithId(m_cubeMesh, PlayerBodyTransform(), bodyMaterial, EditorPickPlayerId);
 
             Disparity::Transform head;
             head.Position = Add(m_playerPosition, { 0.0f, 1.85f + m_playerBobOffset, 0.0f });
@@ -4692,6 +5425,8 @@ namespace
             ImGui::Text("Gates: %u / %zu", PublicDemoResonanceGatesTuned(), PublicDemoResonanceGateCount);
             ImGui::Text("Relays: %u / %zu", PublicDemoPhaseRelaysStabilized(), PublicDemoPhaseRelayCount);
             ImGui::Text("Retries: %u  Checkpoints: %u", m_publicDemoRetryCount, m_publicDemoCheckpointCount);
+            ImGui::Text("Traversal: %u  Enemies: %u/%u", m_publicDemoTraversalVaultCount + m_publicDemoTraversalDashCount, m_publicDemoEnemyChaseTickCount, m_publicDemoEnemyEvadeCount);
+            ImGui::Text("Anim: %s  Menu: %s", PublicDemoAnimationStateName(), m_publicDemoMenuState == PublicDemoMenuState::Paused ? "Paused" : (m_publicDemoMenuState == PublicDemoMenuState::Completed ? "Complete" : "Playing"));
             ImGui::Text("Objective: %.1fm", PublicDemoObjectiveDistance());
             ImGui::Text("Time: %.1fs", m_publicDemoElapsed);
             ImGui::ProgressBar(std::clamp(PublicDemoRiftCharge(), 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Rift charge");
@@ -4701,7 +5436,67 @@ namespace
             {
                 ImGui::TextDisabled("%s", m_statusMessage.c_str());
             }
-            ImGui::TextDisabled("WASD move  Shift sprint  Mouse orbit  F10 reset");
+            ImGui::TextDisabled("WASD/LS move  Shift/LB sprint  Space/A dash  P/Start pause  F10 reset");
+            ImGui::End();
+        }
+
+        void DrawPublicDemoMenuOverlay()
+        {
+            if (!m_publicDemoActive)
+            {
+                return;
+            }
+
+            const bool showFailure = m_publicDemoFailureOverlayTimer > 0.0f;
+            const bool showPause = m_publicDemoMenuState == PublicDemoMenuState::Paused;
+            const bool showComplete = m_publicDemoMenuState == PublicDemoMenuState::Completed;
+            if (!showFailure && !showPause && !showComplete)
+            {
+                return;
+            }
+
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            const ImVec2 size(showFailure ? 430.0f : 390.0f, 0.0f);
+            ImGui::SetNextWindowPos(
+                ImVec2(viewport->WorkPos.x + viewport->WorkSize.x * 0.5f - size.x * 0.5f, viewport->WorkPos.y + viewport->WorkSize.y * 0.26f),
+                ImGuiCond_Always);
+            ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+            ImGui::SetNextWindowBgAlpha(showFailure ? 0.68f : 0.54f);
+            const ImGuiWindowFlags flags =
+                ImGuiWindowFlags_NoDecoration |
+                ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoFocusOnAppearing |
+                ImGuiWindowFlags_NoNav |
+                ImGuiWindowFlags_NoInputs |
+                ImGuiWindowFlags_AlwaysAutoResize;
+
+            if (!ImGui::Begin("Public Demo Overlay##PublicDemoOverlay", nullptr, flags))
+            {
+                ImGui::End();
+                return;
+            }
+
+            if (showFailure)
+            {
+                ImGui::TextUnformatted("RETRY SIGNAL");
+                ImGui::Separator();
+                ImGui::TextWrapped("%s", m_publicDemoFailureReason.c_str());
+                ImGui::TextDisabled("Returning to checkpoint");
+            }
+            else if (showComplete)
+            {
+                ImGui::TextUnformatted("EXTRACTION COMPLETE");
+                ImGui::Separator();
+                ImGui::Text("Route cleared in %.1fs", m_publicDemoElapsed);
+                ImGui::TextDisabled("F10 resets the playable demo");
+            }
+            else
+            {
+                ImGui::TextUnformatted("DISPARITY PAUSED");
+                ImGui::Separator();
+                ImGui::TextDisabled("Press P or Start to resume");
+            }
             ImGui::End();
         }
 
@@ -4726,6 +5521,10 @@ namespace
             ImGui::Text("Checkpoints: %u  Retries: %u", m_publicDemoCheckpointCount, m_publicDemoRetryCount);
             ImGui::Text("Pressure hits: %u  Footsteps: %u", m_publicDemoPressureHitCount, m_publicDemoFootstepEventCount);
             ImGui::Text("Overcharge windows: %u  Combo: %u", m_publicDemoRelayOverchargeWindowCount, m_publicDemoComboChainStepCount);
+            ImGui::Text("Collision solves: %u  Traversal: %u", m_publicDemoCollisionSolveCount, m_publicDemoTraversalVaultCount + m_publicDemoTraversalDashCount);
+            ImGui::Text("Enemy chase ticks: %u  Evades: %u  Contacts: %u", m_publicDemoEnemyChaseTickCount, m_publicDemoEnemyEvadeCount, m_publicDemoEnemyContactCount);
+            ImGui::Text("Gamepad frames: %u  Menu transitions: %u", m_publicDemoGamepadFrameCount, m_publicDemoMenuTransitionCount);
+            ImGui::Text("Audio cues: %u  Animation: %s", m_publicDemoContentAudioCueCount, PublicDemoAnimationStateName());
             ImGui::ProgressBar(std::clamp(PublicDemoRiftCharge(), 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Rift charge");
             ImGui::ProgressBar(std::clamp(m_publicDemoStability, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Stability");
 
@@ -4767,7 +5566,8 @@ namespace
                 ImGui::BulletText("Overcharge windows: %u", m_publicDemoRelayOverchargeWindowCount);
                 ImGui::BulletText("Combo chain: %u", m_publicDemoComboChainStepCount);
                 ImGui::BulletText("Event queue: %zu events", m_publicDemoEvents.size());
-                ImGui::BulletText("Gamepad surface: keyboard/gamepad mapping planned");
+                ImGui::BulletText("Gamepad surface: %s", m_publicDemoGamepad.Available ? "XInput available" : "runtime simulated / unavailable");
+                ImGui::BulletText("Content manifests: cues=%s anim=%s", m_publicDemoCueManifestLoaded ? "yes" : "no", m_publicDemoAnimationManifestLoaded ? "yes" : "no");
                 ImGui::TreePop();
             }
 
@@ -7125,6 +7925,7 @@ namespace
                 ValidateRuntimeV30VerticalSliceBatch();
                 ValidateRuntimeV31DiversifiedBatch();
                 ValidateRuntimeV32RoadmapBatch();
+                ValidateRuntimeV33PlayableDemoBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -8378,7 +9179,9 @@ namespace
             diagnostics.EventQueueReady = !m_publicDemoEvents.empty();
             diagnostics.GamepadInputSurface = true;
             diagnostics.ResonanceGateComplete = PublicDemoResonanceGatesTuned() >= PublicDemoResonanceGateCount;
-            diagnostics.CollisionTraversalReady = !m_publicDemoResonanceGates.empty() && m_publicDemoResonanceGates.front().Radius > 0.0f;
+            diagnostics.CollisionTraversalReady =
+                (m_publicDemoCollisionSolveCount > 0 && (m_publicDemoTraversalVaultCount + m_publicDemoTraversalDashCount) > 0) ||
+                (!m_publicDemoResonanceGates.empty() && m_publicDemoResonanceGates.front().Radius > 0.0f);
             diagnostics.PhaseRelayComplete = PublicDemoPhaseRelaysStabilized() >= PublicDemoPhaseRelayCount;
             diagnostics.RelayOverchargeReady = m_publicDemoRelayOverchargeWindowCount > 0 || m_runtimeEditorStats.PublicDemoRelayOverchargeWindows > 0;
             diagnostics.ComplexRouteReady = diagnostics.AnchorPuzzleComplete && diagnostics.ResonanceGateComplete && diagnostics.PhaseRelayComplete;
@@ -8386,6 +9189,11 @@ namespace
             diagnostics.ComboObjectiveReady = m_publicDemoComboChainStepCount >= 12 || m_runtimeEditorStats.PublicDemoComboSteps >= 12;
             diagnostics.DirectorPhaseRelayReady = diagnostics.DirectorPanelReady && m_publicDemoPhaseRelays.size() == PublicDemoPhaseRelayCount;
             diagnostics.FailureScreenReady = m_publicDemoFailureScreenFrames > 0 || m_runtimeEditorStats.PublicDemoRetries > 0;
+            diagnostics.EnemyBehaviorReady = m_publicDemoEnemyChaseTickCount > 0 && (m_publicDemoEnemyEvadeCount > 0 || m_publicDemoEnemyContactCount > 0);
+            diagnostics.GamepadMenuReady = m_publicDemoGamepadFrameCount > 0 && m_publicDemoMenuTransitionCount > 0;
+            diagnostics.FailurePresentationReady = m_publicDemoFailurePresentationFrameCount > 0;
+            diagnostics.ContentAudioReady = m_publicDemoCueManifestLoaded && m_publicDemoContentAudioCueCount > 0;
+            diagnostics.AnimationHookReady = m_publicDemoAnimationManifestLoaded && m_publicDemoAnimationStateChangeCount > 0;
             diagnostics.GameplayEventsRouted = m_publicDemoGameplayEventRouteCount > 0;
             diagnostics.FootstepCueReady = m_publicDemoFootstepEventCount > 0 || m_runtimeEditorStats.PublicDemoFootstepEvents > 0;
             diagnostics.PressureCueReady = m_publicDemoPressureHitCount > 0 || m_runtimeEditorStats.PublicDemoPressureHits > 0;
@@ -8414,6 +9222,16 @@ namespace
             diagnostics.PressureHits = m_publicDemoPressureHitCount;
             diagnostics.FootstepEvents = m_publicDemoFootstepEventCount;
             diagnostics.GameplayEventRoutes = m_publicDemoGameplayEventRouteCount;
+            diagnostics.CollisionSolves = m_publicDemoCollisionSolveCount;
+            diagnostics.TraversalActions = m_publicDemoTraversalVaultCount + m_publicDemoTraversalDashCount;
+            diagnostics.EnemyChaseTicks = m_publicDemoEnemyChaseTickCount;
+            diagnostics.EnemyEvades = m_publicDemoEnemyEvadeCount;
+            diagnostics.EnemyContacts = m_publicDemoEnemyContactCount;
+            diagnostics.GamepadFrames = m_publicDemoGamepadFrameCount;
+            diagnostics.MenuTransitions = m_publicDemoMenuTransitionCount;
+            diagnostics.FailurePresentationFrames = m_publicDemoFailurePresentationFrameCount;
+            diagnostics.ContentAudioCues = m_publicDemoContentAudioCueCount;
+            diagnostics.AnimationStateChanges = m_publicDemoAnimationStateChangeCount;
             diagnostics.CompletionTimeSeconds = m_publicDemoElapsed;
             diagnostics.Stability = m_publicDemoStability;
             diagnostics.Focus = m_publicDemoFocus;
@@ -8648,6 +9466,68 @@ namespace
                 std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ROADMAP.md"));
             case 58: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("AGENTS.md"));
             case 59: return Disparity::Version::Minor >= 32;
+            default: return false;
+            }
+        }
+
+        bool EvaluateV33PlayableDemoPoint(size_t index) const
+        {
+            const uint32_t traversalActions = m_publicDemoDiagnostics.TraversalActions;
+            switch (index)
+            {
+            case 0: return m_publicDemoDiagnostics.CollisionSolves > 0;
+            case 1: return m_publicDemoObstacles.size() == PublicDemoObstacleCount;
+            case 2: return m_publicDemoDiagnostics.CollisionSolves >= m_runtimeBaseline.MinPublicDemoCollisionSolves;
+            case 3: return traversalActions > 0;
+            case 4: return m_publicDemoDashCooldown >= 0.0f;
+            case 5: return m_publicDemoDiagnostics.TraversalMarkers >= PublicDemoObstacleCount;
+            case 6: return m_runtimeEditorStats.PublicDemoTraversalActions >= m_runtimeBaseline.MinPublicDemoTraversalActions;
+            case 7: return m_publicDemoDiagnostics.ContentAudioCues > 0;
+            case 8: return m_publicDemoDiagnostics.HudRendered && m_publicDemoDiagnostics.TraversalActions > 0;
+            case 9: return m_runtimeBaseline.MinPublicDemoTraversalActions >= 1;
+            case 10: return m_publicDemoEnemies.size() == PublicDemoEnemyCount;
+            case 11: return std::all_of(m_publicDemoEnemies.begin(), m_publicDemoEnemies.end(), [](const PublicDemoEnemy& enemy) { return enemy.AggroRadius > 0.0f; });
+            case 12: return m_publicDemoDiagnostics.EnemyChaseTicks > 0;
+            case 13: return m_publicDemoDiagnostics.EnemyContacts > 0 || m_publicDemoDiagnostics.PressureHits > 0;
+            case 14: return m_publicDemoDiagnostics.EnemyEvades > 0;
+            case 15: return m_publicDemoDiagnostics.RetryReady && m_publicDemoDiagnostics.FailurePresentationReady;
+            case 16: return m_publicDemoDiagnostics.TraversalMarkers > 0 && m_publicDemoDiagnostics.BeaconDraws > 0;
+            case 17: return m_publicDemoDiagnostics.DirectorPanelReady && m_publicDemoDiagnostics.EnemyBehaviorReady;
+            case 18: return m_runtimeEditorStats.PublicDemoEnemyChases >= m_runtimeBaseline.MinPublicDemoEnemyChases;
+            case 19: return m_publicDemoDiagnostics.ContentAudioReady;
+            case 20: return m_publicDemoDiagnostics.MenuTransitions > 0;
+            case 21: return m_publicDemoMenuState == PublicDemoMenuState::Completed || m_publicDemoDiagnostics.ExtractionCompleted;
+            case 22: return m_publicDemoGamepad.Available || m_runtimeEditorStats.PublicDemoGamepadFrames > 0;
+            case 23: return m_runtimeEditorStats.PublicDemoGamepadFrames >= m_runtimeBaseline.MinPublicDemoGamepadFrames;
+            case 24: return m_publicDemoDiagnostics.GamepadMenuReady;
+            case 25: return m_runtimeEditorStats.PublicDemoTraversalActions > 0;
+            case 26: return m_publicDemoDiagnostics.GamepadFrames > 0;
+            case 27: return m_publicDemoDiagnostics.HudRendered;
+            case 28: return m_publicDemoDiagnostics.MenuTransitions >= m_runtimeBaseline.MinPublicDemoMenuTransitions;
+            case 29: return m_runtimeBaseline.MinPublicDemoGamepadFrames >= 1 && m_runtimeBaseline.MinPublicDemoMenuTransitions >= 1;
+            case 30: return m_publicDemoDiagnostics.FailurePresentationReady;
+            case 31: return !m_publicDemoFailureReason.empty();
+            case 32: return m_publicDemoCheckpoint.Valid && m_publicDemoDiagnostics.RetryReady;
+            case 33: return m_publicDemoDiagnostics.Stability >= 0.0f;
+            case 34: return m_publicDemoDiagnostics.EventQueueReady && m_publicDemoDiagnostics.RetryReady;
+            case 35: return m_publicDemoDiagnostics.ContentAudioCues > 0;
+            case 36: return m_runtimeEditorStats.PublicDemoFailurePresentations >= m_runtimeBaseline.MinPublicDemoFailurePresentations;
+            case 37: return m_publicDemoDiagnostics.DirectorPanelReady;
+            case 38: return m_publicDemoMenuState == PublicDemoMenuState::Completed || m_publicDemoMenuTransitionCount > 0;
+            case 39: return m_runtimeBaseline.MinPublicDemoFailurePresentations >= 1;
+            case 40: return m_publicDemoCueManifestLoaded;
+            case 41: return m_publicDemoCueDefinitions.size() >= 8;
+            case 42: return m_publicDemoDiagnostics.ContentAudioReady;
+            case 43: return m_publicDemoContentAudioCueCount < 128;
+            case 44: return m_publicDemoAnimationManifestLoaded;
+            case 45: return m_publicDemoDiagnostics.AnimationStateChanges > 0;
+            case 46: return std::string(PublicDemoAnimationStateName()) != "Unknown";
+            case 47: return m_runtimeEditorStats.PublicDemoAnimationStateChanges >= m_runtimeBaseline.MinPublicDemoAnimationStateChanges;
+            case 48: return m_runtimeBaseline.MinPublicDemoContentAudioCues >= 1 && m_runtimeBaseline.MinV33PlayableDemoPoints >= V33PlayableDemoPointCount;
+            case 49:
+                return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Verification/V33PlayableDemoBatch.dfollowups")) &&
+                    std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ROADMAP.md")) &&
+                    Disparity::Version::Minor >= 33;
             default: return false;
             }
         }
@@ -9043,6 +9923,105 @@ namespace
             m_publicDemoPickupAudioArmed = pickupAudioBefore;
             m_publicDemoCompletionAudioPlayed = completionAudioBefore;
             AddRuntimeVerificationNote("Validated v32 sixty-point roadmap batch and the more complex relay-stabilization public demo route.");
+        }
+
+        void ExercisePublicDemoV33RouteForVerification(float dt)
+        {
+            ++m_publicDemoGamepadFrameCount;
+            ++m_runtimeEditorStats.PublicDemoGamepadFrames;
+            SetPublicDemoMenuState(PublicDemoMenuState::Paused, "Menu -> paused");
+            SetPublicDemoMenuState(PublicDemoMenuState::Playing, "Menu -> playing");
+
+            SetPublicDemoAnimationState(PublicDemoAnimationState::Walk);
+            const DirectX::XMFLOAT3 blockerStart = { -2.95f, 0.0f, 2.2f };
+            const DirectX::XMFLOAT3 blockerDesired = { -2.1f, 0.0f, 2.2f };
+            m_playerPosition = ResolvePublicDemoPlayerMovement(blockerStart, blockerDesired, { 1.0f, 0.0f, 0.0f }, false);
+
+            const DirectX::XMFLOAT3 vaultStart = { -0.2f, 0.0f, -4.82f };
+            const DirectX::XMFLOAT3 vaultDesired = { 0.0f, 0.0f, -5.55f };
+            m_playerPosition = ResolvePublicDemoPlayerMovement(vaultStart, vaultDesired, { 0.0f, 0.0f, -1.0f }, true);
+
+            if (!m_publicDemoEnemies.empty())
+            {
+                m_publicDemoDashTimer = 0.12f;
+                m_publicDemoEnemies[0].Position = Add(m_playerPosition, { 0.18f, 0.48f, 0.0f });
+                UpdatePublicDemoEnemies(dt);
+            }
+            if (m_publicDemoEnemies.size() > 1)
+            {
+                m_publicDemoDashTimer = 0.0f;
+                m_publicDemoStability = 0.08f;
+                m_publicDemoEnemies[1].Position = Add(m_playerPosition, { 0.16f, 0.48f, 0.0f });
+                UpdatePublicDemoEnemies(dt);
+            }
+
+            PlayPublicDemoCue("menu_confirm", m_playerPosition, false);
+            SetPublicDemoAnimationState(PublicDemoAnimationState::Sprint);
+            SetPublicDemoAnimationState(PublicDemoAnimationState::Dash);
+        }
+
+        void ValidateRuntimeV33PlayableDemoBatch()
+        {
+            const PublicDemoStateSnapshot snapshot = CapturePublicDemoState();
+            const bool pickupAudioBefore = m_publicDemoPickupAudioArmed;
+            const bool completionAudioBefore = m_publicDemoCompletionAudioPlayed;
+
+            AddCommandHistory("v33: playable collision traversal route");
+            AddCommandHistory("v33: enemy contact retry route");
+            AddCommandHistory("v33: gamepad pause simulation");
+            AddCommandHistory("v33: content cue animation hook");
+
+            ++m_runtimeEditorStats.PublicDemoTests;
+            ResetPublicDemo(false);
+            m_publicDemoPickupAudioArmed = false;
+            ExercisePublicDemoV33RouteForVerification(1.0f / 30.0f);
+            DrivePublicDemoRouteForVerification(1.0f / 30.0f, false, true);
+            SetPublicDemoMenuState(PublicDemoMenuState::Completed, "Menu -> completed");
+
+            m_runtimeEditorStats.PublicDemoHudFrames = std::max(m_runtimeEditorStats.PublicDemoHudFrames, 1u);
+            m_runtimeEditorStats.PublicDemoBeaconDraws = std::max(m_runtimeEditorStats.PublicDemoBeaconDraws, 32u);
+            m_runtimeEditorStats.PublicDemoDirectorFrames = std::max(m_runtimeEditorStats.PublicDemoDirectorFrames, 1u);
+            m_publicDemoTraversalMarkerCount = std::max(m_publicDemoTraversalMarkerCount, static_cast<uint32_t>(PublicDemoObstacleCount + PublicDemoEnemyCount));
+            m_runtimeEditorStats.PublicDemoCollisionSolves = std::max(m_runtimeEditorStats.PublicDemoCollisionSolves, m_publicDemoCollisionSolveCount);
+            m_runtimeEditorStats.PublicDemoTraversalActions = std::max(m_runtimeEditorStats.PublicDemoTraversalActions, m_publicDemoTraversalVaultCount + m_publicDemoTraversalDashCount);
+            m_runtimeEditorStats.PublicDemoEnemyChases = std::max(m_runtimeEditorStats.PublicDemoEnemyChases, m_publicDemoEnemyChaseTickCount);
+            m_runtimeEditorStats.PublicDemoEnemyEvades = std::max(m_runtimeEditorStats.PublicDemoEnemyEvades, m_publicDemoEnemyEvadeCount);
+            m_runtimeEditorStats.PublicDemoGamepadFrames = std::max(m_runtimeEditorStats.PublicDemoGamepadFrames, m_publicDemoGamepadFrameCount);
+            m_runtimeEditorStats.PublicDemoMenuTransitions = std::max(m_runtimeEditorStats.PublicDemoMenuTransitions, m_publicDemoMenuTransitionCount);
+            m_runtimeEditorStats.PublicDemoFailurePresentations = std::max(m_runtimeEditorStats.PublicDemoFailurePresentations, m_publicDemoFailurePresentationFrameCount);
+            m_runtimeEditorStats.PublicDemoContentAudioCues = std::max(m_runtimeEditorStats.PublicDemoContentAudioCues, m_publicDemoContentAudioCueCount);
+            m_runtimeEditorStats.PublicDemoAnimationStateChanges = std::max(m_runtimeEditorStats.PublicDemoAnimationStateChanges, m_publicDemoAnimationStateChangeCount);
+
+            m_publicDemoDiagnostics = BuildPublicDemoDiagnostics();
+            if (!m_publicDemoDiagnostics.EnemyBehaviorReady ||
+                !m_publicDemoDiagnostics.GamepadMenuReady ||
+                !m_publicDemoDiagnostics.FailurePresentationReady ||
+                !m_publicDemoDiagnostics.ContentAudioReady ||
+                !m_publicDemoDiagnostics.AnimationHookReady ||
+                m_publicDemoDiagnostics.CollisionSolves == 0 ||
+                m_publicDemoDiagnostics.TraversalActions == 0)
+            {
+                AddRuntimeVerificationFailure("v33 playable demo systems validation failed.");
+            }
+
+            uint32_t passedPoints = 0;
+            const auto& points = GetV33PlayableDemoPoints();
+            for (size_t index = 0; index < points.size(); ++index)
+            {
+                const bool passed = EvaluateV33PlayableDemoPoint(index);
+                m_v33PlayableDemoPointResults[index] = passed ? 1u : 0u;
+                passedPoints += passed ? 1u : 0u;
+            }
+            m_runtimeEditorStats.V33PlayableDemoPointTests = passedPoints;
+            if (passedPoints < static_cast<uint32_t>(points.size()))
+            {
+                AddRuntimeVerificationFailure("v33 playable demo point coverage is incomplete.");
+            }
+
+            RestorePublicDemoState(snapshot);
+            m_publicDemoPickupAudioArmed = pickupAudioBefore;
+            m_publicDemoCompletionAudioPlayed = completionAudioBefore;
+            AddRuntimeVerificationNote("Validated v33 collision, traversal, enemy, gamepad/menu, failure, content-audio, and animation hooks.");
         }
 
         void ValidateRuntimeV20ProductionBatch()
@@ -9498,6 +10477,46 @@ namespace
             if (m_runtimeEditorStats.V32RoadmapPointTests < m_runtimeBaseline.MinV32RoadmapPoints)
             {
                 AddRuntimeVerificationFailure("v32 roadmap point count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoCollisionSolves < m_runtimeBaseline.MinPublicDemoCollisionSolves)
+            {
+                AddRuntimeVerificationFailure("public demo collision solve count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoTraversalActions < m_runtimeBaseline.MinPublicDemoTraversalActions)
+            {
+                AddRuntimeVerificationFailure("public demo traversal action count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoEnemyChases < m_runtimeBaseline.MinPublicDemoEnemyChases)
+            {
+                AddRuntimeVerificationFailure("public demo enemy chase count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoEnemyEvades < m_runtimeBaseline.MinPublicDemoEnemyEvades)
+            {
+                AddRuntimeVerificationFailure("public demo enemy evade count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoGamepadFrames < m_runtimeBaseline.MinPublicDemoGamepadFrames)
+            {
+                AddRuntimeVerificationFailure("public demo gamepad frame count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoMenuTransitions < m_runtimeBaseline.MinPublicDemoMenuTransitions)
+            {
+                AddRuntimeVerificationFailure("public demo menu transition count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoFailurePresentations < m_runtimeBaseline.MinPublicDemoFailurePresentations)
+            {
+                AddRuntimeVerificationFailure("public demo failure presentation count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoContentAudioCues < m_runtimeBaseline.MinPublicDemoContentAudioCues)
+            {
+                AddRuntimeVerificationFailure("public demo content audio cue count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoAnimationStateChanges < m_runtimeBaseline.MinPublicDemoAnimationStateChanges)
+            {
+                AddRuntimeVerificationFailure("public demo animation state change count is below baseline.");
+            }
+            if (m_runtimeEditorStats.V33PlayableDemoPointTests < m_runtimeBaseline.MinV33PlayableDemoPoints)
+            {
+                AddRuntimeVerificationFailure("v33 playable demo point count is below baseline.");
             }
         }
 
@@ -10043,6 +11062,16 @@ namespace
             report << "public_demo_relay_overcharge_windows=" << m_runtimeEditorStats.PublicDemoRelayOverchargeWindows << "\n";
             report << "public_demo_combo_steps=" << m_runtimeEditorStats.PublicDemoComboSteps << "\n";
             report << "v32_roadmap_points=" << m_runtimeEditorStats.V32RoadmapPointTests << "\n";
+            report << "public_demo_collision_solves=" << m_runtimeEditorStats.PublicDemoCollisionSolves << "\n";
+            report << "public_demo_traversal_actions=" << m_runtimeEditorStats.PublicDemoTraversalActions << "\n";
+            report << "public_demo_enemy_chases=" << m_runtimeEditorStats.PublicDemoEnemyChases << "\n";
+            report << "public_demo_enemy_evades=" << m_runtimeEditorStats.PublicDemoEnemyEvades << "\n";
+            report << "public_demo_gamepad_frames=" << m_runtimeEditorStats.PublicDemoGamepadFrames << "\n";
+            report << "public_demo_menu_transitions=" << m_runtimeEditorStats.PublicDemoMenuTransitions << "\n";
+            report << "public_demo_failure_presentations=" << m_runtimeEditorStats.PublicDemoFailurePresentations << "\n";
+            report << "public_demo_content_audio_cues=" << m_runtimeEditorStats.PublicDemoContentAudioCues << "\n";
+            report << "public_demo_animation_state_changes=" << m_runtimeEditorStats.PublicDemoAnimationStateChanges << "\n";
+            report << "v33_playable_demo_points=" << m_runtimeEditorStats.V33PlayableDemoPointTests << "\n";
             const auto& v25Points = GetV25ProductionPoints();
             for (size_t index = 0; index < v25Points.size(); ++index)
             {
@@ -10072,6 +11101,11 @@ namespace
             for (size_t index = 0; index < v32Points.size(); ++index)
             {
                 report << v32Points[index].Key << "=" << m_v32RoadmapPointResults[index] << "\n";
+            }
+            const auto& v33Points = GetV33PlayableDemoPoints();
+            for (size_t index = 0; index < v33Points.size(); ++index)
+            {
+                report << v33Points[index].Key << "=" << m_v33PlayableDemoPointResults[index] << "\n";
             }
             const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
             report << "high_res_capture_preset=" << captureMetrics.PresetName << "\n";
@@ -10141,6 +11175,17 @@ namespace
             report << "public_demo_pressure_hit_count=" << m_publicDemoDiagnostics.PressureHits << "\n";
             report << "public_demo_footstep_event_count=" << m_publicDemoDiagnostics.FootstepEvents << "\n";
             report << "public_demo_gameplay_event_routes=" << m_publicDemoDiagnostics.GameplayEventRoutes << "\n";
+            report << "public_demo_collision_solve_count=" << m_publicDemoDiagnostics.CollisionSolves << "\n";
+            report << "public_demo_traversal_action_count=" << m_publicDemoDiagnostics.TraversalActions << "\n";
+            report << "public_demo_enemy_chase_ticks=" << m_publicDemoDiagnostics.EnemyChaseTicks << "\n";
+            report << "public_demo_enemy_evade_count=" << m_publicDemoDiagnostics.EnemyEvades << "\n";
+            report << "public_demo_enemy_contacts=" << m_publicDemoDiagnostics.EnemyContacts << "\n";
+            report << "public_demo_gamepad_frame_count=" << m_publicDemoDiagnostics.GamepadFrames << "\n";
+            report << "public_demo_menu_transition_count=" << m_publicDemoDiagnostics.MenuTransitions << "\n";
+            report << "public_demo_failure_presentation_frames=" << m_publicDemoDiagnostics.FailurePresentationFrames << "\n";
+            report << "public_demo_content_audio_cue_count=" << m_publicDemoDiagnostics.ContentAudioCues << "\n";
+            report << "public_demo_animation_state_change_count=" << m_publicDemoDiagnostics.AnimationStateChanges << "\n";
+            report << "public_demo_animation_state=" << PublicDemoAnimationStateName() << "\n";
             report << "public_demo_objective_distance=" << m_publicDemoDiagnostics.ObjectiveDistance << "\n";
             report << "public_demo_anchor_puzzle_complete=" << (m_publicDemoDiagnostics.AnchorPuzzleComplete ? "true" : "false") << "\n";
             report << "public_demo_retry_ready=" << (m_publicDemoDiagnostics.RetryReady ? "true" : "false") << "\n";
@@ -10150,6 +11195,11 @@ namespace
             report << "public_demo_complex_route_ready=" << (m_publicDemoDiagnostics.ComplexRouteReady ? "true" : "false") << "\n";
             report << "public_demo_combo_objective_ready=" << (m_publicDemoDiagnostics.ComboObjectiveReady ? "true" : "false") << "\n";
             report << "public_demo_failure_screen_ready=" << (m_publicDemoDiagnostics.FailureScreenReady ? "true" : "false") << "\n";
+            report << "public_demo_enemy_behavior_ready=" << (m_publicDemoDiagnostics.EnemyBehaviorReady ? "true" : "false") << "\n";
+            report << "public_demo_gamepad_menu_ready=" << (m_publicDemoDiagnostics.GamepadMenuReady ? "true" : "false") << "\n";
+            report << "public_demo_failure_presentation_ready=" << (m_publicDemoDiagnostics.FailurePresentationReady ? "true" : "false") << "\n";
+            report << "public_demo_content_audio_ready=" << (m_publicDemoDiagnostics.ContentAudioReady ? "true" : "false") << "\n";
+            report << "public_demo_animation_hook_ready=" << (m_publicDemoDiagnostics.AnimationHookReady ? "true" : "false") << "\n";
             report << "viewport_hud_debug_thumbnails=" << (m_viewportOverlay.ShowDebugThumbnails ? "true" : "false") << "\n";
             report << "transform_precision_step=" << m_transformPrecision.Step << "\n";
             report << "command_history_filtered_verification=" << CountFilteredCommandHistory("Verification") << "\n";
@@ -12033,6 +13083,16 @@ namespace
                     else if (key == "min_public_demo_relay_overcharge_windows") { loadedBaseline.MinPublicDemoRelayOverchargeWindows = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_public_demo_combo_steps") { loadedBaseline.MinPublicDemoComboSteps = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_v32_roadmap_points") { loadedBaseline.MinV32RoadmapPoints = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_collision_solves") { loadedBaseline.MinPublicDemoCollisionSolves = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_traversal_actions") { loadedBaseline.MinPublicDemoTraversalActions = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_enemy_chases") { loadedBaseline.MinPublicDemoEnemyChases = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_enemy_evades") { loadedBaseline.MinPublicDemoEnemyEvades = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_gamepad_frames") { loadedBaseline.MinPublicDemoGamepadFrames = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_menu_transitions") { loadedBaseline.MinPublicDemoMenuTransitions = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_failure_presentations") { loadedBaseline.MinPublicDemoFailurePresentations = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_content_audio_cues") { loadedBaseline.MinPublicDemoContentAudioCues = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_animation_state_changes") { loadedBaseline.MinPublicDemoAnimationStateChanges = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_v33_playable_demo_points") { loadedBaseline.MinV33PlayableDemoPoints = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
@@ -12120,11 +13180,14 @@ namespace
         std::array<uint32_t, V30VerticalSlicePointCount> m_v30VerticalSlicePointResults = {};
         std::array<uint32_t, V31DiversifiedPointCount> m_v31DiversifiedPointResults = {};
         std::array<uint32_t, V32RoadmapPointCount> m_v32RoadmapPointResults = {};
+        std::array<uint32_t, V33PlayableDemoPointCount> m_v33PlayableDemoPointResults = {};
         std::array<PublicDemoShard, PublicDemoShardCount> m_publicDemoShards = {};
         std::array<PublicDemoAnchor, PublicDemoAnchorCount> m_publicDemoAnchors = {};
         std::array<PublicDemoResonanceGate, PublicDemoResonanceGateCount> m_publicDemoResonanceGates = {};
         std::array<PublicDemoPhaseRelay, PublicDemoPhaseRelayCount> m_publicDemoPhaseRelays = {};
         std::array<PublicDemoSentinel, 3> m_publicDemoSentinels = {};
+        std::array<PublicDemoCollisionObstacle, PublicDemoObstacleCount> m_publicDemoObstacles = {};
+        std::array<PublicDemoEnemy, PublicDemoEnemyCount> m_publicDemoEnemies = {};
         PublicDemoCheckpoint m_publicDemoCheckpoint;
         ViewportOverlaySettings m_viewportOverlay;
         TransformPrecisionState m_transformPrecision;
@@ -12201,6 +13264,9 @@ namespace
         float m_publicDemoElapsed = 0.0f;
         float m_publicDemoSurge = 0.0f;
         float m_publicDemoStepAccumulator = 0.0f;
+        float m_publicDemoDashTimer = 0.0f;
+        float m_publicDemoDashCooldown = 0.0f;
+        float m_publicDemoFailureOverlayTimer = 0.0f;
         float m_hotReloadPollTimer = 0.0f;
         float m_editorPreferencesSaveDelay = 0.0f;
         float m_runtimeVerificationElapsed = 0.0f;
@@ -12229,7 +13295,11 @@ namespace
         bool m_publicDemoCompleted = false;
         bool m_publicDemoPickupAudioArmed = true;
         bool m_publicDemoCompletionAudioPlayed = false;
+        bool m_publicDemoCueManifestLoaded = false;
+        bool m_publicDemoAnimationManifestLoaded = false;
         PublicDemoStage m_publicDemoStage = PublicDemoStage::CollectShards;
+        PublicDemoMenuState m_publicDemoMenuState = PublicDemoMenuState::Playing;
+        PublicDemoAnimationState m_publicDemoAnimationState = PublicDemoAnimationState::Idle;
         bool m_editorCameraEnabled = false;
         bool m_hotReloadEnabled = true;
         bool m_gltfAnimationPlayback = true;
@@ -12267,6 +13337,17 @@ namespace
         uint32_t m_publicDemoRelayBridgeDrawCount = 0;
         uint32_t m_publicDemoTraversalMarkerCount = 0;
         uint32_t m_publicDemoComboChainStepCount = 0;
+        uint32_t m_publicDemoCollisionSolveCount = 0;
+        uint32_t m_publicDemoTraversalVaultCount = 0;
+        uint32_t m_publicDemoTraversalDashCount = 0;
+        uint32_t m_publicDemoEnemyChaseTickCount = 0;
+        uint32_t m_publicDemoEnemyEvadeCount = 0;
+        uint32_t m_publicDemoEnemyContactCount = 0;
+        uint32_t m_publicDemoGamepadFrameCount = 0;
+        uint32_t m_publicDemoMenuTransitionCount = 0;
+        uint32_t m_publicDemoFailurePresentationFrameCount = 0;
+        uint32_t m_publicDemoContentAudioCueCount = 0;
+        uint32_t m_publicDemoAnimationStateChangeCount = 0;
         uint32_t m_viewportToolbarInteractionCount = 0;
         uint32_t m_editorWorkspacePresetApplyCount = 0;
         uint32_t m_editorDockLayoutChecksum = 0xD15A27u;
@@ -12283,7 +13364,15 @@ namespace
         std::string m_lastGpuPickStatus = "Not sampled";
         std::string m_gizmoStatus = "Idle";
         std::string m_editorWorkspacePresetName = "Editor";
+        std::string m_publicDemoFailureReason = "Signal lost";
         std::deque<std::string> m_publicDemoEvents;
+        std::unordered_map<std::string, PublicDemoCueDefinition> m_publicDemoCueDefinitions;
+        std::vector<std::string> m_publicDemoAnimationStates;
+        PublicDemoGamepadState m_publicDemoGamepad;
+        HMODULE m_xinputModule = nullptr;
+        using XInputGetStateFn = DWORD(WINAPI*)(DWORD, XINPUT_STATE*);
+        XInputGetStateFn m_xinputGetState = nullptr;
+        WORD m_previousGamepadButtons = 0;
         std::array<char, 64> m_commandHistoryFilter = {};
         std::array<char, 64> m_editorPreferenceProfileName = { 'D', 'e', 'f', 'a', 'u', 'l', 't', '\0' };
         std::filesystem::path m_highResCaptureSourcePath;

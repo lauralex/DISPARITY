@@ -9,6 +9,7 @@ param(
     [string]$VerticalSliceBatchPath = "Assets/Verification/V30VerticalSlice.dfollowups",
     [string]$V31DiversifiedBatchPath = "Assets/Verification/V31DiversifiedBatch.dfollowups",
     [string]$V32RoadmapBatchPath = "Assets/Verification/V32RoadmapBatch.dfollowups",
+    [string]$V33PlayableDemoBatchPath = "Assets/Verification/V33PlayableDemoBatch.dfollowups",
     [string]$OutputPath = "Saved/Release/release_readiness_manifest.json"
 )
 
@@ -33,6 +34,7 @@ $PublicDemoBatchPath = Resolve-RepoPath -Path $PublicDemoBatchPath
 $VerticalSliceBatchPath = Resolve-RepoPath -Path $VerticalSliceBatchPath
 $V31DiversifiedBatchPath = Resolve-RepoPath -Path $V31DiversifiedBatchPath
 $V32RoadmapBatchPath = Resolve-RepoPath -Path $V32RoadmapBatchPath
+$V33PlayableDemoBatchPath = Resolve-RepoPath -Path $V33PlayableDemoBatchPath
 $OutputPath = Resolve-RepoPath -Path $OutputPath
 
 $packageManifestPath = Join-Path $PackagePath "package_manifest.json"
@@ -52,7 +54,8 @@ $checks = @(
     [pscustomobject]@{ name = "public_demo_batch_manifest"; path = $PublicDemoBatchPath; exists = Test-Path -LiteralPath $PublicDemoBatchPath },
     [pscustomobject]@{ name = "vertical_slice_batch_manifest"; path = $VerticalSliceBatchPath; exists = Test-Path -LiteralPath $VerticalSliceBatchPath },
     [pscustomobject]@{ name = "v31_diversified_batch_manifest"; path = $V31DiversifiedBatchPath; exists = Test-Path -LiteralPath $V31DiversifiedBatchPath },
-    [pscustomobject]@{ name = "v32_roadmap_batch_manifest"; path = $V32RoadmapBatchPath; exists = Test-Path -LiteralPath $V32RoadmapBatchPath }
+    [pscustomobject]@{ name = "v32_roadmap_batch_manifest"; path = $V32RoadmapBatchPath; exists = Test-Path -LiteralPath $V32RoadmapBatchPath },
+    [pscustomobject]@{ name = "v33_playable_demo_batch_manifest"; path = $V33PlayableDemoBatchPath; exists = Test-Path -LiteralPath $V33PlayableDemoBatchPath }
 )
 
 foreach ($check in $checks) {
@@ -75,8 +78,8 @@ $schemaMetrics = @(Get-Content -LiteralPath $RuntimeReportSchemaPath | Where-Obj
     $trimmed = $_.Trim()
     ![string]::IsNullOrWhiteSpace($trimmed) -and !$trimmed.StartsWith("#")
 })
-if ($schemaMetrics.Count -lt 285 -or !($schemaMetrics -contains "v25_production_points") -or !($schemaMetrics -contains "v28_diversified_points") -or !($schemaMetrics -contains "v29_public_demo_points") -or !($schemaMetrics -contains "v30_vertical_slice_points") -or !($schemaMetrics -contains "v31_diversified_points") -or !($schemaMetrics -contains "v32_roadmap_points")) {
-    throw "Runtime report schema does not include the v25/v28/v29/v30/v31/v32 production metrics."
+if ($schemaMetrics.Count -lt 345 -or !($schemaMetrics -contains "v25_production_points") -or !($schemaMetrics -contains "v28_diversified_points") -or !($schemaMetrics -contains "v29_public_demo_points") -or !($schemaMetrics -contains "v30_vertical_slice_points") -or !($schemaMetrics -contains "v31_diversified_points") -or !($schemaMetrics -contains "v32_roadmap_points") -or !($schemaMetrics -contains "v33_playable_demo_points")) {
+    throw "Runtime report schema does not include the v25/v28/v29/v30/v31/v32/v33 production metrics."
 }
 
 $productionPoints = @(Get-Content -LiteralPath $ProductionBatchPath | Where-Object {
@@ -121,6 +124,13 @@ if ($v32RoadmapPoints.Count -ne 60) {
     throw "v32 roadmap batch manifest does not define sixty points."
 }
 
+$v33PlayableDemoPoints = @(Get-Content -LiteralPath $V33PlayableDemoBatchPath | Where-Object {
+    $_.Trim().StartsWith("point ")
+})
+if ($v33PlayableDemoPoints.Count -ne 50) {
+    throw "v33 playable demo batch manifest does not define fifty points."
+}
+
 $parent = Split-Path -Parent $OutputPath
 if (![string]::IsNullOrWhiteSpace($parent)) {
     New-Item -ItemType Directory -Force -Path $parent | Out-Null
@@ -138,6 +148,7 @@ if (![string]::IsNullOrWhiteSpace($parent)) {
     vertical_slice_batch_point_count = $verticalSlicePoints.Count
     v31_diversified_batch_point_count = $v31DiversifiedPoints.Count
     v32_roadmap_batch_point_count = $v32RoadmapPoints.Count
+    v33_playable_demo_batch_point_count = $v33PlayableDemoPoints.Count
     checks = $checks
 } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $OutputPath
 

@@ -1,6 +1,14 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v32 versions of many requested followups, including a more layered public vertical slice for capture and demos. The next milestones should keep rotating through gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+The current engine now has functional v33 versions of many requested followups, including a more game-like public vertical slice with collision traversal, simple enemies, gamepad/menu flow, failure presentation, and content-backed cue/animation hooks. The next milestones should keep rotating through gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+
+## v33 Completed Playable Demo Batch
+
+- Added `Assets/Verification/V33PlayableDemoBatch.dfollowups`, a fifty-point playable-demo batch with ten points each for CollisionTraversal, EnemyAI, GamepadMenu, FailurePresentation, and AudioAnimation.
+- The public demo now adds collision-backed arena/blocker resolution, sliding push-out, dash/vault traversal barriers, readable traversal markers, simple enemy patrol/chase/contact/evade behavior, enemy vision rings and chase beams, and checkpoint-backed failure/retry presentation.
+- Runtime input now supports keyboard/mouse plus dynamically loaded XInput gamepad polling. `Space`/gamepad `A` dashes, `Shift`/`LB` sprints, and `P`/`Start` controls the pause flow.
+- Content-facing demo feedback now loads `Assets/Audio/PublicDemoCues.daudio` and `Assets/Animation/PublicDemoPlayer.danim`, then routes named shard/anchor/gate/relay/traversal/enemy/failure/menu/footstep/extraction cues plus idle/walk/sprint/dash/stabilize/failure/complete state telemetry.
+- The Profiler and Demo Director expose v33 readiness, while runtime reports, baselines, schema checks, release-readiness review, production-batch review, baseline review, and performance-history summaries require collision/traversal, enemy, gamepad/menu, failure, content-audio, animation, and all `v33_point_*` metrics.
 
 ## v32 Completed Sixty-Point Roadmap Batch
 
@@ -211,8 +219,10 @@ The current engine now has functional v32 versions of many requested followups, 
 
 ## Runtime
 
-- Turn the v32 relay route into a more game-like demo with true collision-backed traversal, controller/gamepad gameplay, a title/menu-to-gameplay flow, simple enemy behavior, a visible failure/retry screen, and more expressive objective gates.
-- Replace the current telemetry-level footstep/pickup/anchor/resonance/completion events with authored animation states, content sounds, pressure-hit feedback, and objective-gate affordances for the playable demo.
+- Add more advanced encounter design with multiple enemy archetypes, authored patrol paths, line-of-sight checks, readable attack telegraphs, hit reactions, and objective-specific pressure beats.
+- Polish the character controller with grounded state, slopes, ledges, moving platforms, collision layers, friction/material responses, and camera collision.
+- Replace the v33 manifest-level animation surface with authored clips, blend trees, animation events, root-motion experiments, and editor transition previews.
+- Expand the pause/completion/failure flow into a title screen, settings menu, save-slot/checkpoint UI, accessibility options, and replayable demo chapter select.
 - Extend the job-system async IO helper into asset streaming, cancellation, priorities, file watching, and frame pacing diagnostics.
 - Add serialization versioning, save-game separation, and deterministic scene IDs.
 - Add physics, collision queries, controller movement, animation-driven character logic, and gameplay event routing.

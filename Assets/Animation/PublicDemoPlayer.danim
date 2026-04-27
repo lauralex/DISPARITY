@@ -1,0 +1,9 @@
+# DISPARITY public demo animation state manifest.
+# Format: state <name> <description>
+state Idle grounded_ready
+state Walk camera_relative_locomotion
+state Sprint focus_burst_locomotion
+state Dash traversal_vault_impulse
+state Stabilize objective_interaction_pose
+state Failure checkpoint_recovery_pose
+state Complete extraction_victory_pose

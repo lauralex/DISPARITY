@@ -28,7 +28,7 @@ bin\x64\Release\DisparityGame.exe
 
 Controls:
 
-- `WASD`: move the player placeholder.
+- `WASD`: move the player placeholder. A connected XInput gamepad left stick also contributes to movement.
 - Mouse: orbit the third-person camera.
 - `Tab`: release or recapture the mouse.
 - `Esc`: quit.
@@ -40,8 +40,9 @@ Controls:
 - `F7`: toggle cinematic showcase mode, hide the editor, boost post-processing, and orbit the animated DISPARITY rift for capture-friendly footage.
 - `F8`: toggle trailer/photo mode with authored camera shots from `Assets/Cinematics/Showcase.dshot`, depth of field, lens dirt, and title-safe guide overlays.
 - `F9`: capture the current presented frame and write a source PPM, source PNG, async 2x PPM photo, and schema v3 high-resolution capture manifest under `Saved/Captures`.
-- `F10`: reset the public playable demo, returning rift shards, phase anchors, resonance gates, phase relays, sentinels, checkpoint/retry state, extraction state, and HUD objectives to their start state.
-- Hold `Shift` while using `WASD` in the playable demo to sprint. Collect all six rift shards, align the three phase anchors, tune the two resonance gates, stabilize the three phase relays during overcharge windows, avoid sentinel pressure, then return to the extraction beacon to complete the loop.
+- `F10`: reset the public playable demo, returning rift shards, phase anchors, resonance gates, phase relays, collision obstacles, enemies, sentinels, menu/failure state, checkpoint/retry state, extraction state, animation state, and HUD objectives to their start state.
+- Press `Space`, or gamepad `A`, to dash/vault through traversal barriers. Press `P`, or gamepad `Start`, to pause/resume the public demo flow.
+- Hold `Shift` while using `WASD`, or hold gamepad `LB`, in the playable demo to sprint. Collect all six rift shards, align the three phase anchors, tune the two resonance gates, stabilize the three phase relays during overcharge windows, dash through traversal blockers, evade enemy pressure, then return to the extraction beacon to complete the loop.
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 - When the mouse is released with `Tab`, left-click the viewport to pick objects. Hold `Ctrl` while clicking or selecting in the hierarchy to multi-select. The editor tries GPU object-ID readback first and falls back to CPU ray tests.
@@ -57,7 +58,7 @@ Editor UI:
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw draggable, camera-scaled 3D axis/ring/plane gizmo handles in the viewport.
 - `Assets`: reload scene/script, toggle hot reload, inspect the asset database and dependency graph, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
 - `Shot Director`: edit, add, save, reload, capture, thumbnail, and preview-scrub v6 `.dshot` trailer keys without leaving the running editor.
-- `Demo Director`: inspect the public vertical slice stage, objective distance, shard/anchor/gate/relay progress, checkpoint/retry/pressure/footstep/combo telemetry, recent gameplay events, and v30/v31/v32 readiness while the demo is running.
+- `Demo Director`: inspect the public vertical slice stage, objective distance, shard/anchor/gate/relay progress, checkpoint/retry/pressure/footstep/combo/collision/traversal/enemy/gamepad/audio/animation telemetry, recent gameplay events, and v30/v31/v32/v33 readiness while the demo is running.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters/production counters, and store/recall a mixer snapshot.
 
@@ -355,12 +356,22 @@ Editor UI:
 - Runtime reports and baselines now require phase-relay stabilization, relay overcharge windows, combo-chain steps, traversal markers, relay bridge draws, and all `v32_point_*` metrics.
 - The Profiler has a v32 roadmap readiness table, while runtime schema checks, production manifest review, release readiness, baseline review, and performance-history summaries all include the new v32 gates.
 
+## Engine v33 Playable Demo Batch Implemented
+
+- `Assets/Verification/V33PlayableDemoBatch.dfollowups` tracks fifty playable-demo points across CollisionTraversal, EnemyAI, GamepadMenu, FailurePresentation, and AudioAnimation.
+- The public demo now has collision-backed arena/blocker resolution, sliding push-out, dash/vault traversal barriers, simple enemy patrol/chase/contact/evade behavior, and a pause/completion/failure presentation flow.
+- Gameplay input now accepts keyboard/mouse plus dynamic XInput gamepad polling without adding a new external dependency. `Space`/gamepad `A` dashes, `Shift`/`LB` sprints, and `P`/`Start` pauses.
+- Public-demo feedback now reads cue definitions from `Assets/Audio/PublicDemoCues.daudio` and player state names from `Assets/Animation/PublicDemoPlayer.danim`, with player material tinting for idle, walk, sprint, dash, stabilize, failure, and complete states.
+- Runtime reports, schema checks, baselines, release readiness, performance history, and production manifest review now require collision/traversal, enemy, gamepad/menu, failure, content audio, animation, and all `v33_point_*` metrics.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Turn the v32 relay route into a more game-like public demo with real collision, traversal mechanics, simple enemy behaviors, an authored failure screen, gamepad support, and a menu-to-gameplay flow.
-- Add real player feedback: animation states, authored footsteps, pickup/anchor/gate/relay/completion sounds through the production audio path, screen-space hit/pressure cues, and content-driven rift pulses.
+- Add more advanced encounter design with multiple enemy archetypes, authored patrol paths, line-of-sight checks, readable attack telegraphs, hit reactions, and objective-specific pressure beats.
+- Polish the character controller with grounded state, slopes, ledges, moving platforms, collision layers, friction/material responses, and camera collision.
+- Replace the manifest-level animation state surface with authored clips, blend trees, animation events, root-motion experiments, and transition previews in the editor.
+- Expand the pause/completion/failure flow into a title screen, settings menu, save-slot/checkpoint UI, accessibility options, and replayable demo chapter select.
 - Promote v28 graph-owned rendering diagnostics into actual DX11 pass execution: explicit bind/unbind barriers, alias lifetime validation, GPU culling, Forward+ lighting, cascaded shadows, motion-vector rendering, and stronger temporal AA.
 - Move the high-resolution capture proof from resolved source-frame sampling to true tiled offscreen supersampling with per-tile camera jitter, selectable resolve filters, real EXR output, and real async compression workers.
 - Turn editor profile import/export/diff and workspace presets into a versioned per-project preference system with dock-layout files, schema migration, conflict-safe merge, and checked-in team defaults.
