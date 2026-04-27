@@ -58,6 +58,12 @@ $manifest = [pscustomobject]@{
     name = "DISPARITY symbol index"
     package = (Get-RelativePath -BasePath $root -Path $PackagePath).Replace("\", "/")
     created_utc = (Get-Date).ToUniversalTime().ToString("o")
+    symbol_server = [pscustomobject]@{
+        protocol = "local-symsrv-plan"
+        publish_command = "symstore add /r /f <pdb-root> /s <symbol-store> /t DISPARITY"
+        retention_days = 180
+        authenticated_publish_required = $true
+    }
     symbol_count = $symbols.Count
     symbols = $symbols
 }

@@ -35,6 +35,9 @@ namespace Disparity
         std::string ActiveBackend;
         bool XAudio2Available = false;
         bool XAudio2Preferred = false;
+        bool XAudio2Initialized = false;
+        uint32_t XAudio2ActiveSourceVoices = 0;
+        uint32_t StreamedVoices = 0;
     };
 
     struct AudioAnalysis

@@ -212,6 +212,26 @@ Invoke-Step "Asset cook manifest" {
     & (Join-Path $PSScriptRoot "CookDisparityAssets.ps1") -Configuration Debug -BinaryPackages
 }
 
+Invoke-Step "Optimized glTF package review" {
+    $optimizedPath = Join-Path $root "Saved\CookedAssets\Optimized"
+    $packages = @(Get-ChildItem -LiteralPath $optimizedPath -Filter "*.dglbpack" -File -ErrorAction SilentlyContinue)
+    if ($packages.Count -eq 0) {
+        throw "No optimized .dglbpack packages were produced."
+    }
+    foreach ($package in $packages) {
+        $payload = Get-Content -LiteralPath $package.FullName -Raw | ConvertFrom-Json
+        if ($payload.magic -ne "DSGLBPK2" -or [int]$payload.schema -lt 2) {
+            throw "Optimized package $($package.Name) has an invalid schema."
+        }
+        if ([int]$payload.primitive_count -le 0 -or [int]$payload.mesh_count -le 0) {
+            throw "Optimized package $($package.Name) did not record mesh primitives."
+        }
+        if (!$payload.buffers -or @($payload.buffers).Count -eq 0) {
+            throw "Optimized package $($package.Name) did not record buffer payload metadata."
+        }
+    }
+}
+
 Invoke-Step "Crash upload manifest dry run" {
     & (Join-Path $PSScriptRoot "CollectCrashReports.ps1") -DryRun
     & (Join-Path $PSScriptRoot "UploadCrashReports.ps1") -DryRun
@@ -223,6 +243,15 @@ Invoke-Step "Verification baseline review" {
 
 Invoke-Step "Baseline approval manifest" {
     & (Join-Path $PSScriptRoot "ApproveVerificationBaseline.ps1") -DryRun
+    $approvalPath = Join-Path $root "Saved\Verification\baseline_approval.json"
+    $approval = Get-Content -LiteralPath $approvalPath -Raw | ConvertFrom-Json
+    if (!$approval.signature_policy -or !$approval.git_signature_status -or !$approval.manifest_sha256) {
+        throw "Baseline approval manifest is missing signature metadata."
+    }
+}
+
+Invoke-Step "Interactive CI plan" {
+    & (Join-Path $PSScriptRoot "GenerateInteractiveCiPlan.ps1") -RuntimeSuiteFile $RuntimeSuiteFile
 }
 
 if (!$SkipRuntime) {

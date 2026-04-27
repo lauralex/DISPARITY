@@ -95,13 +95,18 @@ namespace Disparity
         uint32_t AliasedResources = 0;
         uint32_t TransitionBarriers = 0;
         uint32_t ResourceHandles = 0;
+        uint32_t GraphResourceBindings = 0;
+        uint32_t GraphHandleBindHits = 0;
+        uint32_t GraphHandleBindMisses = 0;
         uint32_t GraphCallbacksBound = 0;
         uint32_t GraphCallbacksExecuted = 0;
         uint32_t PendingCaptureRequests = 0;
         uint32_t ObjectIdReadbackRingSize = 0;
+        uint32_t ObjectIdReadbackPending = 0;
         uint32_t ObjectIdReadbackRequests = 0;
         uint32_t ObjectIdReadbackCompletions = 0;
         uint32_t ObjectIdReadbackLatencyFrames = 0;
+        uint32_t ObjectIdReadbackBusySkips = 0;
     };
 
     struct EditorViewportResourcesInfo
@@ -164,6 +169,8 @@ namespace Disparity
         [[nodiscard]] RendererFrameGraphDiagnostics GetFrameGraphDiagnostics() const;
         [[nodiscard]] EditorViewportResourcesInfo GetEditorViewportResources() const;
         [[nodiscard]] ID3D11ShaderResourceView* GetEditorViewportShaderResourceView() const;
+        void QueueEditorObjectIdReadback(uint32_t x, uint32_t y) const;
+        [[nodiscard]] bool TryResolveEditorObjectIdReadback(EditorObjectIdReadback& outReadback) const;
         [[nodiscard]] EditorObjectIdReadback ReadEditorObjectId(uint32_t x, uint32_t y) const;
         [[nodiscard]] double GetGpuFrameMilliseconds() const;
         [[nodiscard]] bool IsGpuTimingAvailable() const;
@@ -190,6 +197,25 @@ namespace Disparity
             bool QueryIssued = false;
         };
 
+        struct GraphResourceBinding
+        {
+            uint32_t ResourceId = 0;
+            ID3D11Texture2D* Texture = nullptr;
+            ID3D11RenderTargetView* RenderTargetView = nullptr;
+            ID3D11DepthStencilView* DepthStencilView = nullptr;
+            ID3D11ShaderResourceView* ShaderResourceView = nullptr;
+        };
+
+        struct ObjectIdReadbackSlot
+        {
+            Microsoft::WRL::ComPtr<ID3D11Texture2D> IdStaging;
+            Microsoft::WRL::ComPtr<ID3D11Texture2D> DepthStaging;
+            uint32_t X = 0;
+            uint32_t Y = 0;
+            uint64_t RequestFrame = 0;
+            bool Pending = false;
+        };
+
         bool CreateDeviceAndSwapChain();
         bool CreateBackBufferResources();
         bool CreateShaders();
@@ -212,6 +238,19 @@ namespace Disparity
         void BeginGpuPassProfile(uint32_t passId);
         void EndGpuPassProfile(uint32_t passId);
         void ResolveGpuPassProfiles();
+        void BindGraphResource(
+            uint32_t resourceId,
+            ID3D11Texture2D* texture,
+            ID3D11RenderTargetView* renderTargetView,
+            ID3D11DepthStencilView* depthStencilView,
+            ID3D11ShaderResourceView* shaderResourceView);
+        [[nodiscard]] const GraphResourceBinding* FindGraphResourceBinding(uint32_t resourceId) const;
+        [[nodiscard]] ID3D11Texture2D* GetGraphTexture(uint32_t resourceId) const;
+        [[nodiscard]] ID3D11RenderTargetView* GetGraphRenderTargetView(uint32_t resourceId) const;
+        [[nodiscard]] ID3D11DepthStencilView* GetGraphDepthStencilView(uint32_t resourceId) const;
+        [[nodiscard]] ID3D11ShaderResourceView* GetGraphShaderResourceView(uint32_t resourceId) const;
+        [[nodiscard]] bool EnsureObjectIdReadbackSlot(ObjectIdReadbackSlot& slot) const;
+        void ResetObjectIdReadbackSlots();
         [[nodiscard]] FrameCaptureResult CaptureBackBuffer(const std::filesystem::path& outputPath) const;
 
         HWND m_windowHandle = nullptr;
@@ -245,12 +284,17 @@ namespace Disparity
         uint32_t m_graphAliasedResources = 0;
         uint32_t m_graphTransitionBarriers = 0;
         uint32_t m_graphResourceHandles = 0;
+        uint32_t m_graphResourceBindingCount = 0;
         uint32_t m_graphCallbacksBound = 0;
         uint32_t m_graphCallbacksExecuted = 0;
+        mutable uint32_t m_graphHandleBindHits = 0;
+        mutable uint32_t m_graphHandleBindMisses = 0;
         mutable uint32_t m_objectIdReadbackRingCursor = 0;
         mutable uint32_t m_objectIdReadbackRequests = 0;
         mutable uint32_t m_objectIdReadbackCompletions = 0;
         mutable uint32_t m_objectIdReadbackLatencyFrames = 0;
+        mutable uint32_t m_objectIdReadbackBusySkips = 0;
+        uint64_t m_frameIndex = 0;
         std::chrono::steady_clock::time_point m_graphPassStart;
         double m_gpuFrameMilliseconds = 0.0;
         uint64_t m_gpuTimestampFrequency = 0;
@@ -262,6 +306,8 @@ namespace Disparity
         DirectionalLight m_light;
         RendererSettings m_settings;
         RenderGraph m_renderGraph;
+        std::vector<GraphResourceBinding> m_graphBindings;
+        mutable std::array<ObjectIdReadbackSlot, 3> m_objectIdReadbackSlots;
         FrameCaptureResult m_lastFrameCapture;
         std::deque<std::filesystem::path> m_pendingFrameCapturePaths;
         DirectX::XMFLOAT4X4 m_lightViewProjection = {};

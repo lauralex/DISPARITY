@@ -13,6 +13,7 @@
 #include <mmsystem.h>
 #include <thread>
 #include <vector>
+#include <xaudio2.h>
 
 namespace Disparity
 {
@@ -22,12 +23,20 @@ namespace Disparity
         std::atomic<float> g_masterVolume = 0.8f;
         std::mutex g_audioMutex;
         std::mutex g_toneOutputMutex;
+        std::mutex g_xaudioMutex;
         std::unordered_map<std::string, AudioBus> g_buses;
         std::unordered_map<std::string, AudioBusMeter> g_meters;
         AudioAnalysis g_analysis;
         HWAVEOUT g_toneOutput = nullptr;
         bool g_xaudio2Available = false;
         bool g_preferXAudio2 = false;
+        bool g_xaudio2Initialized = false;
+        bool g_xaudio2Failed = false;
+        HMODULE g_xaudio2Module = nullptr;
+        IXAudio2* g_xaudio2Engine = nullptr;
+        IXAudio2MasteringVoice* g_xaudio2MasteringVoice = nullptr;
+        std::atomic<uint32_t> g_xaudio2SourceVoices = 0;
+        std::atomic<uint32_t> g_streamedVoices = 0;
         std::string g_backendName = "WinMM prototype mixer";
         DirectX::XMFLOAT3 g_listenerPosition = {};
         DirectX::XMFLOAT3 g_listenerForward = { 0.0f, 0.0f, 1.0f };
@@ -90,11 +99,108 @@ namespace Disparity
             return true;
         }
 
+        using XAudio2CreateProc = HRESULT(WINAPI*)(IXAudio2**, UINT32, XAUDIO2_PROCESSOR);
+
+        bool InitializeXAudio2Locked()
+        {
+            if (g_xaudio2Initialized && g_xaudio2Engine && g_xaudio2MasteringVoice)
+            {
+                return true;
+            }
+            if (g_xaudio2Failed)
+            {
+                return false;
+            }
+
+            HMODULE xaudio = LoadLibraryW(L"XAudio2_9.dll");
+            if (!xaudio)
+            {
+                xaudio = LoadLibraryW(L"XAudio2_8.dll");
+            }
+            if (!xaudio)
+            {
+                g_xaudio2Failed = true;
+                return false;
+            }
+
+            const auto createXAudio2 = reinterpret_cast<XAudio2CreateProc>(GetProcAddress(xaudio, "XAudio2Create"));
+            if (!createXAudio2)
+            {
+                FreeLibrary(xaudio);
+                g_xaudio2Failed = true;
+                return false;
+            }
+
+            IXAudio2* engine = nullptr;
+            HRESULT hr = createXAudio2(&engine, 0, XAUDIO2_DEFAULT_PROCESSOR);
+            if (FAILED(hr) || !engine)
+            {
+                FreeLibrary(xaudio);
+                g_xaudio2Failed = true;
+                return false;
+            }
+
+            IXAudio2MasteringVoice* masteringVoice = nullptr;
+            hr = engine->CreateMasteringVoice(&masteringVoice);
+            if (FAILED(hr) || !masteringVoice)
+            {
+                engine->Release();
+                FreeLibrary(xaudio);
+                g_xaudio2Failed = true;
+                return false;
+            }
+
+            g_xaudio2Module = xaudio;
+            g_xaudio2Engine = engine;
+            g_xaudio2MasteringVoice = masteringVoice;
+            g_xaudio2Initialized = true;
+            g_xaudio2Available = true;
+            return true;
+        }
+
+        bool EnsureXAudio2()
+        {
+            std::scoped_lock lock(g_xaudioMutex);
+            return InitializeXAudio2Locked();
+        }
+
+        void ShutdownXAudio2()
+        {
+            std::scoped_lock lock(g_xaudioMutex);
+            if (g_xaudio2MasteringVoice)
+            {
+                g_xaudio2MasteringVoice->DestroyVoice();
+                g_xaudio2MasteringVoice = nullptr;
+            }
+            if (g_xaudio2Engine)
+            {
+                g_xaudio2Engine->StopEngine();
+                g_xaudio2Engine->Release();
+                g_xaudio2Engine = nullptr;
+            }
+            if (g_xaudio2Module)
+            {
+                FreeLibrary(g_xaudio2Module);
+                g_xaudio2Module = nullptr;
+            }
+            g_xaudio2Initialized = false;
+            g_xaudio2SourceVoices = 0;
+        }
+
         void RefreshBackendName()
         {
-            g_backendName = (g_preferXAudio2 && g_xaudio2Available)
-                ? "XAudio2 available (WinMM render path)"
-                : "WinMM prototype mixer";
+            if (g_preferXAudio2 && g_xaudio2Initialized)
+            {
+                g_backendName = "XAudio2 production tone mixer";
+            }
+            else if (g_xaudio2Available)
+            {
+                g_backendName = "XAudio2 available (WinMM fallback path)";
+            }
+            else
+            {
+                g_backendName = "WinMM prototype mixer";
+            }
         }
 
         void BeginVoiceMeter(const std::string& busName, float peak, float rms)
@@ -199,6 +305,58 @@ namespace Disparity
             return true;
         }
 
+        bool WriteXAudio2ToneBuffer(std::vector<short>& samples)
+        {
+            std::scoped_lock lock(g_xaudioMutex);
+            if (!InitializeXAudio2Locked() || !g_xaudio2Engine)
+            {
+                return false;
+            }
+
+            WAVEFORMATEX format = CreateToneFormat();
+            IXAudio2SourceVoice* sourceVoice = nullptr;
+            HRESULT hr = g_xaudio2Engine->CreateSourceVoice(&sourceVoice, &format);
+            if (FAILED(hr) || !sourceVoice)
+            {
+                return false;
+            }
+
+            XAUDIO2_BUFFER buffer = {};
+            buffer.AudioBytes = static_cast<UINT32>(samples.size() * sizeof(short));
+            buffer.pAudioData = reinterpret_cast<const BYTE*>(samples.data());
+            buffer.Flags = XAUDIO2_END_OF_STREAM;
+
+            hr = sourceVoice->SubmitSourceBuffer(&buffer);
+            if (SUCCEEDED(hr))
+            {
+                hr = sourceVoice->Start(0);
+            }
+            if (FAILED(hr))
+            {
+                sourceVoice->DestroyVoice();
+                return false;
+            }
+
+            ++g_xaudio2SourceVoices;
+            const int maxAttempts = static_cast<int>(std::max<size_t>(40u, samples.size() / 88u + 80u));
+            for (int attempts = 0; attempts < maxAttempts; ++attempts)
+            {
+                XAUDIO2_VOICE_STATE state = {};
+                sourceVoice->GetState(&state);
+                if (state.BuffersQueued == 0)
+                {
+                    break;
+                }
+                Sleep(5);
+            }
+
+            sourceVoice->Stop(0);
+            sourceVoice->FlushSourceBuffers();
+            sourceVoice->DestroyVoice();
+            --g_xaudio2SourceVoices;
+            return true;
+        }
+
         void CloseToneOutput()
         {
             std::scoped_lock lock(g_toneOutputMutex);
@@ -276,7 +434,10 @@ namespace Disparity
                 samples[index * 2u + 1u] = static_cast<short>(sample * rightGain);
             }
 
-            if (!WriteToneBuffer(samples))
+            const bool rendered = (g_preferXAudio2 && EnsureXAudio2())
+                ? WriteXAudio2ToneBuffer(samples)
+                : WriteToneBuffer(samples);
+            if (!rendered)
             {
                 EndVoiceMeter(busName);
                 g_tonePlaying = false;
@@ -291,6 +452,10 @@ namespace Disparity
     {
         EnsureDefaultBuses();
         g_xaudio2Available = DetectXAudio2();
+        if (g_xaudio2Available)
+        {
+            g_preferXAudio2 = EnsureXAudio2();
+        }
         RefreshBackendName();
         return true;
     }
@@ -304,7 +469,14 @@ namespace Disparity
     AudioBackendInfo AudioSystem::GetBackendInfo()
     {
         RefreshBackendName();
-        return AudioBackendInfo{ g_backendName, g_xaudio2Available, g_preferXAudio2 };
+        return AudioBackendInfo{
+            g_backendName,
+            g_xaudio2Available,
+            g_preferXAudio2,
+            g_xaudio2Initialized,
+            g_xaudio2SourceVoices.load(),
+            g_streamedVoices.load()
+        };
     }
 
     bool AudioSystem::IsXAudio2Available()
@@ -314,7 +486,7 @@ namespace Disparity
 
     void AudioSystem::PreferXAudio2(bool preferred)
     {
-        g_preferXAudio2 = preferred;
+        g_preferXAudio2 = preferred && EnsureXAudio2();
         RefreshBackendName();
     }
 
@@ -322,6 +494,7 @@ namespace Disparity
     {
         StopAll();
         CloseToneOutput();
+        ShutdownXAudio2();
     }
 
     void AudioSystem::PlayNotification()
@@ -389,7 +562,12 @@ namespace Disparity
             flags |= SND_LOOP;
         }
 
-        return PlaySoundW(resolvedPath.c_str(), nullptr, flags) == TRUE;
+        const bool started = PlaySoundW(resolvedPath.c_str(), nullptr, flags) == TRUE;
+        if (started)
+        {
+            g_streamedVoices = loop ? 1u : 0u;
+        }
+        return started;
     }
 
     bool AudioSystem::StreamMusic(const std::filesystem::path& path, bool loop)
@@ -401,6 +579,15 @@ namespace Disparity
     {
         PlaySoundW(nullptr, nullptr, SND_PURGE);
         CloseToneOutput();
+        {
+            std::scoped_lock lock(g_xaudioMutex);
+            if (g_xaudio2Engine)
+            {
+                g_xaudio2Engine->StopEngine();
+                (void)g_xaudio2Engine->StartEngine();
+            }
+        }
+        g_streamedVoices = 0;
         g_tonePlaying = false;
     }
 

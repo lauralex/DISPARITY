@@ -35,11 +35,26 @@ $installerManifest = [pscustomobject]@{
     created_utc = (Get-Date).ToUniversalTime().ToString("o")
     install_root = "%LOCALAPPDATA%/DISPARITY"
     entry_point = "DisparityGame.exe"
+    bootstrapper = [pscustomobject]@{
+        schema = 1
+        mode = "per-user"
+        prerequisites = @("Visual C++ Runtime 14.x", "DirectX 11 capable GPU", "Windows 10 1909+")
+        shortcuts = @(
+            [pscustomobject]@{ location = "StartMenu"; name = "DISPARITY"; target = "DisparityGame.exe" },
+            [pscustomobject]@{ location = "Desktop"; name = "DISPARITY"; target = "DisparityGame.exe"; optional = $true }
+        )
+        uninstall_key = "HKCU/Software/Microsoft/Windows/CurrentVersion/Uninstall/DISPARITY"
+        signature_required = $false
+        update_channel = "local-preview"
+    }
     file_count = $packageManifest.files.Count
     files = $packageManifest.files
 }
 $installerManifestPath = Join-Path $OutputPath "DISPARITY-SetupManifest.json"
 $installerManifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $installerManifestPath
+
+$bootstrapperPath = Join-Path $OutputPath "DISPARITY-BootstrapperPlan.json"
+$installerManifest.bootstrapper | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $bootstrapperPath
 
 if ($CreateArchive) {
     $archivePath = Join-Path $OutputPath "DISPARITY-InstallerPayload.zip"
@@ -51,3 +66,4 @@ if ($CreateArchive) {
 }
 
 Write-Host "Created installer manifest $installerManifestPath"
+Write-Host "Created bootstrapper plan $bootstrapperPath"

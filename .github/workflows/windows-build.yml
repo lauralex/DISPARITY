@@ -10,6 +10,21 @@ on:
         required: false
         default: false
         type: boolean
+      run_packaged_smoke:
+        description: Run packaged smoke tests after packaging
+        required: false
+        default: false
+        type: boolean
+      create_package:
+        description: Create release package and installer artifacts
+        required: false
+        default: true
+        type: boolean
+      upload_artifacts:
+        description: Upload package, installer, CI plan, and verification artifacts
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   build:
@@ -26,7 +41,38 @@ jobs:
         shell: pwsh
         run: ./Tools/VerifyDisparity.ps1 -SkipRuntime
 
+      - name: Release package artifacts
+        if: github.event_name == 'workflow_dispatch' && inputs.create_package
+        shell: pwsh
+        run: |
+          ./Tools/PackageDisparity.ps1 -Configuration Release -IncludeSymbols -CreateArchive
+          ./Tools/IndexDisparitySymbols.ps1 -PackagePath ./dist/DISPARITY-Release
+          ./Tools/CreateDisparityInstaller.ps1 -PackagePath ./dist/DISPARITY-Release -CreateArchive
+          ./Tools/LaunchTrailerCapture.ps1 -Configuration Release -NoLaunch
+          ./Tools/GenerateInteractiveCiPlan.ps1
+
+      - name: Packaged smoke (opt-in)
+        if: github.event_name == 'workflow_dispatch' && inputs.run_packaged_smoke
+        shell: pwsh
+        run: ./Tools/SmokeTestDisparity.ps1 -ExecutablePath ./dist/DISPARITY-Release/DisparityGame.exe -Seconds 3 -ExerciseWindow
+
       - name: Runtime verification (opt-in)
         if: github.event_name == 'workflow_dispatch' && inputs.run_runtime
         shell: pwsh
         run: ./Tools/VerifyDisparity.ps1 -SkipCodeAnalysis -RuntimeFrames 90
+
+      - name: Upload DISPARITY artifacts
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: disparity-build-artifacts
+          if-no-files-found: ignore
+          path: |
+            dist/**/*.zip
+            dist/**/*.json
+            Symbols/**/*.json
+            Saved/CI/*.json
+            Saved/Trailer/*.json
+            Saved/Verification/*.txt
+            Saved/Verification/*.csv
+            Saved/Verification/*.json

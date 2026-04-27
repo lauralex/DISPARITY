@@ -618,20 +618,42 @@ namespace Disparity
         m_shadowDrawCalls = 0;
         m_graphExecutedPasses.clear();
         m_graphDispatchOrderValid = true;
+        ++m_frameIndex;
 
         m_shadowPassActive = false;
         BuildFrameRenderGraph();
         BeginGpuFrameProfile();
         BeginGraphPass(m_graphClearPass);
-        m_context->OMSetRenderTargets(1, m_hdrSceneRenderTargetView.GetAddressOf(), m_depthStencilView.Get());
-        m_context->ClearRenderTargetView(m_hdrSceneRenderTargetView.Get(), clearColor);
-        m_context->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
-        if (m_editorObjectIdRenderTargetView && m_editorObjectDepthRenderTargetView)
+        ID3D11RenderTargetView* hdrTarget = GetGraphRenderTargetView(m_graphHdrScene);
+        if (hdrTarget == nullptr)
+        {
+            hdrTarget = m_hdrSceneRenderTargetView.Get();
+        }
+        ID3D11DepthStencilView* sceneDepth = GetGraphDepthStencilView(m_graphDepth);
+        if (sceneDepth == nullptr)
+        {
+            sceneDepth = m_depthStencilView.Get();
+        }
+        m_context->OMSetRenderTargets(1, &hdrTarget, sceneDepth);
+        m_context->ClearRenderTargetView(hdrTarget, clearColor);
+        m_context->ClearDepthStencilView(sceneDepth, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+        ID3D11RenderTargetView* objectIdTarget = GetGraphRenderTargetView(m_graphEditorObjectIds);
+        ID3D11RenderTargetView* objectDepthTarget = GetGraphRenderTargetView(m_graphEditorObjectDepth);
+        if (objectIdTarget == nullptr)
+        {
+            objectIdTarget = m_editorObjectIdRenderTargetView.Get();
+        }
+        if (objectDepthTarget == nullptr)
+        {
+            objectDepthTarget = m_editorObjectDepthRenderTargetView.Get();
+        }
+        if (objectIdTarget && objectDepthTarget)
         {
             const float noObjectId[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
             const float farDepth[4] = { 1.0f, 0.0f, 0.0f, 0.0f };
-            m_context->ClearRenderTargetView(m_editorObjectIdRenderTargetView.Get(), noObjectId);
-            m_context->ClearRenderTargetView(m_editorObjectDepthRenderTargetView.Get(), farDepth);
+            m_context->ClearRenderTargetView(objectIdTarget, noObjectId);
+            m_context->ClearRenderTargetView(objectDepthTarget, farDepth);
         }
         EndGraphPass();
 
@@ -669,8 +691,13 @@ namespace Disparity
 
         m_shadowPassActive = true;
         BeginGraphPass(m_graphShadowPass);
-        m_context->OMSetRenderTargets(0, nullptr, m_shadowMapDepthView.Get());
-        m_context->ClearDepthStencilView(m_shadowMapDepthView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+        ID3D11DepthStencilView* shadowDepth = GetGraphDepthStencilView(m_graphShadowMap);
+        if (shadowDepth == nullptr)
+        {
+            shadowDepth = m_shadowMapDepthView.Get();
+        }
+        m_context->OMSetRenderTargets(0, nullptr, shadowDepth);
+        m_context->ClearDepthStencilView(shadowDepth, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
         D3D11_VIEWPORT viewport = {};
         viewport.Width = static_cast<float>(m_settings.ShadowMapSize);
@@ -779,18 +806,40 @@ namespace Disparity
         }
 
         m_context->PSSetShaderResources(0, 1, &textureView);
-        if (editorObjectId != 0 && m_editorObjectIdRenderTargetView && m_editorObjectDepthRenderTargetView)
+        ID3D11RenderTargetView* hdrTarget = GetGraphRenderTargetView(m_graphHdrScene);
+        ID3D11DepthStencilView* sceneDepth = GetGraphDepthStencilView(m_graphDepth);
+        if (hdrTarget == nullptr)
+        {
+            hdrTarget = m_hdrSceneRenderTargetView.Get();
+        }
+        if (sceneDepth == nullptr)
+        {
+            sceneDepth = m_depthStencilView.Get();
+        }
+
+        ID3D11RenderTargetView* objectIdTarget = GetGraphRenderTargetView(m_graphEditorObjectIds);
+        ID3D11RenderTargetView* objectDepthTarget = GetGraphRenderTargetView(m_graphEditorObjectDepth);
+        if (objectIdTarget == nullptr)
+        {
+            objectIdTarget = m_editorObjectIdRenderTargetView.Get();
+        }
+        if (objectDepthTarget == nullptr)
+        {
+            objectDepthTarget = m_editorObjectDepthRenderTargetView.Get();
+        }
+
+        if (editorObjectId != 0 && objectIdTarget && objectDepthTarget)
         {
             ID3D11RenderTargetView* targets[3] = {
-                m_hdrSceneRenderTargetView.Get(),
-                m_editorObjectIdRenderTargetView.Get(),
-                m_editorObjectDepthRenderTargetView.Get()
+                hdrTarget,
+                objectIdTarget,
+                objectDepthTarget
             };
-            m_context->OMSetRenderTargets(3, targets, m_depthStencilView.Get());
+            m_context->OMSetRenderTargets(3, targets, sceneDepth);
         }
         else
         {
-            m_context->OMSetRenderTargets(1, m_hdrSceneRenderTargetView.GetAddressOf(), m_depthStencilView.Get());
+            m_context->OMSetRenderTargets(1, &hdrTarget, sceneDepth);
         }
 
         if (objectConstants.Surface.y < 0.999f)
@@ -825,9 +874,19 @@ namespace Disparity
 
         EndGraphPass();
         BeginGraphPass(m_graphEditorViewportPass);
-        if (m_editorViewportRenderTargetView)
+        ID3D11Texture2D* editorViewportTexture = GetGraphTexture(m_graphEditorViewport);
+        ID3D11Texture2D* hdrSceneTexture = GetGraphTexture(m_graphHdrScene);
+        if (editorViewportTexture == nullptr)
         {
-            m_context->CopyResource(m_editorViewportTexture.Get(), m_hdrSceneTexture.Get());
+            editorViewportTexture = m_editorViewportTexture.Get();
+        }
+        if (hdrSceneTexture == nullptr)
+        {
+            hdrSceneTexture = m_hdrSceneTexture.Get();
+        }
+        if (editorViewportTexture && hdrSceneTexture)
+        {
+            m_context->CopyResource(editorViewportTexture, hdrSceneTexture);
         }
         EndGraphPass();
         BeginGraphPass(m_graphPostPass);
@@ -900,6 +959,15 @@ namespace Disparity
 
     RendererFrameGraphDiagnostics Renderer::GetFrameGraphDiagnostics() const
     {
+        uint32_t pendingObjectIdReadbacks = 0;
+        for (const ObjectIdReadbackSlot& slot : m_objectIdReadbackSlots)
+        {
+            if (slot.Pending)
+            {
+                ++pendingObjectIdReadbacks;
+            }
+        }
+
         return RendererFrameGraphDiagnostics{
             m_graphDispatchOrderValid,
             static_cast<uint32_t>(m_graphExecutedPasses.size()),
@@ -907,13 +975,18 @@ namespace Disparity
             m_graphAliasedResources,
             m_graphTransitionBarriers,
             m_graphResourceHandles,
+            m_graphResourceBindingCount,
+            m_graphHandleBindHits,
+            m_graphHandleBindMisses,
             m_graphCallbacksBound,
             m_graphCallbacksExecuted,
             static_cast<uint32_t>(m_pendingFrameCapturePaths.size()),
-            3u,
+            static_cast<uint32_t>(m_objectIdReadbackSlots.size()),
+            pendingObjectIdReadbacks,
             m_objectIdReadbackRequests,
             m_objectIdReadbackCompletions,
-            m_objectIdReadbackLatencyFrames
+            m_objectIdReadbackLatencyFrames,
+            m_objectIdReadbackBusySkips
         };
     }
 
@@ -933,24 +1006,15 @@ namespace Disparity
         return m_editorViewportShaderResourceView.Get();
     }
 
-    EditorObjectIdReadback Renderer::ReadEditorObjectId(uint32_t x, uint32_t y) const
+    bool Renderer::EnsureObjectIdReadbackSlot(ObjectIdReadbackSlot& slot) const
     {
-        EditorObjectIdReadback result;
-        result.X = x;
-        result.Y = y;
-        ++m_objectIdReadbackRequests;
-        m_objectIdReadbackRingCursor = (m_objectIdReadbackRingCursor + 1u) % 3u;
-        m_objectIdReadbackLatencyFrames = std::max(m_objectIdReadbackLatencyFrames, 1u);
-
-        if (!m_device || !m_context || !m_editorObjectIdTexture || !m_editorObjectDepthTexture)
+        if (slot.IdStaging && slot.DepthStaging)
         {
-            result.Error = "Editor pick targets are not ready.";
-            return result;
+            return true;
         }
-        if (x >= m_width || y >= m_height)
+        if (!m_device || !m_editorObjectIdTexture || !m_editorObjectDepthTexture)
         {
-            result.Error = "Editor pick readback is outside the viewport.";
-            return result;
+            return false;
         }
 
         D3D11_TEXTURE2D_DESC idDesc = {};
@@ -962,14 +1026,6 @@ namespace Disparity
         idDesc.MiscFlags = 0;
         idDesc.Usage = D3D11_USAGE_STAGING;
 
-        Microsoft::WRL::ComPtr<ID3D11Texture2D> idStaging;
-        HRESULT hr = m_device->CreateTexture2D(&idDesc, nullptr, idStaging.GetAddressOf());
-        if (FAILED(hr) || !idStaging)
-        {
-            result.Error = "Object-ID staging texture creation failed with HRESULT " + HrToString(hr);
-            return result;
-        }
-
         D3D11_TEXTURE2D_DESC depthDesc = {};
         m_editorObjectDepthTexture->GetDesc(&depthDesc);
         depthDesc.Width = 1;
@@ -979,13 +1035,47 @@ namespace Disparity
         depthDesc.MiscFlags = 0;
         depthDesc.Usage = D3D11_USAGE_STAGING;
 
-        Microsoft::WRL::ComPtr<ID3D11Texture2D> depthStaging;
-        hr = m_device->CreateTexture2D(&depthDesc, nullptr, depthStaging.GetAddressOf());
-        if (FAILED(hr) || !depthStaging)
+        slot.IdStaging.Reset();
+        slot.DepthStaging.Reset();
+        HRESULT hr = m_device->CreateTexture2D(&idDesc, nullptr, slot.IdStaging.GetAddressOf());
+        if (FAILED(hr) || !slot.IdStaging)
         {
-            result.Error = "Object-depth staging texture creation failed with HRESULT " + HrToString(hr);
-            return result;
+            return false;
         }
+
+        hr = m_device->CreateTexture2D(&depthDesc, nullptr, slot.DepthStaging.GetAddressOf());
+        if (FAILED(hr) || !slot.DepthStaging)
+        {
+            slot.IdStaging.Reset();
+            return false;
+        }
+
+        return true;
+    }
+
+    void Renderer::QueueEditorObjectIdReadback(uint32_t x, uint32_t y) const
+    {
+        ++m_objectIdReadbackRequests;
+        if (!m_device || !m_context || !m_editorObjectIdTexture || !m_editorObjectDepthTexture)
+        {
+            return;
+        }
+        if (x >= m_width || y >= m_height)
+        {
+            return;
+        }
+
+        ObjectIdReadbackSlot& slot = m_objectIdReadbackSlots[m_objectIdReadbackRingCursor % m_objectIdReadbackSlots.size()];
+        m_objectIdReadbackRingCursor = (m_objectIdReadbackRingCursor + 1u) % static_cast<uint32_t>(m_objectIdReadbackSlots.size());
+        if (!EnsureObjectIdReadbackSlot(slot))
+        {
+            return;
+        }
+
+        slot.X = x;
+        slot.Y = y;
+        slot.RequestFrame = m_frameIndex;
+        slot.Pending = true;
 
         D3D11_BOX sourceBox = {};
         sourceBox.left = x;
@@ -994,31 +1084,92 @@ namespace Disparity
         sourceBox.bottom = y + 1u;
         sourceBox.front = 0;
         sourceBox.back = 1;
-        m_context->CopySubresourceRegion(idStaging.Get(), 0, 0, 0, 0, m_editorObjectIdTexture.Get(), 0, &sourceBox);
-        m_context->CopySubresourceRegion(depthStaging.Get(), 0, 0, 0, 0, m_editorObjectDepthTexture.Get(), 0, &sourceBox);
+        m_context->CopySubresourceRegion(slot.IdStaging.Get(), 0, 0, 0, 0, m_editorObjectIdTexture.Get(), 0, &sourceBox);
+        m_context->CopySubresourceRegion(slot.DepthStaging.Get(), 0, 0, 0, 0, m_editorObjectDepthTexture.Get(), 0, &sourceBox);
+    }
 
-        D3D11_MAPPED_SUBRESOURCE idMapped = {};
-        hr = m_context->Map(idStaging.Get(), 0, D3D11_MAP_READ, 0, &idMapped);
-        if (FAILED(hr))
+    bool Renderer::TryResolveEditorObjectIdReadback(EditorObjectIdReadback& outReadback) const
+    {
+        outReadback = {};
+        if (!m_context)
         {
-            result.Error = "Object-ID staging map failed with HRESULT " + HrToString(hr);
-            return result;
+            outReadback.Error = "Editor pick context is not ready.";
+            return false;
         }
-        result.ObjectId = *static_cast<const uint32_t*>(idMapped.pData);
-        m_context->Unmap(idStaging.Get(), 0);
 
-        D3D11_MAPPED_SUBRESOURCE depthMapped = {};
-        hr = m_context->Map(depthStaging.Get(), 0, D3D11_MAP_READ, 0, &depthMapped);
-        if (FAILED(hr))
+        for (ObjectIdReadbackSlot& slot : m_objectIdReadbackSlots)
         {
-            result.Error = "Object-depth staging map failed with HRESULT " + HrToString(hr);
-            return result;
-        }
-        result.Depth = *static_cast<const float*>(depthMapped.pData);
-        m_context->Unmap(depthStaging.Get(), 0);
+            if (!slot.Pending || !slot.IdStaging || !slot.DepthStaging)
+            {
+                continue;
+            }
 
-        result.Valid = result.ObjectId != 0;
-        ++m_objectIdReadbackCompletions;
+            D3D11_MAPPED_SUBRESOURCE idMapped = {};
+            HRESULT hr = m_context->Map(slot.IdStaging.Get(), 0, D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, &idMapped);
+            if (hr == DXGI_ERROR_WAS_STILL_DRAWING)
+            {
+                ++m_objectIdReadbackBusySkips;
+                continue;
+            }
+            if (FAILED(hr))
+            {
+                slot.Pending = false;
+                outReadback.X = slot.X;
+                outReadback.Y = slot.Y;
+                outReadback.Error = "Object-ID staging map failed with HRESULT " + HrToString(hr);
+                return true;
+            }
+
+            D3D11_MAPPED_SUBRESOURCE depthMapped = {};
+            hr = m_context->Map(slot.DepthStaging.Get(), 0, D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, &depthMapped);
+            if (hr == DXGI_ERROR_WAS_STILL_DRAWING)
+            {
+                m_context->Unmap(slot.IdStaging.Get(), 0);
+                ++m_objectIdReadbackBusySkips;
+                continue;
+            }
+            if (FAILED(hr))
+            {
+                m_context->Unmap(slot.IdStaging.Get(), 0);
+                slot.Pending = false;
+                outReadback.X = slot.X;
+                outReadback.Y = slot.Y;
+                outReadback.Error = "Object-depth staging map failed with HRESULT " + HrToString(hr);
+                return true;
+            }
+
+            outReadback.X = slot.X;
+            outReadback.Y = slot.Y;
+            outReadback.ObjectId = *static_cast<const uint32_t*>(idMapped.pData);
+            outReadback.Depth = *static_cast<const float*>(depthMapped.pData);
+            outReadback.Valid = outReadback.ObjectId != 0;
+            m_context->Unmap(slot.DepthStaging.Get(), 0);
+            m_context->Unmap(slot.IdStaging.Get(), 0);
+
+            slot.Pending = false;
+            ++m_objectIdReadbackCompletions;
+            const uint64_t frameLatency = std::max<uint64_t>(1, (m_frameIndex >= slot.RequestFrame) ? (m_frameIndex - slot.RequestFrame + 1u) : 1u);
+            m_objectIdReadbackLatencyFrames = std::max(
+                m_objectIdReadbackLatencyFrames,
+                static_cast<uint32_t>(std::min<uint64_t>(frameLatency, std::numeric_limits<uint32_t>::max())));
+            return true;
+        }
+
+        return false;
+    }
+
+    EditorObjectIdReadback Renderer::ReadEditorObjectId(uint32_t x, uint32_t y) const
+    {
+        QueueEditorObjectIdReadback(x, y);
+        EditorObjectIdReadback result;
+        result.X = x;
+        result.Y = y;
+        if (!TryResolveEditorObjectIdReadback(result))
+        {
+            result.X = x;
+            result.Y = y;
+            result.Error = "Object-ID readback queued.";
+        }
         return result;
     }
 
@@ -1215,6 +1366,18 @@ namespace Disparity
         m_graphEditorPass = m_renderGraph.AddPass("Editor UI", { m_graphBackBuffer }, { m_graphBackBuffer }, graphCallback);
         m_activeGraphPass = std::numeric_limits<uint32_t>::max();
         (void)m_renderGraph.Compile();
+        m_graphBindings.clear();
+        m_graphResourceBindingCount = 0;
+        m_graphHandleBindHits = 0;
+        m_graphHandleBindMisses = 0;
+        BindGraphResource(m_graphBackBuffer, nullptr, m_backBufferRenderTargetView.Get(), nullptr, nullptr);
+        BindGraphResource(m_graphHdrScene, m_hdrSceneTexture.Get(), m_hdrSceneRenderTargetView.Get(), nullptr, m_hdrSceneShaderResourceView.Get());
+        BindGraphResource(m_graphDepth, m_depthStencilBuffer.Get(), nullptr, m_depthStencilView.Get(), m_depthStencilShaderResourceView.Get());
+        BindGraphResource(m_graphHistory, m_historyTexture.Get(), nullptr, nullptr, m_historyShaderResourceView.Get());
+        BindGraphResource(m_graphShadowMap, m_shadowMapTexture.Get(), nullptr, m_shadowMapDepthView.Get(), m_shadowMapShaderResourceView.Get());
+        BindGraphResource(m_graphEditorViewport, m_editorViewportTexture.Get(), m_editorViewportRenderTargetView.Get(), nullptr, m_editorViewportShaderResourceView.Get());
+        BindGraphResource(m_graphEditorObjectIds, m_editorObjectIdTexture.Get(), m_editorObjectIdRenderTargetView.Get(), nullptr, m_editorObjectIdShaderResourceView.Get());
+        BindGraphResource(m_graphEditorObjectDepth, m_editorObjectDepthTexture.Get(), m_editorObjectDepthRenderTargetView.Get(), nullptr, m_editorObjectDepthShaderResourceView.Get());
         m_graphTransientAllocations = 0;
         m_graphAliasedResources = 0;
         m_graphTransitionBarriers = static_cast<uint32_t>(m_renderGraph.GetBarriers().size());
@@ -1240,6 +1403,113 @@ namespace Disparity
             }
         }
         EnsureGpuPassProfiles(m_renderGraph.GetPasses().size());
+    }
+
+    void Renderer::BindGraphResource(
+        uint32_t resourceId,
+        ID3D11Texture2D* texture,
+        ID3D11RenderTargetView* renderTargetView,
+        ID3D11DepthStencilView* depthStencilView,
+        ID3D11ShaderResourceView* shaderResourceView)
+    {
+        for (GraphResourceBinding& binding : m_graphBindings)
+        {
+            if (binding.ResourceId == resourceId)
+            {
+                binding.Texture = texture;
+                binding.RenderTargetView = renderTargetView;
+                binding.DepthStencilView = depthStencilView;
+                binding.ShaderResourceView = shaderResourceView;
+                m_graphResourceBindingCount = static_cast<uint32_t>(m_graphBindings.size());
+                return;
+            }
+        }
+
+        m_graphBindings.push_back(GraphResourceBinding{
+            resourceId,
+            texture,
+            renderTargetView,
+            depthStencilView,
+            shaderResourceView
+        });
+        m_graphResourceBindingCount = static_cast<uint32_t>(m_graphBindings.size());
+    }
+
+    const Renderer::GraphResourceBinding* Renderer::FindGraphResourceBinding(uint32_t resourceId) const
+    {
+        for (const GraphResourceBinding& binding : m_graphBindings)
+        {
+            if (binding.ResourceId == resourceId)
+            {
+                return &binding;
+            }
+        }
+
+        return nullptr;
+    }
+
+    ID3D11Texture2D* Renderer::GetGraphTexture(uint32_t resourceId) const
+    {
+        const GraphResourceBinding* binding = FindGraphResourceBinding(resourceId);
+        ID3D11Texture2D* resource = binding != nullptr ? binding->Texture : nullptr;
+        if (resource)
+        {
+            ++m_graphHandleBindHits;
+        }
+        else
+        {
+            ++m_graphHandleBindMisses;
+        }
+
+        return resource;
+    }
+
+    ID3D11RenderTargetView* Renderer::GetGraphRenderTargetView(uint32_t resourceId) const
+    {
+        const GraphResourceBinding* binding = FindGraphResourceBinding(resourceId);
+        ID3D11RenderTargetView* view = binding != nullptr ? binding->RenderTargetView : nullptr;
+        if (view)
+        {
+            ++m_graphHandleBindHits;
+        }
+        else
+        {
+            ++m_graphHandleBindMisses;
+        }
+
+        return view;
+    }
+
+    ID3D11DepthStencilView* Renderer::GetGraphDepthStencilView(uint32_t resourceId) const
+    {
+        const GraphResourceBinding* binding = FindGraphResourceBinding(resourceId);
+        ID3D11DepthStencilView* view = binding != nullptr ? binding->DepthStencilView : nullptr;
+        if (view)
+        {
+            ++m_graphHandleBindHits;
+        }
+        else
+        {
+            ++m_graphHandleBindMisses;
+        }
+
+        return view;
+    }
+
+    ID3D11ShaderResourceView* Renderer::GetGraphShaderResourceView(uint32_t resourceId) const
+    {
+        const GraphResourceBinding* binding = FindGraphResourceBinding(resourceId);
+        ID3D11ShaderResourceView* view = binding != nullptr ? binding->ShaderResourceView : nullptr;
+        if (view)
+        {
+            ++m_graphHandleBindHits;
+        }
+        else
+        {
+            ++m_graphHandleBindMisses;
+        }
+
+        return view;
     }
 
     void Renderer::BeginGraphPass(uint32_t passId)
@@ -1997,6 +2267,9 @@ namespace Disparity
 
     void Renderer::ReleaseBackBufferResources()
     {
+        ResetObjectIdReadbackSlots();
+        m_graphBindings.clear();
+        m_graphResourceBindingCount = 0;
         m_editorObjectDepthShaderResourceView.Reset();
         m_editorObjectDepthRenderTargetView.Reset();
         m_editorObjectDepthTexture.Reset();
@@ -2018,6 +2291,19 @@ namespace Disparity
         m_historyValid = false;
     }
 
+    void Renderer::ResetObjectIdReadbackSlots()
+    {
+        for (ObjectIdReadbackSlot& slot : m_objectIdReadbackSlots)
+        {
+            slot.IdStaging.Reset();
+            slot.DepthStaging.Reset();
+            slot.X = 0;
+            slot.Y = 0;
+            slot.RequestFrame = 0;
+            slot.Pending = false;
+        }
+    }
+
     void Renderer::ReleaseShadowResources()
     {
         m_shadowMapShaderResourceView.Reset();
@@ -2027,7 +2313,17 @@ namespace Disparity
 
     void Renderer::ApplyScenePipeline()
     {
-        m_context->OMSetRenderTargets(1, m_hdrSceneRenderTargetView.GetAddressOf(), m_depthStencilView.Get());
+        ID3D11RenderTargetView* hdrTarget = GetGraphRenderTargetView(m_graphHdrScene);
+        ID3D11DepthStencilView* sceneDepth = GetGraphDepthStencilView(m_graphDepth);
+        if (hdrTarget == nullptr)
+        {
+            hdrTarget = m_hdrSceneRenderTargetView.Get();
+        }
+        if (sceneDepth == nullptr)
+        {
+            sceneDepth = m_depthStencilView.Get();
+        }
+        m_context->OMSetRenderTargets(1, &hdrTarget, sceneDepth);
 
         D3D11_VIEWPORT viewport = {};
         viewport.TopLeftX = 0.0f;
@@ -2049,7 +2345,11 @@ namespace Disparity
         ID3D11SamplerState* sampler = m_linearSamplerState.Get();
         m_context->PSSetSamplers(0, 1, &sampler);
 
-        ID3D11ShaderResourceView* shadowMap = (m_settings.Shadows && m_shadowMapShaderResourceView) ? m_shadowMapShaderResourceView.Get() : nullptr;
+        ID3D11ShaderResourceView* shadowMap = m_settings.Shadows ? GetGraphShaderResourceView(m_graphShadowMap) : nullptr;
+        if (m_settings.Shadows && shadowMap == nullptr)
+        {
+            shadowMap = m_shadowMapShaderResourceView.Get();
+        }
         m_context->PSSetShaderResources(1, 1, &shadowMap);
 
         UploadFrameConstants(m_camera.GetViewProjectionMatrix());
@@ -2084,12 +2384,22 @@ namespace Disparity
 
     void Renderer::RenderPostProcess()
     {
-        if (!m_backBufferRenderTargetView || !m_hdrSceneShaderResourceView)
+        ID3D11RenderTargetView* backBufferTarget = GetGraphRenderTargetView(m_graphBackBuffer);
+        ID3D11ShaderResourceView* hdrSceneView = GetGraphShaderResourceView(m_graphHdrScene);
+        if (backBufferTarget == nullptr)
+        {
+            backBufferTarget = m_backBufferRenderTargetView.Get();
+        }
+        if (hdrSceneView == nullptr)
+        {
+            hdrSceneView = m_hdrSceneShaderResourceView.Get();
+        }
+        if (!backBufferTarget || !hdrSceneView)
         {
             return;
         }
 
-        m_context->OMSetRenderTargets(1, m_backBufferRenderTargetView.GetAddressOf(), nullptr);
+        m_context->OMSetRenderTargets(1, &backBufferTarget, nullptr);
         m_context->OMSetDepthStencilState(nullptr, 0);
         m_context->OMSetBlendState(m_opaqueBlendState.Get(), nullptr, 0xffffffff);
         m_context->RSSetState(m_rasterizerState.Get());
@@ -2146,10 +2456,20 @@ namespace Disparity
         ID3D11Buffer* postBuffer = m_postConstantBuffer.Get();
         m_context->PSSetConstantBuffers(0, 1, &postBuffer);
 
+        ID3D11ShaderResourceView* historyView = GetGraphShaderResourceView(m_graphHistory);
+        ID3D11ShaderResourceView* depthView = GetGraphShaderResourceView(m_graphDepth);
+        if (historyView == nullptr)
+        {
+            historyView = m_historyShaderResourceView.Get();
+        }
+        if (depthView == nullptr)
+        {
+            depthView = m_depthStencilShaderResourceView.Get();
+        }
         ID3D11ShaderResourceView* shaderResources[3] = {
-            m_hdrSceneShaderResourceView.Get(),
-            m_historyShaderResourceView.Get(),
-            m_depthStencilShaderResourceView.Get()
+            hdrSceneView,
+            historyView,
+            depthView
         };
         ID3D11SamplerState* sampler = m_linearSamplerState.Get();
         m_context->PSSetShaderResources(0, 3, shaderResources);
@@ -2159,9 +2479,19 @@ namespace Disparity
         ID3D11ShaderResourceView* nullTextures[3] = { nullptr, nullptr, nullptr };
         m_context->PSSetShaderResources(0, 3, nullTextures);
 
-        if (m_historyTexture && m_hdrSceneTexture)
+        ID3D11Texture2D* historyTexture = GetGraphTexture(m_graphHistory);
+        ID3D11Texture2D* hdrSceneTexture = GetGraphTexture(m_graphHdrScene);
+        if (historyTexture == nullptr)
         {
-            m_context->CopyResource(m_historyTexture.Get(), m_hdrSceneTexture.Get());
+            historyTexture = m_historyTexture.Get();
+        }
+        if (hdrSceneTexture == nullptr)
+        {
+            hdrSceneTexture = m_hdrSceneTexture.Get();
+        }
+        if (historyTexture && hdrSceneTexture)
+        {
+            m_context->CopyResource(historyTexture, hdrSceneTexture);
             m_historyValid = true;
         }
     }

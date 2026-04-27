@@ -164,6 +164,201 @@ function Get-DeclaredDependencies {
     return $dependencies
 }
 
+function Get-BytesSha256 {
+    param([byte[]]$Bytes)
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return (($sha.ComputeHash($Bytes) | ForEach-Object { $_.ToString("x2") }) -join "")
+    }
+    finally {
+        $sha.Dispose()
+    }
+}
+
+function New-OptimizedGltfPackage {
+    param(
+        [System.IO.FileInfo]$File,
+        [string]$Kind,
+        [string]$RelativePath,
+        [string]$Hash,
+        [string[]]$Dependencies,
+        [string]$ImportSettings
+    )
+
+    $package = [ordered]@{
+        magic = "DSGLBPK2"
+        schema = 2
+        payload_format = "optimized_static_scene"
+        source = $RelativePath
+        source_sha256 = $Hash
+        source_bytes = $File.Length
+        kind = $Kind
+        dependencies = $Dependencies
+        dependency_count = $Dependencies.Count
+        import_settings = ""
+        mesh_count = 0
+        primitive_count = 0
+        material_count = 0
+        node_count = 0
+        animation_count = 0
+        skin_count = 0
+        buffers = @()
+        buffer_views = @()
+        accessors = @()
+        primitives = @()
+        materials = @()
+        nodes = @()
+        animations = @()
+    }
+
+    if (Test-Path -LiteralPath $ImportSettings) {
+        $package.import_settings = (Get-RelativePath -BasePath $root -Path $ImportSettings).Replace("\", "/")
+    }
+
+    if ($Kind -eq "glb_scene") {
+        $package.payload_format = "optimized_glb_container_manifest"
+        return [pscustomobject]$package
+    }
+
+    try {
+        $json = Get-Content -LiteralPath $File.FullName -Raw | ConvertFrom-Json
+    }
+    catch {
+        $package.payload_format = "optimized_static_scene_parse_failed"
+        $package.parse_error = $_.Exception.Message
+        return [pscustomobject]$package
+    }
+
+    $package.mesh_count = @($json.meshes).Count
+    $package.material_count = @($json.materials).Count
+    $package.node_count = @($json.nodes).Count
+    $package.animation_count = @($json.animations).Count
+    $package.skin_count = @($json.skins).Count
+
+    $bufferIndex = 0
+    foreach ($buffer in @($json.buffers)) {
+        $bufferRecord = [ordered]@{
+            index = $bufferIndex
+            declared_byte_length = [int]($buffer.byteLength)
+            uri_kind = "none"
+            resolved_source = ""
+            payload_sha256 = ""
+            payload_bytes = 0
+        }
+        if ($buffer.uri) {
+            $uri = [string]$buffer.uri
+            if ($uri.StartsWith("data:", [System.StringComparison]::OrdinalIgnoreCase)) {
+                $bufferRecord.uri_kind = "embedded_base64"
+                if ($uri -match "^data:[^;]+;base64,(.+)$") {
+                    $bytes = [System.Convert]::FromBase64String($Matches[1])
+                    $bufferRecord.payload_bytes = $bytes.Length
+                    $bufferRecord.payload_sha256 = Get-BytesSha256 -Bytes $bytes
+                }
+            }
+            else {
+                $bufferRecord.uri_kind = "external_file"
+                $resolved = Resolve-DeclaredDependency -Owner $File -Dependency $uri
+                $bufferRecord.resolved_source = $resolved
+                $absolute = Join-Path $root $resolved
+                if (Test-Path -LiteralPath $absolute) {
+                    $bytes = [System.IO.File]::ReadAllBytes($absolute)
+                    $bufferRecord.payload_bytes = $bytes.Length
+                    $bufferRecord.payload_sha256 = Get-BytesSha256 -Bytes $bytes
+                }
+            }
+        }
+        $package.buffers += [pscustomobject]$bufferRecord
+        ++$bufferIndex
+    }
+
+    $viewIndex = 0
+    foreach ($view in @($json.bufferViews)) {
+        $package.buffer_views += [pscustomobject]@{
+            index = $viewIndex
+            buffer = [int]($view.buffer)
+            byte_offset = [int]($view.byteOffset)
+            byte_length = [int]($view.byteLength)
+            byte_stride = [int]($view.byteStride)
+            target = [int]($view.target)
+        }
+        ++$viewIndex
+    }
+
+    $accessorIndex = 0
+    foreach ($accessor in @($json.accessors)) {
+        $package.accessors += [pscustomobject]@{
+            index = $accessorIndex
+            buffer_view = [int]($accessor.bufferView)
+            component_type = [int]($accessor.componentType)
+            count = [int]($accessor.count)
+            type = [string]$accessor.type
+            normalized = [bool]$accessor.normalized
+        }
+        ++$accessorIndex
+    }
+
+    $meshIndex = 0
+    foreach ($mesh in @($json.meshes)) {
+        $primitiveIndex = 0
+        foreach ($primitive in @($mesh.primitives)) {
+            $attributes = [ordered]@{}
+            if ($primitive.attributes) {
+                foreach ($attribute in $primitive.attributes.PSObject.Properties) {
+                    $attributes[$attribute.Name] = $attribute.Value
+                }
+            }
+            $package.primitives += [pscustomobject]@{
+                mesh_index = $meshIndex
+                primitive_index = $primitiveIndex
+                mode = [int]($primitive.mode)
+                material = [int]($primitive.material)
+                indices = [int]($primitive.indices)
+                attributes = [pscustomobject]$attributes
+            }
+            ++$primitiveIndex
+            ++$package.primitive_count
+        }
+        ++$meshIndex
+    }
+
+    $materialIndex = 0
+    foreach ($material in @($json.materials)) {
+        $package.materials += [pscustomobject]@{
+            index = $materialIndex
+            name = [string]$material.name
+            double_sided = [bool]$material.doubleSided
+            alpha_mode = [string]$material.alphaMode
+        }
+        ++$materialIndex
+    }
+
+    $nodeIndex = 0
+    foreach ($node in @($json.nodes)) {
+        $package.nodes += [pscustomobject]@{
+            index = $nodeIndex
+            name = [string]$node.name
+            mesh = [int]($node.mesh)
+            skin = [int]($node.skin)
+            child_count = @($node.children).Count
+        }
+        ++$nodeIndex
+    }
+
+    $animationIndex = 0
+    foreach ($animation in @($json.animations)) {
+        $package.animations += [pscustomobject]@{
+            index = $animationIndex
+            name = [string]$animation.name
+            sampler_count = @($animation.samplers).Count
+            channel_count = @($animation.channels).Count
+        }
+        ++$animationIndex
+    }
+
+    return [pscustomobject]$package
+}
+
 $records = @()
 foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
     $relativePath = (Get-RelativePath -BasePath $root -Path $file.FullName).Replace("\", "/")
@@ -187,7 +382,7 @@ foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
 
     $cookPayload = "metadata_only"
     if ($kind -eq "glb_scene" -or $kind -eq "gltf_scene") {
-        $cookPayload = "optimized_glb_package_placeholder"
+        $cookPayload = "optimized_dglbpack_v2"
     }
     elseif ($BinaryPackages) {
         $cookPayload = "source_bundle"
@@ -225,11 +420,14 @@ foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
         $binaryHash = (Get-FileHash -LiteralPath $binaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
 
         if ($kind -eq "glb_scene" -or $kind -eq "gltf_scene") {
-            $optimizedHeader = [System.Text.Encoding]::UTF8.GetBytes("DSGLBPK1`n$metadataJson`n---OPTIMIZED-SOURCE---`n")
-            $optimizedPayload = New-Object byte[] ($optimizedHeader.Length + $sourceBytes.Length)
-            [System.Buffer]::BlockCopy($optimizedHeader, 0, $optimizedPayload, 0, $optimizedHeader.Length)
-            [System.Buffer]::BlockCopy($sourceBytes, 0, $optimizedPayload, $optimizedHeader.Length, $sourceBytes.Length)
-            [System.IO.File]::WriteAllBytes($optimizedPath, $optimizedPayload)
+            $optimizedPackage = New-OptimizedGltfPackage `
+                -File $file `
+                -Kind $kind `
+                -RelativePath $relativePath `
+                -Hash $hash `
+                -Dependencies $dependencies `
+                -ImportSettings $importSettings
+            $optimizedPackage | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $optimizedPath
             $optimizedRelativePath = (Get-RelativePath -BasePath $root -Path $optimizedPath).Replace("\", "/")
             $optimizedBytes = (Get-Item -LiteralPath $optimizedPath).Length
             $optimizedHash = (Get-FileHash -LiteralPath $optimizedPath -Algorithm SHA256).Hash.ToLowerInvariant()

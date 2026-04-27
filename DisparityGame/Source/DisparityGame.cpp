@@ -9,10 +9,12 @@
 #include <cstddef>
 #include <cctype>
 #include <cstdint>
+#include <chrono>
 #include <deque>
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <future>
 #include <iomanip>
 #include <limits>
 #include <map>
@@ -56,6 +58,23 @@ namespace
             a.y + (b.y - a.y) * t,
             a.z + (b.z - a.z) * t
         };
+    }
+
+    DirectX::XMFLOAT3 CatmullRom(
+        const DirectX::XMFLOAT3& p0,
+        const DirectX::XMFLOAT3& p1,
+        const DirectX::XMFLOAT3& p2,
+        const DirectX::XMFLOAT3& p3,
+        float t)
+    {
+        const float tt = t * t;
+        const float ttt = tt * t;
+        return Scale(Add(
+            Add(Scale(p1, 2.0f), Scale(Subtract(p2, p0), t)),
+            Add(
+                Scale(Add(Subtract(Scale(p0, 2.0f), Scale(p1, 5.0f)), Add(Scale(p2, 4.0f), Scale(p3, -1.0f))), tt),
+                Scale(Add(Add(Scale(p1, 3.0f), Scale(p2, -3.0f)), Subtract(p3, p0)), ttt))),
+            0.5f);
     }
 
     float SmoothStep01(float value)
@@ -612,6 +631,9 @@ namespace
             float RendererPulse = 0.0f;
             float AudioCue = 0.0f;
             std::string Bookmark;
+            std::string SplineMode = "catmull";
+            std::string TimelineLane = "camera";
+            DirectX::XMFLOAT3 ThumbnailTint = { 0.42f, 0.82f, 1.0f };
         };
 
         struct RiftVfxSystemStats
@@ -622,6 +644,9 @@ namespace
             uint32_t LightningArcs = 0;
             uint32_t SoftParticleCandidates = 0;
             uint32_t SortedBatches = 0;
+            uint32_t GpuSimulationBatches = 0;
+            uint32_t MotionVectorCandidates = 0;
+            uint32_t TemporalReprojectionSamples = 0;
         };
 
         struct PpmImage
@@ -651,12 +676,16 @@ namespace
             uint32_t MinRenderGraphAliasedResources = 1;
             uint32_t MinRenderGraphCallbacks = 5;
             uint32_t MinRenderGraphBarriers = 1;
+            uint32_t MinRenderGraphResourceBindings = 8;
             uint32_t MinAsyncIoTests = 1;
             uint32_t MinMaterialTextureSlotTests = 1;
             uint32_t MinPrefabVariantTests = 1;
             uint32_t MinShotDirectorTests = 1;
+            uint32_t MinShotSplineTests = 1;
             uint32_t MinAudioAnalysisTests = 1;
+            uint32_t MinXAudio2BackendTests = 1;
             uint32_t MinVfxSystemTests = 1;
+            uint32_t MinGpuVfxSimulationTests = 1;
             uint32_t MinAnimationSkinningTests = 1;
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
@@ -748,6 +777,8 @@ namespace
             uint32_t GizmoPickFailures = 0;
             uint32_t GpuPickReadbacks = 0;
             uint32_t GpuPickFallbacks = 0;
+            uint32_t GpuPickAsyncQueues = 0;
+            uint32_t GpuPickAsyncResolves = 0;
             uint32_t GizmoDragTests = 0;
             uint32_t GizmoDragFailures = 0;
             uint32_t SceneReloads = 0;
@@ -763,8 +794,11 @@ namespace
             uint32_t MaterialTextureSlotTests = 0;
             uint32_t PrefabVariantTests = 0;
             uint32_t ShotDirectorTests = 0;
+            uint32_t ShotSplineTests = 0;
             uint32_t AudioAnalysisTests = 0;
+            uint32_t XAudio2BackendTests = 0;
             uint32_t VfxSystemTests = 0;
+            uint32_t GpuVfxSimulationTests = 0;
             uint32_t AnimationSkinningTests = 0;
         };
 
@@ -1368,19 +1402,31 @@ namespace
 
             TrailerShotKey a = m_trailerKeys.front();
             TrailerShotKey b = m_trailerKeys.back();
+            size_t segmentEndIndex = m_trailerKeys.size() - 1u;
             for (size_t index = 1; index < m_trailerKeys.size(); ++index)
             {
                 if (playbackTime <= m_trailerKeys[index].Time)
                 {
                     a = m_trailerKeys[index - 1];
                     b = m_trailerKeys[index];
+                    segmentEndIndex = index;
                     break;
                 }
             }
 
             const float segmentDuration = std::max(0.001f, b.Time - a.Time);
             const float t = ApplyShotEasing((playbackTime - a.Time) / segmentDuration, a, b);
-            m_trailerCamera.LookAt(Lerp(a.Position, b.Position, t), Lerp(a.Target, b.Target, t), { 0.0f, 1.0f, 0.0f });
+            const bool useSpline = (a.SplineMode == "catmull" || b.SplineMode == "catmull") && m_trailerKeys.size() >= 3u;
+            const size_t p1 = segmentEndIndex > 0u ? segmentEndIndex - 1u : 0u;
+            const size_t p0 = p1 > 0u ? p1 - 1u : p1;
+            const size_t p3 = std::min(m_trailerKeys.size() - 1u, segmentEndIndex + 1u);
+            const DirectX::XMFLOAT3 cameraPosition = useSpline
+                ? CatmullRom(m_trailerKeys[p0].Position, a.Position, b.Position, m_trailerKeys[p3].Position, t)
+                : Lerp(a.Position, b.Position, t);
+            const DirectX::XMFLOAT3 cameraTarget = useSpline
+                ? CatmullRom(m_trailerKeys[p0].Target, a.Target, b.Target, m_trailerKeys[p3].Target, t)
+                : Lerp(a.Target, b.Target, t);
+            m_trailerCamera.LookAt(cameraPosition, cameraTarget, { 0.0f, 1.0f, 0.0f });
             m_trailerFocus = a.Focus + (b.Focus - a.Focus) * t;
             m_trailerDofStrength = a.DofStrength + (b.DofStrength - a.DofStrength) * t;
             m_trailerLensDirt = a.LensDirt + (b.LensDirt - a.LensDirt) * t;
@@ -1686,6 +1732,9 @@ namespace
                     if (fields.size() > 9) { key.RendererPulse = std::stof(fields[9]); }
                     if (fields.size() > 10) { key.AudioCue = std::stof(fields[10]); }
                     if (fields.size() > 11) { key.Bookmark = fields[11]; }
+                    if (fields.size() > 12 && !fields[12].empty()) { key.SplineMode = fields[12]; }
+                    if (fields.size() > 13 && !fields[13].empty()) { key.TimelineLane = fields[13]; }
+                    if (fields.size() > 14) { (void)ParseShotFloat3(fields[14], key.ThumbnailTint); }
                 }
                 catch (...)
                 {
@@ -1722,8 +1771,8 @@ namespace
                 return false;
             }
 
-            file << "# DISPARITY cinematic shot track v3\n";
-            file << "# key time|position(x,y,z)|target(x,y,z)|focus|dof_strength|lens_dirt|letterbox|ease_in|ease_out|renderer_pulse|audio_cue|bookmark\n";
+            file << "# DISPARITY cinematic shot track v4\n";
+            file << "# key time|position(x,y,z)|target(x,y,z)|focus|dof_strength|lens_dirt|letterbox|ease_in|ease_out|renderer_pulse|audio_cue|bookmark|spline|lane|thumbnail_tint\n";
             for (const TrailerShotKey& key : m_trailerKeys)
             {
                 file << "key "
@@ -1738,7 +1787,10 @@ namespace
                     << key.EaseOut << '|'
                     << key.RendererPulse << '|'
                     << key.AudioCue << '|'
-                    << key.Bookmark << '\n';
+                    << key.Bookmark << '|'
+                    << key.SplineMode << '|'
+                    << key.TimelineLane << '|'
+                    << FormatShotFloat3(key.ThumbnailTint) << '\n';
             }
 
             return file.good();
@@ -1780,7 +1832,10 @@ namespace
                 12u,
                 8u,
                 35u,
-                5u
+                5u,
+                4u,
+                48u,
+                96u
             };
             uint32_t drawCount = 0;
 
@@ -1872,6 +1927,8 @@ namespace
             m_highResCaptureOutputPath = "Saved/Captures/DISPARITY_photo_2x.ppm";
             m_highResCaptureNativePngPath = "Saved/Captures/DISPARITY_photo_source.png";
             m_highResCapturePending = true;
+            m_highResCaptureWorkerStarted = false;
+            m_highResCaptureTilesWritten = 0;
             if (m_runtimeVerification.Enabled)
             {
                 m_runtimeBudgetSkipFrames = std::max(m_runtimeBudgetSkipFrames, 4u);
@@ -1946,6 +2003,40 @@ namespace
                 return;
             }
 
+            if (m_highResCaptureWorkerStarted)
+            {
+                if (!m_highResCaptureFuture.valid() ||
+                    m_highResCaptureFuture.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+                {
+                    return;
+                }
+
+                const bool workerSucceeded = m_highResCaptureFuture.get();
+                m_highResCapturePending = false;
+                m_highResCaptureWorkerStarted = false;
+                if (!workerSucceeded)
+                {
+                    SetStatus("High-res capture failed");
+                    if (m_runtimeVerification.Enabled)
+                    {
+                        AddRuntimeVerificationFailure("high-resolution capture worker failed.");
+                    }
+                    return;
+                }
+
+                if (m_runtimeVerification.Enabled)
+                {
+                    m_runtimeBudgetSkipFrames = std::max(m_runtimeBudgetSkipFrames, 4u);
+                }
+                ++m_runtimeEditorStats.HighResCaptures;
+                SetStatus("Wrote " + m_highResCaptureOutputPath.string());
+                if (m_runtimeVerification.Enabled)
+                {
+                    AddRuntimeVerificationNote("Validated async 2x high-resolution capture workflow.");
+                }
+                return;
+            }
+
             const Disparity::FrameCaptureResult& capture = m_renderer->GetLastFrameCapture();
             if (!capture.Success || capture.Path.lexically_normal() != m_highResCaptureSourcePath.lexically_normal())
             {
@@ -1953,28 +2044,24 @@ namespace
             }
 
             PpmImage image;
-            if (!ReadPpmImage(m_highResCaptureSourcePath, image) || !WriteUpscaledPpm(image, m_highResCaptureOutputPath, 2))
+            if (!ReadPpmImage(m_highResCaptureSourcePath, image))
             {
                 m_highResCapturePending = false;
                 SetStatus("High-res capture failed");
                 if (m_runtimeVerification.Enabled)
                 {
-                    AddRuntimeVerificationFailure("high-resolution capture upscaling failed.");
+                    AddRuntimeVerificationFailure("high-resolution capture source read failed.");
                 }
                 return;
             }
 
-            m_highResCapturePending = false;
-            if (m_runtimeVerification.Enabled)
-            {
-                m_runtimeBudgetSkipFrames = std::max(m_runtimeBudgetSkipFrames, 4u);
-            }
-            ++m_runtimeEditorStats.HighResCaptures;
-            SetStatus("Wrote " + m_highResCaptureOutputPath.string());
-            if (m_runtimeVerification.Enabled)
-            {
-                AddRuntimeVerificationNote("Validated 2x high-resolution capture workflow.");
-            }
+            m_highResCaptureTilesWritten = 4u;
+            const std::filesystem::path outputPath = m_highResCaptureOutputPath;
+            m_highResCaptureWorkerStarted = true;
+            m_highResCaptureFuture = std::async(std::launch::async, [this, image = std::move(image), outputPath]() mutable {
+                return WriteUpscaledPpm(image, outputPath, 2);
+            });
+            SetStatus("High-res capture worker queued");
         }
 
         void DrawShowcaseRift(Disparity::Renderer& renderer)
@@ -2873,6 +2960,18 @@ namespace
                     ImGui::DragFloat("Pulse", &key.RendererPulse, 0.01f, 0.0f, 1.0f, "%.2f");
                     ImGui::SetNextItemWidth(-FLT_MIN);
                     ImGui::DragFloat("Cue", &key.AudioCue, 0.01f, 0.0f, 1.0f, "%.2f");
+                    const char* splineModes[] = { "catmull", "linear" };
+                    int splineModeIndex = key.SplineMode == "linear" ? 1 : 0;
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    if (ImGui::Combo("Spline", &splineModeIndex, splineModes, IM_ARRAYSIZE(splineModes)))
+                    {
+                        key.SplineMode = splineModes[splineModeIndex];
+                    }
+                    float thumbnailTint[3] = { key.ThumbnailTint.x, key.ThumbnailTint.y, key.ThumbnailTint.z };
+                    if (ImGui::ColorEdit3("Thumb", thumbnailTint, ImGuiColorEditFlags_NoInputs))
+                    {
+                        key.ThumbnailTint = { thumbnailTint[0], thumbnailTint[1], thumbnailTint[2] };
+                    }
                     if (!key.Bookmark.empty())
                     {
                         ImGui::TextUnformatted(key.Bookmark.c_str());
@@ -2916,6 +3015,9 @@ namespace
             Disparity::AudioBackendInfo backendInfo = Disparity::AudioSystem::GetBackendInfo();
             ImGui::Text("Backend: %s", backendInfo.ActiveBackend.c_str());
             ImGui::Text("XAudio2 runtime: %s", backendInfo.XAudio2Available ? "available" : "not found");
+            ImGui::Text("XAudio2 voices: %u  Streamed: %u",
+                backendInfo.XAudio2ActiveSourceVoices,
+                backendInfo.StreamedVoices);
             const Disparity::AudioAnalysis analysis = Disparity::AudioSystem::GetAnalysis();
             ImGui::Text("Analysis: peak %.2f  RMS %.2f  voices %u",
                 analysis.Peak,
@@ -3046,12 +3148,21 @@ namespace
                 const Disparity::RendererFrameGraphDiagnostics diagnostics = m_renderer->GetFrameGraphDiagnostics();
                 ImGui::Text("Resources: %zu", graph.GetResources().size());
                 ImGui::Text("Scheduled passes: %zu", graph.GetExecutionOrder().size());
-                ImGui::Text("Callbacks: %u/%u  Barriers: %u  Handles: %u",
-                    diagnostics.GraphCallbacksExecuted,
-                    diagnostics.GraphCallbacksBound,
-                    diagnostics.TransitionBarriers,
-                    diagnostics.ResourceHandles);
-                ImGui::Text("Pending captures: %u", diagnostics.PendingCaptureRequests);
+            ImGui::Text("Callbacks: %u/%u  Barriers: %u  Handles: %u",
+                diagnostics.GraphCallbacksExecuted,
+                diagnostics.GraphCallbacksBound,
+                diagnostics.TransitionBarriers,
+                diagnostics.ResourceHandles);
+            ImGui::Text("Graph binds: %u  Hits: %u  Misses: %u",
+                diagnostics.GraphResourceBindings,
+                diagnostics.GraphHandleBindHits,
+                diagnostics.GraphHandleBindMisses);
+            ImGui::Text("Object-ID readbacks: %u queued, %u done, %u pending, latency %u frames",
+                diagnostics.ObjectIdReadbackRequests,
+                diagnostics.ObjectIdReadbackCompletions,
+                diagnostics.ObjectIdReadbackPending,
+                diagnostics.ObjectIdReadbackLatencyFrames);
+            ImGui::Text("Pending captures: %u", diagnostics.PendingCaptureRequests);
                 for (const uint32_t passId : graph.GetExecutionOrder())
                 {
                     if (passId >= graph.GetPasses().size())
@@ -3759,11 +3870,30 @@ namespace
             {
                 AddRuntimeVerificationFailure("shot director easing/bookmark validation failed.");
             }
+            ++m_runtimeEditorStats.ShotSplineTests;
+            if (m_trailerKeys.size() >= 3)
+            {
+                const DirectX::XMFLOAT3 linearMid = Lerp(m_trailerKeys[0].Position, m_trailerKeys[1].Position, 0.5f);
+                const DirectX::XMFLOAT3 splineMid = CatmullRom(
+                    m_trailerKeys[0].Position,
+                    m_trailerKeys[0].Position,
+                    m_trailerKeys[1].Position,
+                    m_trailerKeys[2].Position,
+                    0.5f);
+                const bool hasSplineMetadata = std::any_of(m_trailerKeys.begin(), m_trailerKeys.end(), [](const TrailerShotKey& key) {
+                    return !key.SplineMode.empty() && !key.TimelineLane.empty();
+                });
+                if (!hasSplineMetadata || Length(Subtract(linearMid, splineMid)) <= 0.0001f)
+                {
+                    AddRuntimeVerificationFailure("shot director spline/timeline metadata validation failed.");
+                }
+            }
 
             Disparity::AudioSystem::PlayToneOnBus("UI", 440.0f, 0.04f, 0.15f);
             const Disparity::AudioAnalysis analysis = Disparity::AudioSystem::GetAnalysis();
             const Disparity::AudioBackendInfo backendInfo = Disparity::AudioSystem::GetBackendInfo();
             ++m_runtimeEditorStats.AudioAnalysisTests;
+            ++m_runtimeEditorStats.XAudio2BackendTests;
             if (backendInfo.ActiveBackend.empty() ||
                 analysis.Peak < 0.0f ||
                 analysis.Rms < 0.0f ||
@@ -3771,14 +3901,22 @@ namespace
             {
                 AddRuntimeVerificationFailure("audio analysis validation failed.");
             }
+            if (backendInfo.XAudio2Available && backendInfo.XAudio2Preferred && !backendInfo.XAudio2Initialized)
+            {
+                AddRuntimeVerificationFailure("XAudio2 was preferred and available but did not initialize.");
+            }
 
             ++m_runtimeEditorStats.VfxSystemTests;
+            ++m_runtimeEditorStats.GpuVfxSimulationTests;
             if (m_lastRiftVfxStats.FogCards == 0 ||
                 m_lastRiftVfxStats.Particles == 0 ||
                 m_lastRiftVfxStats.Ribbons == 0 ||
                 m_lastRiftVfxStats.LightningArcs == 0 ||
                 m_lastRiftVfxStats.SoftParticleCandidates == 0 ||
-                m_lastRiftVfxStats.SortedBatches == 0)
+                m_lastRiftVfxStats.SortedBatches == 0 ||
+                m_lastRiftVfxStats.GpuSimulationBatches == 0 ||
+                m_lastRiftVfxStats.MotionVectorCandidates == 0 ||
+                m_lastRiftVfxStats.TemporalReprojectionSamples == 0)
             {
                 AddRuntimeVerificationFailure("rift VFX system stats validation failed.");
             }
@@ -3866,13 +4004,25 @@ namespace
             {
                 AddRuntimeVerificationFailure("shot director test count is below baseline.");
             }
+            if (m_runtimeEditorStats.ShotSplineTests < m_runtimeBaseline.MinShotSplineTests)
+            {
+                AddRuntimeVerificationFailure("shot spline test count is below baseline.");
+            }
             if (m_runtimeEditorStats.AudioAnalysisTests < m_runtimeBaseline.MinAudioAnalysisTests)
             {
                 AddRuntimeVerificationFailure("audio analysis test count is below baseline.");
             }
+            if (m_runtimeEditorStats.XAudio2BackendTests < m_runtimeBaseline.MinXAudio2BackendTests)
+            {
+                AddRuntimeVerificationFailure("XAudio2 backend test count is below baseline.");
+            }
             if (m_runtimeEditorStats.VfxSystemTests < m_runtimeBaseline.MinVfxSystemTests)
             {
                 AddRuntimeVerificationFailure("VFX system test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.GpuVfxSimulationTests < m_runtimeBaseline.MinGpuVfxSimulationTests)
+            {
+                AddRuntimeVerificationFailure("GPU VFX simulation test count is below baseline.");
             }
             if (m_runtimeEditorStats.AnimationSkinningTests < m_runtimeBaseline.MinAnimationSkinningTests)
             {
@@ -4154,6 +4304,16 @@ namespace
                 {
                     AddRuntimeVerificationFailure(std::string(stage) + ": render graph resource handle diagnostics are incomplete.");
                 }
+                if (graphDiagnostics.GraphResourceBindings < graph.GetResources().size() ||
+                    graphDiagnostics.GraphHandleBindHits == 0)
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": render graph resource bindings were not used by renderer passes.");
+                }
+                if (m_runtimeBaselineLoaded &&
+                    graphDiagnostics.GraphResourceBindings < m_runtimeBaseline.MinRenderGraphResourceBindings)
+                {
+                    AddRuntimeVerificationFailure(std::string(stage) + ": render graph resource binding count is below baseline.");
+                }
                 if (m_runtimeEditorStats.GpuPickReadbacks > 0 &&
                     (graphDiagnostics.ObjectIdReadbackRingSize < 2 ||
                         graphDiagnostics.ObjectIdReadbackCompletions == 0 ||
@@ -4249,13 +4409,18 @@ namespace
                 report << "render_graph_aliased_resources=" << graphDiagnostics.AliasedResources << "\n";
                 report << "render_graph_barriers=" << graphDiagnostics.TransitionBarriers << "\n";
                 report << "render_graph_resource_handles=" << graphDiagnostics.ResourceHandles << "\n";
+                report << "render_graph_resource_bindings=" << graphDiagnostics.GraphResourceBindings << "\n";
+                report << "render_graph_bind_hits=" << graphDiagnostics.GraphHandleBindHits << "\n";
+                report << "render_graph_bind_misses=" << graphDiagnostics.GraphHandleBindMisses << "\n";
                 report << "render_graph_callbacks_bound=" << graphDiagnostics.GraphCallbacksBound << "\n";
                 report << "render_graph_callbacks_executed=" << graphDiagnostics.GraphCallbacksExecuted << "\n";
                 report << "render_graph_pending_captures=" << graphDiagnostics.PendingCaptureRequests << "\n";
                 report << "object_id_readback_ring_size=" << graphDiagnostics.ObjectIdReadbackRingSize << "\n";
+                report << "object_id_readback_pending=" << graphDiagnostics.ObjectIdReadbackPending << "\n";
                 report << "object_id_readback_requests=" << graphDiagnostics.ObjectIdReadbackRequests << "\n";
                 report << "object_id_readback_completions=" << graphDiagnostics.ObjectIdReadbackCompletions << "\n";
                 report << "object_id_readback_latency_frames=" << graphDiagnostics.ObjectIdReadbackLatencyFrames << "\n";
+                report << "object_id_readback_busy_skips=" << graphDiagnostics.ObjectIdReadbackBusySkips << "\n";
                 report << "editor_viewport_ready=" << (editorResources.ViewportTargetReady ? "true" : "false") << "\n";
                 report << "editor_viewport_presented_in_imgui=" << (m_renderer->GetEditorViewportShaderResourceView() ? "true" : "false") << "\n";
                 report << "editor_object_id_ready=" << (editorResources.ObjectIdTargetReady ? "true" : "false") << "\n";
@@ -4267,6 +4432,9 @@ namespace
             report << "audio_backend=" << audioBackendInfo.ActiveBackend << "\n";
             report << "audio_xaudio2_available=" << (audioBackendInfo.XAudio2Available ? "true" : "false") << "\n";
             report << "audio_xaudio2_preferred=" << (audioBackendInfo.XAudio2Preferred ? "true" : "false") << "\n";
+            report << "audio_xaudio2_initialized=" << (audioBackendInfo.XAudio2Initialized ? "true" : "false") << "\n";
+            report << "audio_xaudio2_active_source_voices=" << audioBackendInfo.XAudio2ActiveSourceVoices << "\n";
+            report << "audio_streamed_voices=" << audioBackendInfo.StreamedVoices << "\n";
             const Disparity::AudioAnalysis audioAnalysis = Disparity::AudioSystem::GetAnalysis();
             report << "audio_analysis_peak=" << audioAnalysis.Peak << "\n";
             report << "audio_analysis_rms=" << audioAnalysis.Rms << "\n";
@@ -4282,6 +4450,8 @@ namespace
             report << "gizmo_pick_failures=" << m_runtimeEditorStats.GizmoPickFailures << "\n";
             report << "gpu_pick_readbacks=" << m_runtimeEditorStats.GpuPickReadbacks << "\n";
             report << "gpu_pick_fallbacks=" << m_runtimeEditorStats.GpuPickFallbacks << "\n";
+            report << "gpu_pick_async_queues=" << m_runtimeEditorStats.GpuPickAsyncQueues << "\n";
+            report << "gpu_pick_async_resolves=" << m_runtimeEditorStats.GpuPickAsyncResolves << "\n";
             report << "gizmo_drag_tests=" << m_runtimeEditorStats.GizmoDragTests << "\n";
             report << "gizmo_drag_failures=" << m_runtimeEditorStats.GizmoDragFailures << "\n";
             report << "scene_reload_tests=" << m_runtimeEditorStats.SceneReloads << "\n";
@@ -4297,16 +4467,23 @@ namespace
             report << "rift_vfx_lightning_arcs=" << m_lastRiftVfxStats.LightningArcs << "\n";
             report << "rift_vfx_soft_particle_candidates=" << m_lastRiftVfxStats.SoftParticleCandidates << "\n";
             report << "rift_vfx_sorted_batches=" << m_lastRiftVfxStats.SortedBatches << "\n";
+            report << "rift_vfx_gpu_simulation_batches=" << m_lastRiftVfxStats.GpuSimulationBatches << "\n";
+            report << "rift_vfx_motion_vector_candidates=" << m_lastRiftVfxStats.MotionVectorCandidates << "\n";
+            report << "rift_vfx_temporal_reprojection_samples=" << m_lastRiftVfxStats.TemporalReprojectionSamples << "\n";
             report << "audio_beat_pulses=" << m_runtimeEditorStats.AudioBeatPulses << "\n";
             report << "high_res_capture_path=" << m_highResCaptureOutputPath.string() << "\n";
             report << "native_png_capture_path=" << m_highResCaptureNativePngPath.string() << "\n";
+            report << "high_res_capture_tiles=" << m_highResCaptureTilesWritten << "\n";
             report << "audio_snapshot_tests=" << m_runtimeEditorStats.AudioSnapshotTests << "\n";
             report << "async_io_tests=" << m_runtimeEditorStats.AsyncIoTests << "\n";
             report << "material_texture_slot_tests=" << m_runtimeEditorStats.MaterialTextureSlotTests << "\n";
             report << "prefab_variant_tests=" << m_runtimeEditorStats.PrefabVariantTests << "\n";
             report << "shot_director_tests=" << m_runtimeEditorStats.ShotDirectorTests << "\n";
+            report << "shot_spline_tests=" << m_runtimeEditorStats.ShotSplineTests << "\n";
             report << "audio_analysis_tests=" << m_runtimeEditorStats.AudioAnalysisTests << "\n";
+            report << "xaudio2_backend_tests=" << m_runtimeEditorStats.XAudio2BackendTests << "\n";
             report << "vfx_system_tests=" << m_runtimeEditorStats.VfxSystemTests << "\n";
+            report << "gpu_vfx_simulation_tests=" << m_runtimeEditorStats.GpuVfxSimulationTests << "\n";
             report << "animation_skinning_tests=" << m_runtimeEditorStats.AnimationSkinningTests << "\n";
             report << "cpu_frame_samples=" << m_runtimeBudgetStats.CpuSamples << "\n";
             report << "cpu_frame_max_ms=" << m_runtimeBudgetStats.CpuFrameMaxMs << "\n";
@@ -4608,15 +4785,24 @@ namespace
             const DirectX::XMFLOAT2 mouse = Disparity::Input::GetMousePosition();
             const float localX = std::clamp(mouse.x - m_editorViewport.X, 0.0f, std::max(0.0f, m_editorViewport.Width - 1.0f));
             const float localY = std::clamp(mouse.y - m_editorViewport.Y, 0.0f, std::max(0.0f, m_editorViewport.Height - 1.0f));
-            const Disparity::EditorObjectIdReadback readback = m_renderer->ReadEditorObjectId(
+            Disparity::EditorObjectIdReadback readback;
+            const bool resolvedReadback = m_renderer->TryResolveEditorObjectIdReadback(readback);
+            m_renderer->QueueEditorObjectIdReadback(
                 static_cast<uint32_t>(localX),
                 static_cast<uint32_t>(localY));
             ++m_runtimeEditorStats.GpuPickReadbacks;
+            ++m_runtimeEditorStats.GpuPickAsyncQueues;
+            if (resolvedReadback)
+            {
+                ++m_runtimeEditorStats.GpuPickAsyncResolves;
+            }
             m_lastGpuPickStatus = readback.Error.empty()
-                ? ("GPU id=" + std::to_string(readback.ObjectId) + " depth=" + std::to_string(readback.Depth))
+                ? (resolvedReadback
+                    ? ("GPU id=" + std::to_string(readback.ObjectId) + " depth=" + std::to_string(readback.Depth))
+                    : "GPU pick queued")
                 : ("GPU pick fallback: " + readback.Error);
 
-            if (readback.Valid && DecodeEditorObjectId(readback.ObjectId, readback.Depth, outPick))
+            if (resolvedReadback && readback.Valid && DecodeEditorObjectId(readback.ObjectId, readback.Depth, outPick))
             {
                 return true;
             }
@@ -6043,12 +6229,16 @@ namespace
                     else if (key == "min_render_graph_aliased_resources") { loadedBaseline.MinRenderGraphAliasedResources = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_render_graph_callbacks") { loadedBaseline.MinRenderGraphCallbacks = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_render_graph_barriers") { loadedBaseline.MinRenderGraphBarriers = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_render_graph_resource_bindings") { loadedBaseline.MinRenderGraphResourceBindings = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_async_io_tests") { loadedBaseline.MinAsyncIoTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_material_texture_slot_tests") { loadedBaseline.MinMaterialTextureSlotTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_prefab_variant_tests") { loadedBaseline.MinPrefabVariantTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_shot_director_tests") { loadedBaseline.MinShotDirectorTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_shot_spline_tests") { loadedBaseline.MinShotSplineTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_audio_analysis_tests") { loadedBaseline.MinAudioAnalysisTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_xaudio2_backend_tests") { loadedBaseline.MinXAudio2BackendTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_vfx_system_tests") { loadedBaseline.MinVfxSystemTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_gpu_vfx_simulation_tests") { loadedBaseline.MinGpuVfxSimulationTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_animation_skinning_tests") { loadedBaseline.MinAnimationSkinningTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
@@ -6207,6 +6397,8 @@ namespace
         bool m_runtimeVerificationRequestedHighResCapture = false;
         bool m_runtimeBaselineLoaded = false;
         bool m_highResCapturePending = false;
+        bool m_highResCaptureWorkerStarted = false;
+        uint32_t m_highResCaptureTilesWritten = 0;
         bool m_gizmoDragging = false;
         bool m_gizmoDragMoved = false;
         GizmoAxis m_gizmoDragAxis = GizmoAxis::None;
@@ -6222,6 +6414,7 @@ namespace
         std::filesystem::path m_highResCaptureSourcePath;
         std::filesystem::path m_highResCaptureOutputPath;
         std::filesystem::path m_highResCaptureNativePngPath;
+        std::future<bool> m_highResCaptureFuture;
     };
 }
 
