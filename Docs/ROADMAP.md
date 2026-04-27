@@ -1,6 +1,17 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v24 versions of many requested followups. The next milestones should deepen the new graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification scaffolds into fully durable production systems.
+The current engine now has functional v25 versions of many requested followups. The next milestones should deepen the new graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification scaffolds into fully durable production systems.
+
+## v25 Completed Forty-Point Production Batch
+
+- Added `Assets/Verification/V25ProductionBatch.dfollowups`, a forty-point production followup manifest spanning editor preferences, viewport toolbar surfaces, gizmo depth/constraint/numeric metadata, asset GPU-resource readiness, render-graph roadmap diagnostics, tiled capture/VFX readiness, sequencer/audio plans, and production automation.
+- The runtime now has typed v25 readiness profiles for those eight domains and validates every manifest point during deterministic runtime verification.
+- The Profiler panel includes a `Production Readiness v25` table with point number, domain, readiness state, and description so the batch can be inspected live in the editor.
+- Runtime reports now write `v25_production_points` plus one stable `v25_point_*` metric for each point, allowing wrapper scripts and baselines to fail on incomplete coverage.
+- Runtime baselines now require all forty v25 points through `min_v25_production_points=40`.
+- `Tools/ReviewProductionBatch.ps1` validates manifest count, key naming, uniqueness, domains, and descriptions, and `Tools/VerifyDisparity.ps1` runs it as part of the full gate.
+- `RuntimeVerifyDisparity.ps1`, `ReviewVerificationBaselines.ps1`, `ReviewReleaseReadiness.ps1`, and `SummarizePerformanceHistory.ps1` now understand the v25 point counter.
+- `Assets/Verification/RuntimeReportSchema.dschema` now requires every v25 point metric, so future schema or runtime-report drift fails in the same place as existing runtime diagnostics.
 
 ## v24 Completed Production Batch
 

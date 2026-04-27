@@ -50,6 +50,7 @@ min_cooked_gpu_resource_tests=1
 min_dependency_invalidation_tests=1
 min_audio_meter_calibration_tests=1
 min_release_readiness_tests=1
+min_v25_production_points=40
 require_editor_gpu_pick_resources=1
 expected_average_luma=81.91
 average_luma_tolerance=24.0

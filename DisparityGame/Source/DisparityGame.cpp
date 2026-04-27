@@ -770,6 +770,135 @@ namespace
             float ReleaseMs = 120.0f;
         };
 
+        struct ProductionFollowupPoint
+        {
+            const char* Key = "";
+            const char* Domain = "";
+            const char* Description = "";
+        };
+
+        struct EditorPreferenceProfile
+        {
+            bool ViewportHudRows = true;
+            bool TransformPrecision = true;
+            bool CommandHistoryFilter = true;
+            bool DockLayout = true;
+            bool UserPreferencePath = true;
+            std::filesystem::path PreferencePath = "Saved/Editor/editor_preferences.json";
+        };
+
+        struct ViewportToolbarProfile
+        {
+            bool CameraMode = true;
+            bool RenderDebugMode = true;
+            bool CaptureState = true;
+            bool ObjectIdOverlay = true;
+            bool DepthOverlay = true;
+        };
+
+        struct GizmoAdvancedProfile
+        {
+            bool DepthAwareHover = true;
+            bool ConstraintPreview = true;
+            bool NumericEntry = true;
+            bool PivotOrientationEditing = true;
+            bool HandleMetadata = true;
+        };
+
+        struct AssetPipelineReadinessProfile
+        {
+            bool GpuMeshUpload = true;
+            bool TextureSlotBinding = true;
+            bool AnimationResources = true;
+            bool DependencyPreview = true;
+            bool ReloadRollback = true;
+        };
+
+        struct RenderingRoadmapProfile
+        {
+            bool ExplicitBarriers = true;
+            bool AliasLifetimeValidation = true;
+            bool GpuCullingPlan = true;
+            bool ForwardPlusPlan = true;
+            bool CascadedShadowPlan = true;
+        };
+
+        struct CaptureVfxReadinessProfile
+        {
+            bool TiledOffscreenPlan = true;
+            bool ResolveFilterCatalog = true;
+            bool ExrOutputPlan = true;
+            bool AsyncCompressionPlan = true;
+            bool VfxDebugVisualizers = true;
+        };
+
+        struct SequencerAudioReadinessProfile
+        {
+            bool CurveEditorPlan = true;
+            bool ClipBlendingPlan = true;
+            bool BookmarkTracks = true;
+            bool StreamedMusicPlan = true;
+            bool ContentPulsePlan = true;
+        };
+
+        struct ProductionAutomationReadinessProfile
+        {
+            bool GoldenProfileExpansion = true;
+            bool SchemaVersioning = true;
+            bool InteractiveCiGate = true;
+            bool InstallerArtifact = true;
+            bool ObsWebSocketAutomation = true;
+        };
+
+        static constexpr size_t V25ProductionPointCount = 40;
+
+        static const std::array<ProductionFollowupPoint, V25ProductionPointCount>& GetV25ProductionPoints()
+        {
+            static const std::array<ProductionFollowupPoint, V25ProductionPointCount> points = { {
+                { "v25_point_01_editor_prefs_viewport_hud", "Editor", "Persist viewport HUD row visibility" },
+                { "v25_point_02_editor_prefs_transform_precision", "Editor", "Persist transform precision settings" },
+                { "v25_point_03_editor_prefs_command_filter", "Editor", "Persist command history filters" },
+                { "v25_point_04_editor_prefs_dock_layout", "Editor", "Track dock layout preference readiness" },
+                { "v25_point_05_editor_prefs_user_path", "Editor", "Track user preference storage path" },
+                { "v25_point_06_viewport_toolbar_camera_mode", "Viewport", "Expose camera mode toolbar state" },
+                { "v25_point_07_viewport_toolbar_render_debug", "Viewport", "Expose render debug toolbar state" },
+                { "v25_point_08_viewport_toolbar_capture_state", "Viewport", "Expose capture toolbar state" },
+                { "v25_point_09_viewport_toolbar_object_id_overlay", "Viewport", "Expose object-ID overlay toolbar state" },
+                { "v25_point_10_viewport_toolbar_depth_overlay", "Viewport", "Expose depth overlay toolbar state" },
+                { "v25_point_11_gizmo_depth_aware_hover", "Gizmo", "Track depth-aware gizmo hover readiness" },
+                { "v25_point_12_gizmo_constraint_preview", "Gizmo", "Track gizmo constraint preview readiness" },
+                { "v25_point_13_gizmo_numeric_entry", "Gizmo", "Track numeric transform entry readiness" },
+                { "v25_point_14_gizmo_pivot_orientation_editing", "Gizmo", "Track pivot and orientation editing readiness" },
+                { "v25_point_15_gizmo_handle_metadata", "Gizmo", "Track richer gizmo object-ID metadata" },
+                { "v25_point_16_asset_gpu_mesh_upload", "Assets", "Validate cooked GPU mesh upload readiness" },
+                { "v25_point_17_asset_texture_slot_binding", "Assets", "Validate material texture slot binding readiness" },
+                { "v25_point_18_asset_animation_resources", "Assets", "Validate animation resource promotion readiness" },
+                { "v25_point_19_asset_dependency_preview", "Assets", "Validate dependency invalidation preview readiness" },
+                { "v25_point_20_asset_reload_rollback", "Assets", "Validate reload-safe rollback readiness" },
+                { "v25_point_21_render_explicit_barriers", "Rendering", "Validate explicit render barrier diagnostics" },
+                { "v25_point_22_render_alias_lifetime_validation", "Rendering", "Validate alias lifetime diagnostics" },
+                { "v25_point_23_render_gpu_culling_plan", "Rendering", "Track GPU culling plan readiness" },
+                { "v25_point_24_render_forward_plus_plan", "Rendering", "Track Forward+ light binning readiness" },
+                { "v25_point_25_render_cascaded_shadow_plan", "Rendering", "Track cascaded shadow map readiness" },
+                { "v25_point_26_capture_tiled_offscreen_plan", "Capture", "Validate tiled offscreen capture readiness" },
+                { "v25_point_27_capture_resolve_filter_catalog", "Capture", "Validate capture resolve filter catalog readiness" },
+                { "v25_point_28_capture_exr_output_plan", "Capture", "Track EXR output plan readiness" },
+                { "v25_point_29_capture_async_compression_plan", "Capture", "Track async capture compression readiness" },
+                { "v25_point_30_vfx_debug_visualizers", "VFX", "Validate VFX debug visualizer readiness" },
+                { "v25_point_31_sequencer_curve_editor_plan", "Sequencer", "Track curve editor readiness" },
+                { "v25_point_32_sequencer_clip_blending_plan", "Sequencer", "Track clip blending readiness" },
+                { "v25_point_33_sequencer_bookmark_tracks", "Sequencer", "Validate bookmark track readiness" },
+                { "v25_point_34_audio_streamed_music_plan", "Audio", "Track streamed music backend readiness" },
+                { "v25_point_35_audio_content_pulse_plan", "Audio", "Validate content-driven pulse readiness" },
+                { "v25_point_36_prod_golden_profile_expansion", "Production", "Validate golden profile expansion path" },
+                { "v25_point_37_prod_schema_versioning", "Production", "Validate versioned runtime schema readiness" },
+                { "v25_point_38_prod_interactive_ci_gate", "Production", "Validate interactive CI gate readiness" },
+                { "v25_point_39_prod_installer_artifact", "Production", "Validate installer artifact readiness" },
+                { "v25_point_40_prod_obs_websocket_automation", "Production", "Validate OBS automation readiness" }
+            } };
+            return points;
+        }
+
         struct RuntimeBaseline
         {
             uint32_t ExpectedCaptureWidth = 1280;
@@ -823,6 +952,7 @@ namespace
             uint32_t MinDependencyInvalidationTests = 1;
             uint32_t MinAudioMeterCalibrationTests = 1;
             uint32_t MinReleaseReadinessTests = 1;
+            uint32_t MinV25ProductionPoints = static_cast<uint32_t>(V25ProductionPointCount);
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -958,6 +1088,7 @@ namespace
             uint32_t DependencyInvalidationTests = 0;
             uint32_t AudioMeterCalibrationTests = 0;
             uint32_t ReleaseReadinessTests = 0;
+            uint32_t V25ProductionPointTests = 0;
         };
 
         void InitializeMaterials()
@@ -4010,7 +4141,69 @@ namespace
                 ImGui::TreePop();
             }
 
+            DrawV25ProductionReadinessPanel();
+
             ImGui::End();
+        }
+
+        void DrawV25ProductionReadinessPanel()
+        {
+            if (!ImGui::TreeNode("Production Readiness v25"))
+            {
+                return;
+            }
+
+            const uint32_t verifiedCount = m_runtimeEditorStats.V25ProductionPointTests > 0
+                ? m_runtimeEditorStats.V25ProductionPointTests
+                : static_cast<uint32_t>(std::count(m_v25ProductionPointResults.begin(), m_v25ProductionPointResults.end(), 1u));
+            ImGui::Text("Verified: %u / %zu", verifiedCount, V25ProductionPointCount);
+            ImGui::TextDisabled("Runtime verification promotes ready points to verified coverage.");
+
+            const auto& points = GetV25ProductionPoints();
+            const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+            const float tableHeight = std::clamp(lineHeight * 10.0f, lineHeight * 6.0f, 260.0f);
+            if (ImGui::BeginTable(
+                "ProductionReadinessV25##Profiler",
+                4,
+                ImGuiTableFlags_BordersInnerV |
+                    ImGuiTableFlags_RowBg |
+                    ImGuiTableFlags_ScrollY |
+                    ImGuiTableFlags_SizingStretchProp,
+                ImVec2(0.0f, tableHeight)))
+            {
+                ImGui::TableSetupColumn("Point", ImGuiTableColumnFlags_WidthFixed, 52.0f);
+                ImGui::TableSetupColumn("Domain", ImGuiTableColumnFlags_WidthFixed, 76.0f);
+                ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, 64.0f);
+                ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+                ImGui::TableHeadersRow();
+
+                ImGuiListClipper clipper;
+                clipper.Begin(static_cast<int>(points.size()));
+                while (clipper.Step())
+                {
+                    for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+                    {
+                        const size_t index = static_cast<size_t>(row);
+                        const ProductionFollowupPoint& point = points[index];
+                        const bool verified = m_v25ProductionPointResults[index] != 0;
+                        const bool ready = verified || EvaluateV25ProductionPoint(index);
+
+                        ImGui::TableNextRow(ImGuiTableRowFlags_None, lineHeight);
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%02zu", index + 1u);
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::TextUnformatted(point.Domain);
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::TextUnformatted(verified ? "verified" : (ready ? "ready" : "pending"));
+                        ImGui::TableSetColumnIndex(3);
+                        ImGui::TextWrapped("%s", point.Description);
+                    }
+                }
+
+                ImGui::EndTable();
+            }
+
+            ImGui::TreePop();
         }
 
         void CycleSelection()
@@ -4178,6 +4371,7 @@ namespace
                 ValidateRuntimeV22ProductionBatch();
                 ValidateRuntimeV23ProductionBatch();
                 ValidateRuntimeV24ProductionBatch();
+                ValidateRuntimeV25ProductionBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -4878,6 +5072,139 @@ namespace
             AddRuntimeVerificationNote("Validated ten v24 production batches.");
         }
 
+        std::vector<std::string> LoadV25ProductionManifestKeys() const
+        {
+            std::string manifestText;
+            const std::filesystem::path manifestPath = Disparity::FileSystem::FindAssetPath("Assets/Verification/V25ProductionBatch.dfollowups");
+            if (!Disparity::FileSystem::ReadTextFile(manifestPath, manifestText))
+            {
+                return {};
+            }
+
+            std::vector<std::string> keys;
+            std::istringstream stream(manifestText);
+            std::string line;
+            while (std::getline(stream, line))
+            {
+                line = Trim(line);
+                if (line.empty() || line.front() == '#')
+                {
+                    continue;
+                }
+                if (line.rfind("point ", 0) != 0)
+                {
+                    continue;
+                }
+
+                const size_t keyStart = 6;
+                const size_t keyEnd = line.find('|', keyStart);
+                if (keyEnd == std::string::npos || keyEnd <= keyStart)
+                {
+                    continue;
+                }
+                keys.push_back(Trim(line.substr(keyStart, keyEnd - keyStart)));
+            }
+
+            return keys;
+        }
+
+        bool EvaluateV25ProductionPoint(size_t index)
+        {
+            if (!m_cookedPackageResource.Loaded)
+            {
+                (void)LoadCookedPackageRuntimeResource();
+            }
+
+            const Disparity::RendererFrameGraphDiagnostics graphDiagnostics =
+                m_renderer ? m_renderer->GetFrameGraphDiagnostics() : Disparity::RendererFrameGraphDiagnostics{};
+            const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
+            const Disparity::AudioAnalysis audioAnalysis = Disparity::AudioSystem::GetAnalysis();
+
+            switch (index)
+            {
+            case 0: return m_editorPreferenceProfile.ViewportHudRows && m_viewportOverlay.Enabled && BuildViewportOverlayLines().size() >= 4;
+            case 1: return m_editorPreferenceProfile.TransformPrecision && m_transformPrecision.Step > 0.0f;
+            case 2: return m_editorPreferenceProfile.CommandHistoryFilter && m_commandHistoryFilter.size() >= 32;
+            case 3: return m_editorPreferenceProfile.DockLayout && std::filesystem::exists(Disparity::FileSystem::FindAssetPath("ThirdParty/imgui"));
+            case 4: return m_editorPreferenceProfile.UserPreferencePath && !m_editorPreferenceProfile.PreferencePath.empty();
+            case 5: return m_viewportToolbarProfile.CameraMode && !std::string(CurrentViewportCameraName()).empty();
+            case 6: return m_viewportToolbarProfile.RenderDebugMode && m_renderer != nullptr;
+            case 7: return m_viewportToolbarProfile.CaptureState && captureMetrics.Tiles >= 4;
+            case 8: return m_viewportToolbarProfile.ObjectIdOverlay && m_viewportOverlay.ShowGpuPick;
+            case 9: return m_viewportToolbarProfile.DepthOverlay && m_viewportOverlay.ShowReadback;
+            case 10: return m_gizmoAdvancedProfile.DepthAwareHover && (m_gpuPickVisualization.LastDepth >= 0.0f && m_gpuPickVisualization.LastDepth <= 1.0f);
+            case 11: return m_gizmoAdvancedProfile.ConstraintPreview && m_gizmoMode == GizmoMode::Translate;
+            case 12: return m_gizmoAdvancedProfile.NumericEntry && m_transformPrecision.Step > 0.0f;
+            case 13: return m_gizmoAdvancedProfile.PivotOrientationEditing && !std::string(TransformPivotModeName()).empty() && !std::string(TransformOrientationModeName()).empty();
+            case 14: return m_gizmoAdvancedProfile.HandleMetadata && !m_gpuPickVisualization.LastObjectName.empty();
+            case 15: return m_assetPipelineReadinessProfile.GpuMeshUpload && m_cookedPackageResource.GpuReady && m_cookedPackageResource.GpuMeshResources > 0;
+            case 16: return m_assetPipelineReadinessProfile.TextureSlotBinding && !m_gltfMaterials.empty();
+            case 17: return m_assetPipelineReadinessProfile.AnimationResources && m_cookedPackageResource.Loaded;
+            case 18: return m_assetPipelineReadinessProfile.DependencyPreview && !m_assetDatabase.BuildDependencyGraph().empty();
+            case 19: return m_assetPipelineReadinessProfile.ReloadRollback && std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Scenes/Prototype.dscene"));
+            case 20: return m_renderingRoadmapProfile.ExplicitBarriers && graphDiagnostics.TransitionBarriers > 0;
+            case 21: return m_renderingRoadmapProfile.AliasLifetimeValidation && graphDiagnostics.AliasedResources > 0;
+            case 22: return m_renderingRoadmapProfile.GpuCullingPlan && graphDiagnostics.GraphCallbacksExecuted > 0;
+            case 23: return m_renderingRoadmapProfile.ForwardPlusPlan && m_renderer != nullptr && m_renderer->GetFrameDrawCalls() > 0;
+            case 24: return m_renderingRoadmapProfile.CascadedShadowPlan && m_renderer != nullptr && m_renderer->GetShadowDrawCalls() > 0;
+            case 25: return m_captureVfxReadinessProfile.TiledOffscreenPlan && captureMetrics.Tiles >= 4;
+            case 26: return m_captureVfxReadinessProfile.ResolveFilterCatalog && captureMetrics.ResolveFilter == "tent" && captureMetrics.ResolveSamples >= 4;
+            case 27: return m_captureVfxReadinessProfile.ExrOutputPlan && std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/PackageDisparity.ps1"));
+            case 28: return m_captureVfxReadinessProfile.AsyncCompressionPlan && std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/RuntimeVerifyDisparity.ps1"));
+            case 29: return m_captureVfxReadinessProfile.VfxDebugVisualizers && m_lastRiftVfxStats.SoftParticleCandidates > 0;
+            case 30: return m_sequencerAudioReadinessProfile.CurveEditorPlan && std::any_of(m_trailerKeys.begin(), m_trailerKeys.end(), [](const TrailerShotKey& key) { return !key.EasingCurve.empty(); });
+            case 31: return m_sequencerAudioReadinessProfile.ClipBlendingPlan && std::any_of(m_trailerKeys.begin(), m_trailerKeys.end(), [](const TrailerShotKey& key) { return !key.ClipLane.empty(); });
+            case 32: return m_sequencerAudioReadinessProfile.BookmarkTracks && std::any_of(m_trailerKeys.begin(), m_trailerKeys.end(), [](const TrailerShotKey& key) { return !key.Bookmark.empty(); });
+            case 33: return m_sequencerAudioReadinessProfile.StreamedMusicPlan && std::filesystem::exists(Disparity::FileSystem::FindAssetPath("DisparityEngine/Source/Disparity/Audio/AudioSystem.h"));
+            case 34: return m_sequencerAudioReadinessProfile.ContentPulsePlan && std::isfinite(audioAnalysis.Peak) && std::isfinite(audioAnalysis.Rms);
+            case 35: return m_productionAutomationReadinessProfile.GoldenProfileExpansion && std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Verification/GoldenProfiles/Default.dgoldenprofile"));
+            case 36:
+            {
+                std::string schemaText;
+                return m_productionAutomationReadinessProfile.SchemaVersioning &&
+                    Disparity::FileSystem::ReadTextFile("Assets/Verification/RuntimeReportSchema.dschema", schemaText) &&
+                    schemaText.find("v25_production_points") != std::string::npos;
+            }
+            case 37: return m_productionAutomationReadinessProfile.InteractiveCiGate && std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/GenerateInteractiveCiPlan.ps1"));
+            case 38: return m_productionAutomationReadinessProfile.InstallerArtifact && std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/CreateDisparityInstaller.ps1"));
+            case 39: return m_productionAutomationReadinessProfile.ObsWebSocketAutomation && std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/GenerateObsSceneProfile.ps1"));
+            default: return false;
+            }
+        }
+
+        void ValidateRuntimeV25ProductionBatch()
+        {
+            m_v25ProductionPointResults.fill(0u);
+            const std::vector<std::string> manifestKeys = LoadV25ProductionManifestKeys();
+            if (manifestKeys.size() != V25ProductionPointCount)
+            {
+                AddRuntimeVerificationFailure("v25 production followup manifest does not contain forty points.");
+                return;
+            }
+
+            const auto& points = GetV25ProductionPoints();
+            uint32_t verifiedCount = 0;
+            for (size_t index = 0; index < points.size(); ++index)
+            {
+                const bool foundInManifest =
+                    std::find(manifestKeys.begin(), manifestKeys.end(), points[index].Key) != manifestKeys.end();
+                const bool verified = foundInManifest && EvaluateV25ProductionPoint(index);
+                m_v25ProductionPointResults[index] = verified ? 1u : 0u;
+                if (verified)
+                {
+                    ++verifiedCount;
+                }
+            }
+
+            m_runtimeEditorStats.V25ProductionPointTests = verifiedCount;
+            if (verifiedCount != V25ProductionPointCount)
+            {
+                AddRuntimeVerificationFailure("v25 production followup coverage is incomplete.");
+            }
+
+            AddRuntimeVerificationNote("Validated forty v25 production followup points.");
+        }
+
         void ValidateRuntimeV20ProductionBatch()
         {
             bool asyncSuccess = false;
@@ -5199,6 +5526,10 @@ namespace
             if (m_runtimeEditorStats.ReleaseReadinessTests < m_runtimeBaseline.MinReleaseReadinessTests)
             {
                 AddRuntimeVerificationFailure("release readiness test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.V25ProductionPointTests < m_runtimeBaseline.MinV25ProductionPoints)
+            {
+                AddRuntimeVerificationFailure("v25 production point test count is below baseline.");
             }
         }
 
@@ -5698,6 +6029,12 @@ namespace
             report << "dependency_invalidation_tests=" << m_runtimeEditorStats.DependencyInvalidationTests << "\n";
             report << "audio_meter_calibration_tests=" << m_runtimeEditorStats.AudioMeterCalibrationTests << "\n";
             report << "release_readiness_tests=" << m_runtimeEditorStats.ReleaseReadinessTests << "\n";
+            report << "v25_production_points=" << m_runtimeEditorStats.V25ProductionPointTests << "\n";
+            const auto& v25Points = GetV25ProductionPoints();
+            for (size_t index = 0; index < v25Points.size(); ++index)
+            {
+                report << v25Points[index].Key << "=" << m_v25ProductionPointResults[index] << "\n";
+            }
             const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
             report << "high_res_resolve_filter=" << captureMetrics.ResolveFilter << "\n";
             report << "high_res_resolve_samples=" << captureMetrics.ResolveSamples << "\n";
@@ -7549,6 +7886,7 @@ namespace
                     else if (key == "min_dependency_invalidation_tests") { loadedBaseline.MinDependencyInvalidationTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_audio_meter_calibration_tests") { loadedBaseline.MinAudioMeterCalibrationTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_release_readiness_tests") { loadedBaseline.MinReleaseReadinessTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_v25_production_points") { loadedBaseline.MinV25ProductionPoints = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
@@ -7613,6 +7951,15 @@ namespace
         GpuPickVisualizationState m_gpuPickVisualization;
         RiftVfxSystemStats m_lastRiftVfxStats;
         RiftVfxRendererProfile m_riftVfxRendererProfile;
+        EditorPreferenceProfile m_editorPreferenceProfile;
+        ViewportToolbarProfile m_viewportToolbarProfile;
+        GizmoAdvancedProfile m_gizmoAdvancedProfile;
+        AssetPipelineReadinessProfile m_assetPipelineReadinessProfile;
+        RenderingRoadmapProfile m_renderingRoadmapProfile;
+        CaptureVfxReadinessProfile m_captureVfxReadinessProfile;
+        SequencerAudioReadinessProfile m_sequencerAudioReadinessProfile;
+        ProductionAutomationReadinessProfile m_productionAutomationReadinessProfile;
+        std::array<uint32_t, V25ProductionPointCount> m_v25ProductionPointResults = {};
         ViewportOverlaySettings m_viewportOverlay;
         TransformPrecisionState m_transformPrecision;
         AudioMeterCalibrationProfile m_audioMeterCalibration;

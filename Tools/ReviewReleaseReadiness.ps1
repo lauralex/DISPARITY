@@ -3,6 +3,7 @@ param(
     [string]$InstallerPath = "dist/Installer",
     [string]$ObsProfilePath = "Saved/Trailer/OBS/DISPARITY-Trailer-Scene.json",
     [string]$RuntimeReportSchemaPath = "Assets/Verification/RuntimeReportSchema.dschema",
+    [string]$ProductionBatchPath = "Assets/Verification/V25ProductionBatch.dfollowups",
     [string]$OutputPath = "Saved/Release/release_readiness_manifest.json"
 )
 
@@ -21,6 +22,7 @@ $PackagePath = Resolve-RepoPath -Path $PackagePath
 $InstallerPath = Resolve-RepoPath -Path $InstallerPath
 $ObsProfilePath = Resolve-RepoPath -Path $ObsProfilePath
 $RuntimeReportSchemaPath = Resolve-RepoPath -Path $RuntimeReportSchemaPath
+$ProductionBatchPath = Resolve-RepoPath -Path $ProductionBatchPath
 $OutputPath = Resolve-RepoPath -Path $OutputPath
 
 $packageManifestPath = Join-Path $PackagePath "package_manifest.json"
@@ -34,7 +36,8 @@ $checks = @(
     [pscustomobject]@{ name = "bootstrapper_command"; path = $bootstrapperPath; exists = Test-Path -LiteralPath $bootstrapperPath },
     [pscustomobject]@{ name = "symbol_manifest"; path = $symbolManifestPath; exists = Test-Path -LiteralPath $symbolManifestPath },
     [pscustomobject]@{ name = "obs_profile"; path = $ObsProfilePath; exists = Test-Path -LiteralPath $ObsProfilePath },
-    [pscustomobject]@{ name = "runtime_report_schema"; path = $RuntimeReportSchemaPath; exists = Test-Path -LiteralPath $RuntimeReportSchemaPath }
+    [pscustomobject]@{ name = "runtime_report_schema"; path = $RuntimeReportSchemaPath; exists = Test-Path -LiteralPath $RuntimeReportSchemaPath },
+    [pscustomobject]@{ name = "production_batch_manifest"; path = $ProductionBatchPath; exists = Test-Path -LiteralPath $ProductionBatchPath }
 )
 
 foreach ($check in $checks) {
@@ -57,8 +60,15 @@ $schemaMetrics = @(Get-Content -LiteralPath $RuntimeReportSchemaPath | Where-Obj
     $trimmed = $_.Trim()
     ![string]::IsNullOrWhiteSpace($trimmed) -and !$trimmed.StartsWith("#")
 })
-if ($schemaMetrics.Count -lt 20 -or !($schemaMetrics -contains "release_readiness_tests")) {
-    throw "Runtime report schema does not include the v24 production metrics."
+if ($schemaMetrics.Count -lt 60 -or !($schemaMetrics -contains "v25_production_points")) {
+    throw "Runtime report schema does not include the v25 production metrics."
+}
+
+$productionPoints = @(Get-Content -LiteralPath $ProductionBatchPath | Where-Object {
+    $_.Trim().StartsWith("point ")
+})
+if ($productionPoints.Count -ne 40) {
+    throw "Production batch manifest does not define forty points."
 }
 
 $parent = Split-Path -Parent $OutputPath
@@ -72,6 +82,7 @@ if (![string]::IsNullOrWhiteSpace($parent)) {
     package_version = $packageManifest.version
     package_file_count = $packageManifest.files.Count
     runtime_schema_metric_count = $schemaMetrics.Count
+    production_batch_point_count = $productionPoints.Count
     checks = $checks
 } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $OutputPath
 

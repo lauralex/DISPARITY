@@ -1,0 +1,42 @@
+# DISPARITY v25 forty-point production followup manifest.
+# Format: point <stable-key>|<domain>|<description>
+point v25_point_01_editor_prefs_viewport_hud|Editor|Persist viewport HUD row visibility.
+point v25_point_02_editor_prefs_transform_precision|Editor|Persist transform precision settings.
+point v25_point_03_editor_prefs_command_filter|Editor|Persist command history filters.
+point v25_point_04_editor_prefs_dock_layout|Editor|Track dock layout preference readiness.
+point v25_point_05_editor_prefs_user_path|Editor|Track user preference storage path.
+point v25_point_06_viewport_toolbar_camera_mode|Viewport|Expose camera mode toolbar state.
+point v25_point_07_viewport_toolbar_render_debug|Viewport|Expose render debug toolbar state.
+point v25_point_08_viewport_toolbar_capture_state|Viewport|Expose capture toolbar state.
+point v25_point_09_viewport_toolbar_object_id_overlay|Viewport|Expose object-ID overlay toolbar state.
+point v25_point_10_viewport_toolbar_depth_overlay|Viewport|Expose depth overlay toolbar state.
+point v25_point_11_gizmo_depth_aware_hover|Gizmo|Track depth-aware gizmo hover readiness.
+point v25_point_12_gizmo_constraint_preview|Gizmo|Track gizmo constraint preview readiness.
+point v25_point_13_gizmo_numeric_entry|Gizmo|Track numeric transform entry readiness.
+point v25_point_14_gizmo_pivot_orientation_editing|Gizmo|Track pivot and orientation editing readiness.
+point v25_point_15_gizmo_handle_metadata|Gizmo|Track richer gizmo object-ID metadata.
+point v25_point_16_asset_gpu_mesh_upload|Assets|Validate cooked GPU mesh upload readiness.
+point v25_point_17_asset_texture_slot_binding|Assets|Validate material texture slot binding readiness.
+point v25_point_18_asset_animation_resources|Assets|Validate animation resource promotion readiness.
+point v25_point_19_asset_dependency_preview|Assets|Validate dependency invalidation preview readiness.
+point v25_point_20_asset_reload_rollback|Assets|Validate reload-safe rollback readiness.
+point v25_point_21_render_explicit_barriers|Rendering|Validate explicit render barrier diagnostics.
+point v25_point_22_render_alias_lifetime_validation|Rendering|Validate alias lifetime diagnostics.
+point v25_point_23_render_gpu_culling_plan|Rendering|Track GPU culling plan readiness.
+point v25_point_24_render_forward_plus_plan|Rendering|Track Forward+ light binning readiness.
+point v25_point_25_render_cascaded_shadow_plan|Rendering|Track cascaded shadow map readiness.
+point v25_point_26_capture_tiled_offscreen_plan|Capture|Validate tiled offscreen capture readiness.
+point v25_point_27_capture_resolve_filter_catalog|Capture|Validate capture resolve filter catalog readiness.
+point v25_point_28_capture_exr_output_plan|Capture|Track EXR output plan readiness.
+point v25_point_29_capture_async_compression_plan|Capture|Track async capture compression readiness.
+point v25_point_30_vfx_debug_visualizers|VFX|Validate VFX debug visualizer readiness.
+point v25_point_31_sequencer_curve_editor_plan|Sequencer|Track curve editor readiness.
+point v25_point_32_sequencer_clip_blending_plan|Sequencer|Track clip blending readiness.
+point v25_point_33_sequencer_bookmark_tracks|Sequencer|Validate bookmark track readiness.
+point v25_point_34_audio_streamed_music_plan|Audio|Track streamed music backend readiness.
+point v25_point_35_audio_content_pulse_plan|Audio|Validate content-driven pulse readiness.
+point v25_point_36_prod_golden_profile_expansion|Production|Validate golden profile expansion path.
+point v25_point_37_prod_schema_versioning|Production|Validate versioned runtime schema readiness.
+point v25_point_38_prod_interactive_ci_gate|Production|Validate interactive CI gate readiness.
+point v25_point_39_prod_installer_artifact|Production|Validate installer artifact readiness.
+point v25_point_40_prod_obs_websocket_automation|Production|Validate OBS automation readiness.

@@ -225,6 +225,10 @@ Invoke-Step "Verification baseline review" {
     & (Join-Path $PSScriptRoot "ReviewVerificationBaselines.ps1") -HistoryPath (Join-Path $root "Saved\Verification\performance_history.csv") -PerformanceBaselinePath $PerformanceBaselinePath -ListGoldenProfiles
 }
 
+Invoke-Step "Production followup manifest review" {
+    & (Join-Path $PSScriptRoot "ReviewProductionBatch.ps1")
+}
+
 Invoke-Step "Baseline approval manifest" {
     & (Join-Path $PSScriptRoot "ApproveVerificationBaseline.ps1") -DryRun
     $approvalPath = Join-Path $root "Saved\Verification\baseline_approval.json"

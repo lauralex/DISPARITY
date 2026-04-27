@@ -69,6 +69,7 @@ $requiredKeys = @(
     "min_dependency_invalidation_tests",
     "min_audio_meter_calibration_tests",
     "min_release_readiness_tests",
+    "min_v25_production_points",
     "require_editor_gpu_pick_resources",
     "golden_capture_path",
     "golden_mean_tolerance",
