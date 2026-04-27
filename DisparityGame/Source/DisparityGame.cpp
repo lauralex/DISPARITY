@@ -967,6 +967,7 @@ namespace
             material.Albedo = { 0.72f, 0.92f, 1.0f };
             material.Roughness = 0.28f;
             material.Metallic = 0.0f;
+            material.DoubleSided = true;
             return material;
         }
 
@@ -3796,6 +3797,24 @@ namespace
             {
                 AddRuntimeVerificationFailure(std::string(stage) + ": ECS scene entity count does not match scene object count.");
             }
+            bool importedGltfFound = false;
+            bool importedGltfDoubleSided = false;
+            for (const Disparity::NamedSceneObject& object : m_scene.GetObjects())
+            {
+                if (object.MeshName == "gltf_sample" || object.MeshName.rfind("gltf_", 0) == 0)
+                {
+                    importedGltfFound = true;
+                    importedGltfDoubleSided = importedGltfDoubleSided || object.Object.MaterialData.DoubleSided;
+                }
+            }
+            if (!importedGltfFound)
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": imported glTF triangle is missing from the scene.");
+            }
+            else if (!importedGltfDoubleSided)
+            {
+                AddRuntimeVerificationFailure(std::string(stage) + ": imported glTF triangle is not marked double-sided.");
+            }
             if (!std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Shaders/Basic.hlsl")) ||
                 !std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Shaders/PostProcess.hlsl")))
             {
@@ -3931,6 +3950,7 @@ namespace
             report << "elapsed_seconds=" << m_runtimeVerificationElapsed << "\n";
             report << "scene_objects=" << m_scene.Count() << "\n";
             report << "scene_entities=" << m_sceneEntities.size() << "\n";
+            report << "imported_gltf_double_sided=" << (ImportedGltfDoubleSidedReady() ? "true" : "false") << "\n";
             report << "draw_calls=" << (m_renderer ? m_renderer->GetFrameDrawCalls() : 0) << "\n";
             report << "scene_draw_calls=" << (m_renderer ? m_renderer->GetSceneDrawCalls() : 0) << "\n";
             report << "shadow_draw_calls=" << (m_renderer ? m_renderer->GetShadowDrawCalls() : 0) << "\n";
@@ -4036,6 +4056,19 @@ namespace
             state.PlayerHeadMaterial = m_playerHeadMaterial;
             state.RendererSettings = m_renderer ? m_renderer->GetSettings() : Disparity::RendererSettings{};
             return state;
+        }
+
+        bool ImportedGltfDoubleSidedReady() const
+        {
+            for (const Disparity::NamedSceneObject& object : m_scene.GetObjects())
+            {
+                if ((object.MeshName == "gltf_sample" || object.MeshName.rfind("gltf_", 0) == 0) && object.Object.MaterialData.DoubleSided)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         void ApplyEditState(const EditState& state)

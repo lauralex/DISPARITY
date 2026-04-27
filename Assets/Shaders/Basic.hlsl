@@ -130,9 +130,9 @@ VSOutput VSMain(VSInput input)
     return output;
 }
 
-PSOutput PSMain(VSOutput input)
+PSOutput PSMain(VSOutput input, bool isFrontFace : SV_IsFrontFace)
 {
-    const float3 normal = normalize(input.Normal);
+    const float3 normal = normalize(isFrontFace ? input.Normal : -input.Normal);
     const float3 lightDir = normalize(-LightDirection);
     const float3 viewDir = normalize(CameraPosition - input.WorldPosition);
     const float3 halfVector = normalize(lightDir + viewDir);

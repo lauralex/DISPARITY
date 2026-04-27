@@ -888,6 +888,10 @@ namespace Disparity
             {
                 GltfMaterialInfo material;
                 material.Name = materialValue.Find("name") ? materialValue.Find("name")->AsString("Material") : "Material";
+                if (const JsonValue* doubleSided = materialValue.Find("doubleSided"))
+                {
+                    material.MaterialData.DoubleSided = doubleSided->ValueType == JsonValue::Type::Bool ? doubleSided->Bool : doubleSided->AsInt(0) != 0;
+                }
 
                 if (const JsonValue* pbr = materialValue.Find("pbrMetallicRoughness"))
                 {

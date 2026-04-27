@@ -45,7 +45,7 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 ## glTF
 
 - `Assets/Meshes/SampleTriangle.gltf` is loaded at startup.
-- The loader creates renderer meshes for every primitive, tracks primitive material indices, binds base-color textures when present, instantiates mesh nodes into the scene, reads skin joint/weight attributes, stores inverse bind matrices, and parses animation sampler keyframes.
+- The loader creates renderer meshes for every primitive, tracks primitive material indices, binds base-color textures when present, honors glTF `doubleSided` materials, instantiates mesh nodes into the scene, reads skin joint/weight attributes, stores inverse bind matrices, and parses animation sampler keyframes.
 - The `Assets` panel shows mesh, primitive, material, node, skin, and animation counts.
 - `glTF animation playback` previews parsed animation channels when an imported asset includes them.
 
@@ -56,6 +56,7 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - The scene uses a directional light, shadow map, and eight point lights, including animated rift lights.
 - Post-processing uses the HDR scene texture, temporal history texture, and depth SRV.
 - The renderer now owns dedicated editor GPU targets for viewport color, object IDs, and object depth. Scene objects, player meshes, and gizmo handles write IDs/depth to those targets, and the editor can read back the hovered pixel for GPU-backed picking.
+- Materials can request double-sided rendering. The DX11 path switches those draws to a no-cull rasterizer state and the scene shader flips back-face normals, keeping imported single-surface meshes like the sample triangle visible during rotation.
 - The `Profiler` panel shows frame timings, job worker count, renderer draw-call counters, GPU frame timing once DX11 timestamp queries warm up, and compiled render-graph schedule/resource lifetime diagnostics. The render graph view also reports per-pass GPU timings, culled passes, read/write transition diagnostics, alias candidates, transient allocation slots, and alias reuse.
 - If bloom/SSAO/AA/DOF/lens differences are hard to spot in the final image, use `Renderer > Post debug`: `Bloom` isolates bright bleed, `SSAO mask` shows contact darkening, `AA edges` shows the edge detector, `Depth` visualizes the depth buffer, `DOF` shows the circle-of-confusion mask, and `Lens dirt` isolates the dirt/bloom response.
 - Bloom became more visible because the scene shader no longer clamps lighting before the HDR post pass.
@@ -137,7 +138,7 @@ powershell -ExecutionPolicy Bypass -File .\Tools\RuntimeVerifyDisparity.ps1 -Con
 .\bin\x64\Debug\DisparityGame.exe --verify-runtime --verify-frames=90
 ```
 
-Runtime verification writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, runs deterministic input playback, validates capture dimensions/luminance/checksum/nonblank pixels, checks CPU/GPU frame budgets and per-pass render-graph budgets, validates render-graph dispatch order, transient allocation counts, alias reuse, and editor viewport/object-ID/depth target readiness, cycles all seven post-debug views, exercises showcase mode and trailer/photo mode with deterministic rift timing, validates the 2x high-resolution capture workflow, validates rift VFX draw counts and beat-pulse counts, validates editor pick/gizmo pick coverage, runs gizmo transform constraint checks, validates audio snapshot capture/restore, downsamples the frame into a thumbnail, compares it against a suite-specific golden PPM, writes a golden diff thumbnail, and exits non-zero if an invariant fails. Budget defaults can be overridden through `RuntimeVerifyDisparity.ps1` or direct flags such as `--verify-cpu-budget-ms=120`, `--verify-gpu-budget-ms=50`, and `--verify-pass-budget-ms=60`.
+Runtime verification writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, runs deterministic input playback, validates capture dimensions/luminance/checksum/nonblank pixels, checks CPU/GPU frame budgets and per-pass render-graph budgets, validates render-graph dispatch order, transient allocation counts, alias reuse, and editor viewport/object-ID/depth target readiness, confirms the imported glTF triangle is double-sided so it does not vanish when rotated, cycles all seven post-debug views, exercises showcase mode and trailer/photo mode with deterministic rift timing, validates the 2x high-resolution capture workflow, validates rift VFX draw counts and beat-pulse counts, validates editor pick/gizmo pick coverage, runs gizmo transform constraint checks, validates audio snapshot capture/restore, downsamples the frame into a thumbnail, compares it against a suite-specific golden PPM, writes a golden diff thumbnail, and exits non-zero if an invariant fails. Budget defaults can be overridden through `RuntimeVerifyDisparity.ps1` or direct flags such as `--verify-cpu-budget-ms=120`, `--verify-gpu-budget-ms=50`, and `--verify-pass-budget-ms=60`.
 
 Runtime replay and baseline expectations are assetized:
 

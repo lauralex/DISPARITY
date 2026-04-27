@@ -15,5 +15,6 @@ namespace Disparity
         DirectX::XMFLOAT3 Emissive = { 0.0f, 0.0f, 0.0f };
         float EmissiveIntensity = 0.0f;
         TextureHandle BaseColorTexture = 0;
+        bool DoubleSided = false;
     };
 }

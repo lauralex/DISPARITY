@@ -281,6 +281,7 @@ namespace Disparity
         Microsoft::WRL::ComPtr<ID3D11Buffer> m_objectConstantBuffer;
         Microsoft::WRL::ComPtr<ID3D11Buffer> m_postConstantBuffer;
         Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_rasterizerState;
+        Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_doubleSidedRasterizerState;
         Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_depthStencilState;
         Microsoft::WRL::ComPtr<ID3D11BlendState> m_opaqueBlendState;
         Microsoft::WRL::ComPtr<ID3D11BlendState> m_alphaBlendState;

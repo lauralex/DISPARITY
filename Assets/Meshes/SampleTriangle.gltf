@@ -57,9 +57,21 @@
             "POSITION": 0,
             "NORMAL": 1
           },
-          "indices": 2
+          "indices": 2,
+          "material": 0
         }
       ]
+    }
+  ],
+  "materials": [
+    {
+      "name": "SampleTriangleDoubleSided",
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [0.72, 0.92, 1.0, 1.0],
+        "roughnessFactor": 0.28,
+        "metallicFactor": 0.0
+      }
     }
   ],
   "nodes": [

@@ -21,7 +21,7 @@ namespace Disparity
     class Scene
     {
     public:
-        static constexpr uint32_t SchemaVersion = 3;
+        static constexpr uint32_t SchemaVersion = 4;
 
         void Clear();
         void Add(NamedSceneObject object);

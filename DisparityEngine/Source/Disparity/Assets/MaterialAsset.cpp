@@ -24,6 +24,11 @@ namespace Disparity
             stream >> result.x >> comma >> result.y >> comma >> result.z;
             return stream.fail() ? fallback : result;
         }
+
+        bool ParseBool(const std::string& value)
+        {
+            return value == "1" || value == "true" || value == "True" || value == "TRUE";
+        }
     }
 
     bool MaterialAssetIO::Load(const std::filesystem::path& path, MaterialAsset& outMaterial)
@@ -80,6 +85,10 @@ namespace Disparity
             {
                 outMaterial.MaterialData.EmissiveIntensity = std::stof(value);
             }
+            else if (key == "double_sided")
+            {
+                outMaterial.MaterialData.DoubleSided = ParseBool(value);
+            }
             else if (key == "texture" && !StartsWith(value, "#"))
             {
                 outMaterial.BaseColorTexturePath = value;
@@ -100,6 +109,7 @@ namespace Disparity
         output << "alpha=" << material.MaterialData.Alpha << '\n';
         output << "emissive=" << material.MaterialData.Emissive.x << ',' << material.MaterialData.Emissive.y << ',' << material.MaterialData.Emissive.z << '\n';
         output << "emissive_intensity=" << material.MaterialData.EmissiveIntensity << '\n';
+        output << "double_sided=" << (material.MaterialData.DoubleSided ? 1 : 0) << '\n';
         output << "texture=" << material.BaseColorTexturePath.string() << '\n';
         return FileSystem::WriteTextFile(path, output.str());
     }

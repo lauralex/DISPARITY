@@ -334,6 +334,7 @@ namespace Disparity
         m_alphaBlendState.Reset();
         m_opaqueBlendState.Reset();
         m_depthStencilState.Reset();
+        m_doubleSidedRasterizerState.Reset();
         m_rasterizerState.Reset();
         m_objectConstantBuffer.Reset();
         m_frameConstantBuffer.Reset();
@@ -756,6 +757,8 @@ namespace Disparity
         ID3D11Buffer* objectBuffer = m_objectConstantBuffer.Get();
         m_context->VSSetConstantBuffers(1, 1, &objectBuffer);
         m_context->PSSetConstantBuffers(1, 1, &objectBuffer);
+        ID3D11RasterizerState* rasterizerState = material.DoubleSided ? m_doubleSidedRasterizerState.Get() : m_rasterizerState.Get();
+        m_context->RSSetState(rasterizerState);
 
         if (m_shadowPassActive)
         {
@@ -1838,6 +1841,16 @@ namespace Disparity
         if (FAILED(hr))
         {
             Log(LogLevel::Error, "Rasterizer state creation failed with HRESULT " + HrToString(hr));
+            return false;
+        }
+
+        D3D11_RASTERIZER_DESC doubleSidedRasterizerDesc = rasterizerDesc;
+        doubleSidedRasterizerDesc.CullMode = D3D11_CULL_NONE;
+
+        hr = m_device->CreateRasterizerState(&doubleSidedRasterizerDesc, m_doubleSidedRasterizerState.GetAddressOf());
+        if (FAILED(hr))
+        {
+            Log(LogLevel::Error, "Double-sided rasterizer state creation failed with HRESULT " + HrToString(hr));
             return false;
         }
 

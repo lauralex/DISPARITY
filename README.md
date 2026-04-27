@@ -99,7 +99,7 @@ Editor UI:
 - Editor undo/redo covers scene object transforms/materials, player edits, and renderer setting changes.
 - Inspector includes simple transform gizmo controls for move/scale/yaw edits without external gizmo dependencies.
 - Prefab workflows can apply the selected scene object back to `Assets/Prefabs/Beacon.dprefab` or save runtime prefabs under `Saved`.
-- glTF runtime path now creates all mesh primitive handles, binds parsed base-color textures, instantiates mesh nodes into the scene, stores skin inverse bind matrices, reads JOINTS_0/WEIGHTS_0, and parses animation sampler keyframes for playback.
+- glTF runtime path now creates all mesh primitive handles, binds parsed base-color textures, honors `doubleSided` materials, instantiates mesh nodes into the scene, stores skin inverse bind matrices, reads JOINTS_0/WEIGHTS_0, and parses animation sampler keyframes for playback.
 - Renderer includes multiple point lights, a forward+/clustered-style light toggle, broader CSM-style shadow coverage, depth-SRV SSAO, bloom, and temporal history blending.
 - Audio has named buses, bus volume/mute controls, generated tones routed through buses, streamed/looped wave hooks, and simple stereo spatial tone preview.
 
@@ -247,6 +247,7 @@ Editor UI:
 
 - Scene objects, player parts, and viewport gizmo handles now write stable IDs and depth into dedicated GPU object-ID targets. Editor hover, click picking, and gizmo drag startup try GPU readback first and keep CPU ray tests as a fallback.
 - `F9` now queues captures instead of replacing the pending request, and the renderer can export PNG through WIC. The public photo flow writes `DISPARITY_photo_source.ppm`, `DISPARITY_photo_source.png`, and `DISPARITY_photo_2x.ppm`.
+- Materials and scene files now carry a `double_sided` flag. DX11 uses a no-cull rasterizer state with back-face normal flipping so single-surface imported showcase meshes remain visible while rotating, and runtime verification reports `imported_gltf_double_sided=true`.
 - The new `Shot Director` panel edits `Assets/Cinematics/Showcase.dshot`, adds/captures keys from the current camera, scrubs trailer time, and saves/reloads without leaving the running build.
 - The Inspector shows Beacon prefab override counts and can apply or revert the selected object against `Assets/Prefabs/Beacon.dprefab` while preserving world position and stable ID.
 - The asset database exposes dependency graph totals in the Assets panel. `Tools/CookDisparityAssets.ps1` now records declared glTF buffer/image, material texture, script prefab, and import-setting dependencies plus cook payload metadata.

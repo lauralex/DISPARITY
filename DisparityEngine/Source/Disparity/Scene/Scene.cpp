@@ -103,7 +103,8 @@ namespace Disparity
                 << transform.Rotation.x << ' ' << transform.Rotation.y << ' ' << transform.Rotation.z << ' '
                 << transform.Scale.x << ' ' << transform.Scale.y << ' ' << transform.Scale.z << ' '
                 << material.Albedo.x << ' ' << material.Albedo.y << ' ' << material.Albedo.z << ' '
-                << material.Roughness << ' ' << material.Metallic << ' ' << material.Alpha << '\n';
+                << material.Roughness << ' ' << material.Metallic << ' ' << material.Alpha << ' '
+                << (material.DoubleSided ? 1 : 0) << '\n';
         }
 
         return FileSystem::WriteTextFile(path, output.str());
@@ -170,6 +171,12 @@ namespace Disparity
 
             if (!stream.fail())
             {
+                int doubleSided = 0;
+                if (stream >> doubleSided)
+                {
+                    material.DoubleSided = doubleSided != 0;
+                }
+
                 if (object.StableId == 0)
                 {
                     object.StableId = MakeStableId(object, loadedObjects.size());
