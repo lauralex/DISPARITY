@@ -40,8 +40,8 @@ Controls:
 - `F7`: toggle cinematic showcase mode, hide the editor, boost post-processing, and orbit the animated DISPARITY rift for capture-friendly footage.
 - `F8`: toggle trailer/photo mode with authored camera shots from `Assets/Cinematics/Showcase.dshot`, depth of field, lens dirt, and title-safe guide overlays.
 - `F9`: capture the current presented frame and write a source PPM, source PNG, async 2x PPM photo, and schema v3 high-resolution capture manifest under `Saved/Captures`.
-- `F10`: reset the public playable demo, returning all rift shards, sentinels, extraction state, and HUD objectives to their start state.
-- Hold `Shift` while using `WASD` in the playable demo to sprint. Collect all six rift shards, avoid sentinel pressure, then return to the extraction beacon to complete the loop.
+- `F10`: reset the public playable demo, returning rift shards, phase anchors, sentinels, checkpoint/retry state, extraction state, and HUD objectives to their start state.
+- Hold `Shift` while using `WASD` in the playable demo to sprint. Collect all six rift shards, align the three phase anchors, avoid sentinel pressure, then return to the extraction beacon to complete the loop.
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 - When the mouse is released with `Tab`, left-click the viewport to pick objects. Hold `Ctrl` while clicking or selecting in the hierarchy to multi-select. The editor tries GPU object-ID readback first and falls back to CPU ray tests.
@@ -57,6 +57,7 @@ Editor UI:
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw draggable, camera-scaled 3D axis/ring/plane gizmo handles in the viewport.
 - `Assets`: reload scene/script, toggle hot reload, inspect the asset database and dependency graph, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
 - `Shot Director`: edit, add, save, reload, capture, thumbnail, and preview-scrub v6 `.dshot` trailer keys without leaving the running editor.
+- `Demo Director`: inspect the public vertical slice stage, objective distance, shard/anchor progress, checkpoint/retry telemetry, recent gameplay events, and v30 readiness while the demo is running.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters/production counters, and store/recall a mixer snapshot.
 
@@ -332,12 +333,20 @@ Editor UI:
 - `Assets/Verification/V29PublicDemo.dfollowups` tracks thirty public-demo readiness points across gameplay, visuals, HUD, audio feedback, capture, verification, and production hygiene.
 - Runtime reports, baselines, release-readiness review, performance history, and the schema manifest now require public-demo counters including shard pickups, HUD frames, beacon draws, completion, and all thirty `v29_point_*` metrics.
 
+## Engine v30 Vertical Slice Batch Implemented
+
+- The public demo is now a richer mini vertical slice: collect six shards, align three phase anchors, survive stability pressure, retry from checkpoints, then extract through the charged rift.
+- New visible show-off elements include phase-anchor glyphs, bridge beams from aligned anchors to the rift, a checkpoint marker, low-stability warning rings, upgraded objective routing, and HUD readouts for stage, anchors, checkpoint, retry count, and objective distance.
+- The editor has a `Demo Director` panel plus a v30 readiness table in the Profiler, exposing gameplay event telemetry, checkpoint controls, current stage, and backend verification state.
+- `Assets/Verification/V30VerticalSlice.dfollowups` tracks thirty-six points across gameplay, visuals, HUD, editor, backend telemetry, rendering/capture, verification, and production.
+- Runtime reports, baselines, release-readiness review, performance history, and schema assertions now require v30 counters including objective-stage transitions, anchor activations, retries, checkpoints, director frames, and all `v30_point_*` metrics.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Turn the v29 shard loop into a richer vertical slice with a short objective chain, light traversal puzzle, fail/retry states, gamepad support, and a menu-to-gameplay flow for public demos.
-- Add real player feedback: animation states, footsteps, pickup/completion sounds through the production audio path, screen-space hit/pressure cues, and content-driven rift pulses.
+- Turn the v30 vertical slice into a more game-like public demo with real collision, traversal mechanics, a failure screen, gamepad support, and a menu-to-gameplay flow.
+- Add real player feedback: animation states, footsteps, pickup/anchor/completion sounds through the production audio path, screen-space hit/pressure cues, and content-driven rift pulses.
 - Promote v28 graph-owned rendering diagnostics into actual DX11 pass execution: explicit bind/unbind barriers, alias lifetime validation, GPU culling, Forward+ lighting, cascaded shadows, motion-vector rendering, and stronger temporal AA.
 - Move the high-resolution capture proof from resolved source-frame sampling to true tiled offscreen supersampling with per-tile camera jitter, selectable resolve filters, real EXR output, and real async compression workers.
 - Turn editor profile import/export/diff and workspace presets into a versioned per-project preference system with dock-layout files, schema migration, conflict-safe merge, and checked-in team defaults.

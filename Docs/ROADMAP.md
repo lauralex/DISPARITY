@@ -1,6 +1,15 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v29 versions of many requested followups, including a small public playable loop for capture and demos. The next milestones should keep rotating through gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+The current engine now has functional v30 versions of many requested followups, including a small public vertical slice for capture and demos. The next milestones should keep rotating through gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+
+## v30 Completed Vertical Slice Batch
+
+- Added `Assets/Verification/V30VerticalSlice.dfollowups`, a thirty-six-point vertical-slice manifest spanning gameplay, visuals, HUD, editor, backend telemetry, rendering/capture, verification, and production hygiene.
+- The public demo now chains shard collection into three phase anchors, then gates extraction through the charged rift. It also records checkpoints, exposes retry behavior, and reports objective distance and stage transitions.
+- New public-facing visuals include phase-anchor glyph rings, bridge beams from aligned anchors to the rift, a checkpoint marker, low-stability warning rings, upgraded route beams, and HUD state for stage, anchors, retries, checkpoints, and objective distance.
+- The editor now has a `Demo Director` panel for public-demo telemetry, reset/checkpoint/retry controls, and recent gameplay events, while the Profiler exposes a v30 readiness table.
+- Runtime verification completes the shard-anchor-extraction route deterministically, forces a checkpoint retry path, validates the Demo Director/readiness surfaces, and reports every `v30_point_*` metric.
+- Runtime baselines, runtime report schema checks, release-readiness review, manifest review, and performance-history summaries now require v30 vertical-slice counters.
 
 ## v29 Completed Public Playable Demo Batch
 
@@ -186,8 +195,8 @@ The current engine now has functional v29 versions of many requested followups, 
 
 ## Runtime
 
-- Turn the v29 shard loop into a richer vertical slice with chained objectives, a short traversal puzzle, retry/failure rules, checkpoint reset polish, and gamepad input.
-- Add animation-state placeholders, footstep/pickup/completion events, objective gates, and clearer success/failure telemetry for the playable demo.
+- Turn the v30 vertical slice into a more game-like demo with collision-backed traversal, a failure/retry screen, controller/gamepad gameplay, a title/menu-to-gameplay flow, and more expressive objective gates.
+- Add animation-state placeholders, footstep/pickup/anchor/completion events, pressure-hit feedback, objective-gate affordances, and clearer success/failure telemetry for the playable demo.
 - Extend the job-system async IO helper into asset streaming, cancellation, priorities, file watching, and frame pacing diagnostics.
 - Add serialization versioning, save-game separation, and deterministic scene IDs.
 - Add physics, collision queries, controller movement, animation-driven character logic, and gameplay event routing.

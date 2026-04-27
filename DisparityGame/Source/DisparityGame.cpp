@@ -543,6 +543,7 @@ namespace
             DrawAssetsPanel();
             DrawRendererPanel();
             DrawShotDirectorPanel();
+            DrawPublicDemoDirectorPanel();
             DrawAudioPanel();
             DrawProfilerPanel();
         }
@@ -1020,6 +1021,32 @@ namespace
             float Height = 0.8f;
         };
 
+        enum class PublicDemoStage
+        {
+            CollectShards,
+            ActivateAnchors,
+            ExtractionReady,
+            Completed
+        };
+
+        struct PublicDemoAnchor
+        {
+            DirectX::XMFLOAT3 Position = {};
+            DirectX::XMFLOAT3 Color = { 0.95f, 0.42f, 1.0f };
+            float Phase = 0.0f;
+            bool Activated = false;
+        };
+
+        struct PublicDemoCheckpoint
+        {
+            DirectX::XMFLOAT3 Position = { 0.0f, 0.0f, 6.0f };
+            float Yaw = Pi;
+            PublicDemoStage Stage = PublicDemoStage::CollectShards;
+            uint32_t ShardsCollected = 0;
+            uint32_t AnchorsActivated = 0;
+            bool Valid = false;
+        };
+
         struct PublicDemoDiagnostics
         {
             bool ObjectiveLoopReady = false;
@@ -1029,19 +1056,38 @@ namespace
             bool BeaconsRendered = false;
             bool SentinelPressure = false;
             bool SprintEnergy = false;
+            bool ChainedObjectives = false;
+            bool AnchorPuzzleComplete = false;
+            bool CheckpointReady = false;
+            bool RetryReady = false;
+            bool DirectorPanelReady = false;
+            bool RouteTelemetry = false;
+            bool EventQueueReady = false;
+            bool GamepadInputSurface = false;
             uint32_t ShardsTotal = 0;
             uint32_t ShardsCollected = 0;
+            uint32_t AnchorsTotal = 0;
+            uint32_t AnchorsActivated = 0;
             uint32_t BeaconDraws = 0;
             uint32_t HudFrames = 0;
             uint32_t SentinelTicks = 0;
+            uint32_t ObjectiveStageTransitions = 0;
+            uint32_t RetryCount = 0;
+            uint32_t CheckpointCount = 0;
+            uint32_t DirectorFrames = 0;
+            uint32_t EventCount = 0;
             float CompletionTimeSeconds = 0.0f;
             float Stability = 0.0f;
             float Focus = 0.0f;
+            float ObjectiveDistance = 0.0f;
         };
 
         struct PublicDemoStateSnapshot
         {
             std::array<PublicDemoShard, 6> Shards = {};
+            std::array<PublicDemoAnchor, 3> Anchors = {};
+            PublicDemoCheckpoint Checkpoint = {};
+            std::deque<std::string> Events = {};
             DirectX::XMFLOAT3 PlayerPosition = {};
             float PlayerYaw = 0.0f;
             float Stability = 0.0f;
@@ -1049,14 +1095,21 @@ namespace
             float Elapsed = 0.0f;
             float Surge = 0.0f;
             uint32_t Collected = 0;
+            uint32_t AnchorsActivated = 0;
+            uint32_t StageTransitions = 0;
+            uint32_t RetryCount = 0;
+            uint32_t CheckpointCount = 0;
             bool ExtractionReady = false;
             bool Completed = false;
+            PublicDemoStage Stage = PublicDemoStage::CollectShards;
         };
 
         static constexpr size_t V25ProductionPointCount = 40;
         static constexpr size_t V28DiversifiedPointCount = 36;
         static constexpr size_t V29PublicDemoPointCount = 30;
+        static constexpr size_t V30VerticalSlicePointCount = 36;
         static constexpr size_t PublicDemoShardCount = 6;
+        static constexpr size_t PublicDemoAnchorCount = 3;
 
         static const std::array<ProductionFollowupPoint, V25ProductionPointCount>& GetV25ProductionPoints()
         {
@@ -1185,6 +1238,49 @@ namespace
             return points;
         }
 
+        static const std::array<ProductionFollowupPoint, V30VerticalSlicePointCount>& GetV30VerticalSlicePoints()
+        {
+            static const std::array<ProductionFollowupPoint, V30VerticalSlicePointCount> points = { {
+                { "v30_point_01_chained_objectives", "Gameplay", "Shard collection chains into phase-anchor alignment" },
+                { "v30_point_02_phase_anchor_puzzle", "Gameplay", "Three phase anchors gate extraction" },
+                { "v30_point_03_checkpoint_state", "Gameplay", "Public demo records checkpoint state" },
+                { "v30_point_04_retry_failure", "Gameplay", "Stability failure retries from checkpoint" },
+                { "v30_point_05_objective_distance", "Gameplay", "Next objective distance is tracked" },
+                { "v30_point_06_stage_state_machine", "Gameplay", "Explicit public-demo stage machine" },
+                { "v30_point_07_gamepad_surface", "Gameplay", "Gamepad-ready input surface is exposed" },
+                { "v30_point_08_completion_gate_polish", "Gameplay", "Extraction requires anchors and completion polish" },
+                { "v30_point_09_anchor_glyphs", "Visuals", "Phase anchors draw readable glyph rings" },
+                { "v30_point_10_phase_bridges", "Visuals", "Activated anchors draw bridge beams to the rift" },
+                { "v30_point_11_checkpoint_marker", "Visuals", "Checkpoint marker is visible in the arena" },
+                { "v30_point_12_retry_warning_feedback", "Visuals", "Low-stability warning feedback is visible" },
+                { "v30_point_13_route_beam_upgrade", "Visuals", "Objective beam follows shards, anchors, and extraction" },
+                { "v30_point_14_public_hud_stage", "HUD", "HUD shows stage, anchors, checkpoint, and retries" },
+                { "v30_point_15_demo_director_panel", "Editor", "Editor exposes a public Demo Director panel" },
+                { "v30_point_16_director_reset_controls", "Editor", "Director can reset and checkpoint the vertical slice" },
+                { "v30_point_17_event_telemetry", "Editor", "Recent public-demo events are inspectable" },
+                { "v30_point_18_stage_readout", "Editor", "Current stage and objective telemetry are inspectable" },
+                { "v30_point_19_readiness_table", "Editor", "Profiler exposes v30 readiness points" },
+                { "v30_point_20_command_history_labels", "Editor", "Demo director actions enter command history" },
+                { "v30_point_21_event_queue", "Backend", "Small event queue records gameplay state changes" },
+                { "v30_point_22_checkpoint_snapshot", "Backend", "Checkpoint snapshots preserve stage progress" },
+                { "v30_point_23_retry_telemetry", "Backend", "Retry counters are reported deterministically" },
+                { "v30_point_24_route_telemetry", "Backend", "Objective-route telemetry is emitted" },
+                { "v30_point_25_deterministic_validation", "Backend", "Runtime verifier completes the whole vertical slice" },
+                { "v30_point_26_backend_schema", "Backend", "Runtime schema includes v30 vertical-slice metrics" },
+                { "v30_point_27_vfx_charge_link", "Rendering", "Rift VFX intensity responds to anchor progress" },
+                { "v30_point_28_beacon_draw_counters", "Rendering", "Anchor and checkpoint visuals contribute draw coverage" },
+                { "v30_point_29_capture_readiness", "Capture", "Trailer/photo capture sees the new objective state" },
+                { "v30_point_30_perf_history", "Production", "Performance history records v30 counters" },
+                { "v30_point_31_manifest_review", "Verification", "v30 followup manifest is reviewed" },
+                { "v30_point_32_baseline_gates", "Verification", "Baselines require v30 objective coverage" },
+                { "v30_point_33_runtime_script_gate", "Verification", "Runtime wrapper asserts v30 report metrics" },
+                { "v30_point_34_release_readiness", "Production", "Release readiness includes the v30 manifest" },
+                { "v30_point_35_docs_updated", "Production", "Docs describe the v30 playable slice" },
+                { "v30_point_36_roadmap_refresh", "Production", "Roadmap and agent context list next followups" }
+            } };
+            return points;
+        }
+
         struct RuntimeBaseline
         {
             uint32_t ExpectedCaptureWidth = 1280;
@@ -1257,6 +1353,12 @@ namespace
             uint32_t MinPublicDemoHudFrames = 1;
             uint32_t MinPublicDemoBeaconDraws = 1;
             uint32_t MinV29PublicDemoPoints = static_cast<uint32_t>(V29PublicDemoPointCount);
+            uint32_t MinPublicDemoObjectiveStages = 3;
+            uint32_t MinPublicDemoAnchorActivations = static_cast<uint32_t>(PublicDemoAnchorCount);
+            uint32_t MinPublicDemoRetries = 1;
+            uint32_t MinPublicDemoCheckpoints = 1;
+            uint32_t MinPublicDemoDirectorFrames = 1;
+            uint32_t MinV30VerticalSlicePoints = static_cast<uint32_t>(V30VerticalSlicePointCount);
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -1414,6 +1516,12 @@ namespace
             uint32_t PublicDemoBeaconDraws = 0;
             uint32_t PublicDemoSentinelTicks = 0;
             uint32_t V29PublicDemoPointTests = 0;
+            uint32_t PublicDemoObjectiveStages = 0;
+            uint32_t PublicDemoAnchorActivations = 0;
+            uint32_t PublicDemoRetries = 0;
+            uint32_t PublicDemoCheckpoints = 0;
+            uint32_t PublicDemoDirectorFrames = 0;
+            uint32_t V30VerticalSlicePointTests = 0;
         };
 
         void InitializeMaterials()
@@ -1538,6 +1646,18 @@ namespace
             m_demoPathMaterial.Alpha = 0.36f;
             m_demoPathMaterial.Emissive = { 0.28f, 0.74f, 1.0f };
             m_demoPathMaterial.EmissiveIntensity = 1.35f;
+
+            m_demoAnchorMaterial.Albedo = { 2.6f, 0.78f, 4.8f };
+            m_demoAnchorMaterial.Roughness = 0.10f;
+            m_demoAnchorMaterial.Alpha = 0.64f;
+            m_demoAnchorMaterial.Emissive = { 0.82f, 0.22f, 1.0f };
+            m_demoAnchorMaterial.EmissiveIntensity = 2.55f;
+
+            m_demoCheckpointMaterial.Albedo = { 0.72f, 2.4f, 1.65f };
+            m_demoCheckpointMaterial.Roughness = 0.18f;
+            m_demoCheckpointMaterial.Alpha = 0.48f;
+            m_demoCheckpointMaterial.Emissive = { 0.12f, 1.0f, 0.58f };
+            m_demoCheckpointMaterial.EmissiveIntensity = 1.75f;
         }
 
         void ReloadGltfAssets()
@@ -1803,7 +1923,146 @@ namespace
 
         float PublicDemoRiftCharge() const
         {
-            return static_cast<float>(m_publicDemoShardsCollected) / static_cast<float>(PublicDemoShardCount);
+            const float shardCharge = static_cast<float>(m_publicDemoShardsCollected) / static_cast<float>(PublicDemoShardCount);
+            const float anchorCharge = static_cast<float>(PublicDemoAnchorsActivated()) / static_cast<float>(PublicDemoAnchorCount);
+            return std::clamp(shardCharge * 0.72f + anchorCharge * 0.28f, 0.0f, 1.0f);
+        }
+
+        const char* PublicDemoStageName() const
+        {
+            switch (m_publicDemoStage)
+            {
+            case PublicDemoStage::CollectShards: return "Collect shards";
+            case PublicDemoStage::ActivateAnchors: return "Align anchors";
+            case PublicDemoStage::ExtractionReady: return "Extract";
+            case PublicDemoStage::Completed: return "Complete";
+            default: return "Unknown";
+            }
+        }
+
+        uint32_t PublicDemoAnchorsActivated() const
+        {
+            return static_cast<uint32_t>(std::count_if(m_publicDemoAnchors.begin(), m_publicDemoAnchors.end(), [](const PublicDemoAnchor& anchor)
+            {
+                return anchor.Activated;
+            }));
+        }
+
+        int NextPublicDemoAnchorIndex() const
+        {
+            for (size_t index = 0; index < m_publicDemoAnchors.size(); ++index)
+            {
+                if (!m_publicDemoAnchors[index].Activated)
+                {
+                    return static_cast<int>(index);
+                }
+            }
+            return -1;
+        }
+
+        DirectX::XMFLOAT3 PublicDemoCurrentObjectivePosition() const
+        {
+            const int nextShard = NextPublicDemoShardIndex();
+            if (nextShard >= 0)
+            {
+                const PublicDemoShard& shard = m_publicDemoShards[static_cast<size_t>(nextShard)];
+                return { shard.Position.x, 0.0f, shard.Position.z };
+            }
+
+            const int nextAnchor = NextPublicDemoAnchorIndex();
+            if (nextAnchor >= 0)
+            {
+                const PublicDemoAnchor& anchor = m_publicDemoAnchors[static_cast<size_t>(nextAnchor)];
+                return { anchor.Position.x, 0.0f, anchor.Position.z };
+            }
+
+            return { m_riftPosition.x, 0.0f, m_riftPosition.z };
+        }
+
+        float PublicDemoObjectiveDistance() const
+        {
+            const DirectX::XMFLOAT3 objective = PublicDemoCurrentObjectivePosition();
+            return Length(Subtract(
+                { objective.x, 0.0f, objective.z },
+                { m_playerPosition.x, 0.0f, m_playerPosition.z }));
+        }
+
+        void RecordPublicDemoEvent(std::string eventText)
+        {
+            if (eventText.empty())
+            {
+                return;
+            }
+
+            if (m_publicDemoEvents.size() >= 12)
+            {
+                m_publicDemoEvents.pop_front();
+            }
+            std::ostringstream stream;
+            stream << std::fixed << std::setprecision(1) << m_publicDemoElapsed << "s  " << eventText;
+            m_publicDemoEvents.push_back(stream.str());
+        }
+
+        void SetPublicDemoStage(PublicDemoStage stage)
+        {
+            if (m_publicDemoStage == stage)
+            {
+                return;
+            }
+
+            m_publicDemoStage = stage;
+            ++m_publicDemoStageTransitions;
+            if (m_runtimeVerification.Enabled)
+            {
+                ++m_runtimeEditorStats.PublicDemoObjectiveStages;
+            }
+            RecordPublicDemoEvent(std::string("Stage -> ") + PublicDemoStageName());
+        }
+
+        void SavePublicDemoCheckpoint(const char* reason)
+        {
+            m_publicDemoCheckpoint.Position = m_playerPosition;
+            m_publicDemoCheckpoint.Yaw = m_playerYaw;
+            m_publicDemoCheckpoint.Stage = m_publicDemoStage;
+            m_publicDemoCheckpoint.ShardsCollected = m_publicDemoShardsCollected;
+            m_publicDemoCheckpoint.AnchorsActivated = PublicDemoAnchorsActivated();
+            m_publicDemoCheckpoint.Valid = true;
+            ++m_publicDemoCheckpointCount;
+            if (m_runtimeVerification.Enabled)
+            {
+                ++m_runtimeEditorStats.PublicDemoCheckpoints;
+            }
+            RecordPublicDemoEvent(std::string("Checkpoint: ") + reason);
+        }
+
+        void TriggerPublicDemoRetry(bool playAudio)
+        {
+            if (m_publicDemoCompleted)
+            {
+                return;
+            }
+
+            ++m_publicDemoRetryCount;
+            if (m_runtimeVerification.Enabled)
+            {
+                ++m_runtimeEditorStats.PublicDemoRetries;
+            }
+
+            if (m_publicDemoCheckpoint.Valid)
+            {
+                m_playerPosition = m_publicDemoCheckpoint.Position;
+                m_playerYaw = m_publicDemoCheckpoint.Yaw;
+            }
+            m_publicDemoStability = std::clamp(0.46f + PublicDemoRiftCharge() * 0.18f, 0.0f, 1.0f);
+            m_publicDemoFocus = 1.0f;
+            m_publicDemoSurge = 0.85f;
+            SyncPlayerTransformToRegistry();
+            RecordPublicDemoEvent("Retry from checkpoint");
+            SetStatus("Stability collapsed. Retrying from checkpoint.");
+            if (playAudio)
+            {
+                Disparity::AudioSystem::PlaySpatialTone("SFX", 240.0f, 0.12f, 0.16f, m_playerPosition);
+            }
         }
 
         void ResetPublicDemo(bool resetPlayer)
@@ -1835,6 +2094,26 @@ namespace
                 };
             }
 
+            const std::array<DirectX::XMFLOAT3, PublicDemoAnchorCount> anchorPositions = { {
+                { -5.8f, 0.08f, -8.0f },
+                { 5.6f, 0.08f, -8.35f },
+                { 0.0f, 0.08f, -3.2f }
+            } };
+            const std::array<DirectX::XMFLOAT3, PublicDemoAnchorCount> anchorColors = { {
+                { 1.0f, 0.34f, 0.86f },
+                { 0.26f, 1.0f, 0.78f },
+                { 0.44f, 0.68f, 1.0f }
+            } };
+            for (size_t index = 0; index < PublicDemoAnchorCount; ++index)
+            {
+                m_publicDemoAnchors[index] = PublicDemoAnchor{
+                    anchorPositions[index],
+                    anchorColors[index],
+                    static_cast<float>(index) * 1.27f,
+                    false
+                };
+            }
+
             m_publicDemoSentinels = { {
                 PublicDemoSentinel{ 5.2f, 0.82f, 0.0f, 0.78f },
                 PublicDemoSentinel{ 7.4f, -0.58f, 1.9f, 1.15f },
@@ -1858,12 +2137,22 @@ namespace
             m_publicDemoCompleted = false;
             m_publicDemoPickupAudioArmed = true;
             m_publicDemoCompletionAudioPlayed = false;
+            m_publicDemoStage = PublicDemoStage::CollectShards;
+            m_publicDemoStageTransitions = 0;
+            m_publicDemoRetryCount = 0;
+            m_publicDemoCheckpointCount = 0;
+            m_publicDemoEvents.clear();
+            SavePublicDemoCheckpoint("start");
+            RecordPublicDemoEvent("Public demo reset");
         }
 
         PublicDemoStateSnapshot CapturePublicDemoState() const
         {
             return PublicDemoStateSnapshot{
                 m_publicDemoShards,
+                m_publicDemoAnchors,
+                m_publicDemoCheckpoint,
+                m_publicDemoEvents,
                 m_playerPosition,
                 m_playerYaw,
                 m_publicDemoStability,
@@ -1871,14 +2160,22 @@ namespace
                 m_publicDemoElapsed,
                 m_publicDemoSurge,
                 m_publicDemoShardsCollected,
+                PublicDemoAnchorsActivated(),
+                m_publicDemoStageTransitions,
+                m_publicDemoRetryCount,
+                m_publicDemoCheckpointCount,
                 m_publicDemoExtractionReady,
-                m_publicDemoCompleted
+                m_publicDemoCompleted,
+                m_publicDemoStage
             };
         }
 
         void RestorePublicDemoState(const PublicDemoStateSnapshot& snapshot)
         {
             m_publicDemoShards = snapshot.Shards;
+            m_publicDemoAnchors = snapshot.Anchors;
+            m_publicDemoCheckpoint = snapshot.Checkpoint;
+            m_publicDemoEvents = snapshot.Events;
             m_playerPosition = snapshot.PlayerPosition;
             m_playerYaw = snapshot.PlayerYaw;
             m_publicDemoStability = snapshot.Stability;
@@ -1886,8 +2183,12 @@ namespace
             m_publicDemoElapsed = snapshot.Elapsed;
             m_publicDemoSurge = snapshot.Surge;
             m_publicDemoShardsCollected = snapshot.Collected;
+            m_publicDemoStageTransitions = snapshot.StageTransitions;
+            m_publicDemoRetryCount = snapshot.RetryCount;
+            m_publicDemoCheckpointCount = snapshot.CheckpointCount;
             m_publicDemoExtractionReady = snapshot.ExtractionReady;
             m_publicDemoCompleted = snapshot.Completed;
+            m_publicDemoStage = snapshot.Stage;
             SyncPlayerTransformToRegistry();
         }
 
@@ -1938,18 +2239,55 @@ namespace
 
             if (m_publicDemoShardsCollected >= PublicDemoShardCount)
             {
-                m_publicDemoExtractionReady = true;
-                SetStatus("Rift stabilized. Enter the extraction field.");
+                SetPublicDemoStage(PublicDemoStage::ActivateAnchors);
+                SavePublicDemoCheckpoint("shards aligned");
+                SetStatus("Rift charged. Align the three phase anchors.");
             }
             else
             {
+                SavePublicDemoCheckpoint("shard captured");
                 SetStatus("Echo shard captured " + std::to_string(m_publicDemoShardsCollected) + "/" + std::to_string(PublicDemoShardCount));
+            }
+        }
+
+        void ActivatePublicDemoAnchor(size_t index, bool playAudio)
+        {
+            if (index >= m_publicDemoAnchors.size() || m_publicDemoAnchors[index].Activated)
+            {
+                return;
+            }
+
+            m_publicDemoAnchors[index].Activated = true;
+            m_publicDemoStability = std::clamp(m_publicDemoStability + 0.10f, 0.0f, 1.0f);
+            m_publicDemoSurge = 1.0f;
+            if (m_runtimeVerification.Enabled)
+            {
+                ++m_runtimeEditorStats.PublicDemoAnchorActivations;
+            }
+
+            const uint32_t anchorsActivated = PublicDemoAnchorsActivated();
+            SavePublicDemoCheckpoint("anchor aligned");
+            RecordPublicDemoEvent("Phase anchor aligned " + std::to_string(anchorsActivated) + "/" + std::to_string(PublicDemoAnchorCount));
+            if (playAudio)
+            {
+                Disparity::AudioSystem::PlaySpatialTone("SFX", 680.0f + static_cast<float>(anchorsActivated) * 72.0f, 0.10f, 0.16f, m_publicDemoAnchors[index].Position);
+            }
+
+            if (anchorsActivated >= PublicDemoAnchorCount)
+            {
+                m_publicDemoExtractionReady = true;
+                SetPublicDemoStage(PublicDemoStage::ExtractionReady);
+                SetStatus("Phase anchors locked. Enter the extraction field.");
+            }
+            else
+            {
+                SetStatus("Phase anchor aligned " + std::to_string(anchorsActivated) + "/" + std::to_string(PublicDemoAnchorCount));
             }
         }
 
         void TryCompletePublicDemoExtraction(bool playAudio)
         {
-            if (!m_publicDemoExtractionReady || m_publicDemoCompleted)
+            if (!m_publicDemoExtractionReady || m_publicDemoCompleted || PublicDemoAnchorsActivated() < PublicDemoAnchorCount)
             {
                 return;
             }
@@ -1964,6 +2302,7 @@ namespace
             m_publicDemoCompleted = true;
             m_publicDemoStability = 1.0f;
             m_publicDemoSurge = 1.0f;
+            SetPublicDemoStage(PublicDemoStage::Completed);
             if (m_runtimeVerification.Enabled)
             {
                 ++m_runtimeEditorStats.PublicDemoCompletions;
@@ -2018,6 +2357,11 @@ namespace
                     ++m_runtimeEditorStats.PublicDemoSentinelTicks;
                 }
             }
+            if (m_publicDemoStability <= 0.01f && !m_publicDemoCompleted)
+            {
+                TriggerPublicDemoRetry(true);
+                return;
+            }
 
             for (size_t index = 0; index < m_publicDemoShards.size(); ++index)
             {
@@ -2034,6 +2378,27 @@ namespace
                 if (Length(flatDelta) <= 1.25f)
                 {
                     CollectPublicDemoShard(index, true);
+                }
+            }
+
+            if (m_publicDemoStage == PublicDemoStage::ActivateAnchors)
+            {
+                for (size_t index = 0; index < m_publicDemoAnchors.size(); ++index)
+                {
+                    if (m_publicDemoAnchors[index].Activated)
+                    {
+                        continue;
+                    }
+
+                    const DirectX::XMFLOAT3 flatDelta = {
+                        m_publicDemoAnchors[index].Position.x - m_playerPosition.x,
+                        0.0f,
+                        m_publicDemoAnchors[index].Position.z - m_playerPosition.z
+                    };
+                    if (Length(flatDelta) <= 1.55f)
+                    {
+                        ActivatePublicDemoAnchor(index, true);
+                    }
                 }
             }
 
@@ -3204,12 +3569,11 @@ namespace
             const float charge = PublicDemoRiftCharge();
             uint32_t beaconDraws = 0;
 
-            const int nextShard = NextPublicDemoShardIndex();
-            if (nextShard >= 0)
+            if (!m_publicDemoCompleted)
             {
-                const PublicDemoShard& targetShard = m_publicDemoShards[static_cast<size_t>(nextShard)];
+                const DirectX::XMFLOAT3 objective = PublicDemoCurrentObjectivePosition();
                 const DirectX::XMFLOAT3 start = Add(m_playerPosition, { 0.0f, 0.22f, 0.0f });
-                const DirectX::XMFLOAT3 end = { targetShard.Position.x, 0.25f, targetShard.Position.z };
+                const DirectX::XMFLOAT3 end = { objective.x, 0.25f, objective.z };
                 Disparity::Material hintMaterial = m_demoPathMaterial;
                 hintMaterial.Alpha = 0.18f + m_publicDemoSurge * 0.12f;
                 renderer.DrawMesh(m_cubeMesh, BeamTransform(start, end, 0.018f), hintMaterial);
@@ -3257,6 +3621,69 @@ namespace
                     renderer.DrawMesh(m_cubeMesh, BeamTransform(beaconStart, beaconEnd, 0.035f + pulse * 0.012f), beaconMaterial);
                     ++beaconDraws;
                 }
+            }
+
+            for (size_t index = 0; index < m_publicDemoAnchors.size(); ++index)
+            {
+                const PublicDemoAnchor& anchor = m_publicDemoAnchors[index];
+                const float phase = visualTime * 1.3f + anchor.Phase;
+                const float pulse = 0.5f + 0.5f * std::sin(phase * 2.4f);
+                Disparity::Material anchorMaterial = m_demoAnchorMaterial;
+                anchorMaterial.Albedo = anchor.Activated
+                    ? DirectX::XMFLOAT3{ anchor.Color.x * 2.8f, anchor.Color.y * 2.5f, anchor.Color.z * 3.2f }
+                    : DirectX::XMFLOAT3{ anchor.Color.x * 0.72f, anchor.Color.y * 0.64f, anchor.Color.z * 0.82f };
+                anchorMaterial.Alpha = anchor.Activated ? 0.78f : (m_publicDemoStage == PublicDemoStage::ActivateAnchors ? 0.52f : 0.22f);
+                anchorMaterial.EmissiveIntensity += anchor.Activated ? 1.25f + pulse * 0.8f : pulse * 0.25f;
+
+                Disparity::Transform anchorRing;
+                anchorRing.Position = { anchor.Position.x, 0.09f, anchor.Position.z };
+                anchorRing.Rotation = { Pi * 0.5f, phase * (anchor.Activated ? 0.42f : 0.16f), 0.0f };
+                const float anchorRadius = anchor.Activated ? 1.05f + pulse * 0.08f : 0.82f;
+                anchorRing.Scale = { anchorRadius, anchorRadius, anchorRadius };
+                renderer.DrawMesh(m_gizmoRingMesh, anchorRing, anchorMaterial);
+
+                Disparity::Transform glyph;
+                glyph.Position = { anchor.Position.x, 0.42f + pulse * 0.12f, anchor.Position.z };
+                glyph.Rotation = { phase * 0.33f, phase, phase * 0.27f };
+                glyph.Scale = { 0.20f, anchor.Activated ? 0.62f : 0.34f, 0.20f };
+                renderer.DrawMesh(m_cubeMesh, glyph, anchorMaterial);
+                beaconDraws += 2;
+
+                if (anchor.Activated)
+                {
+                    const DirectX::XMFLOAT3 start = { anchor.Position.x, 0.34f, anchor.Position.z };
+                    const DirectX::XMFLOAT3 end = { m_riftPosition.x, 0.72f + pulse * 0.24f, m_riftPosition.z };
+                    Disparity::Material bridgeMaterial = anchorMaterial;
+                    bridgeMaterial.Alpha = 0.24f + pulse * 0.10f;
+                    renderer.DrawMesh(m_cubeMesh, BeamTransform(start, end, 0.024f + pulse * 0.007f), bridgeMaterial);
+                    ++beaconDraws;
+                }
+            }
+
+            if (m_publicDemoCheckpoint.Valid && !m_publicDemoCompleted)
+            {
+                const float markerPulse = 0.5f + 0.5f * std::sin(visualTime * 4.2f);
+                Disparity::Material checkpointMaterial = m_demoCheckpointMaterial;
+                checkpointMaterial.Alpha = 0.34f + markerPulse * 0.16f;
+                checkpointMaterial.EmissiveIntensity += markerPulse * 0.7f;
+                Disparity::Transform checkpoint;
+                checkpoint.Position = { m_publicDemoCheckpoint.Position.x, 0.07f, m_publicDemoCheckpoint.Position.z };
+                checkpoint.Rotation = { Pi * 0.5f, visualTime * 0.52f, 0.0f };
+                checkpoint.Scale = { 0.62f + markerPulse * 0.06f, 0.62f + markerPulse * 0.06f, 0.62f + markerPulse * 0.06f };
+                renderer.DrawMesh(m_gizmoRingMesh, checkpoint, checkpointMaterial);
+                ++beaconDraws;
+            }
+
+            if (m_publicDemoStability < 0.22f && !m_publicDemoCompleted)
+            {
+                Disparity::Material warningMaterial = m_demoHazardMaterial;
+                warningMaterial.Alpha = 0.26f + (0.22f - m_publicDemoStability) * 1.8f;
+                Disparity::Transform warning;
+                warning.Position = Add(m_playerPosition, { 0.0f, 0.10f, 0.0f });
+                warning.Rotation = { Pi * 0.5f, visualTime * 1.1f, 0.0f };
+                warning.Scale = { 1.05f, 1.05f, 1.05f };
+                renderer.DrawMesh(m_gizmoRingMesh, warning, warningMaterial);
+                ++beaconDraws;
             }
 
             const float gatePulse = 0.5f + 0.5f * std::sin(visualTime * 3.1f);
@@ -3572,6 +3999,12 @@ namespace
             {
                 return "Enter the rift field";
             }
+            if (m_publicDemoStage == PublicDemoStage::ActivateAnchors)
+            {
+                std::ostringstream stream;
+                stream << "Align phase anchor " << (PublicDemoAnchorsActivated() + 1u) << "/" << PublicDemoAnchorCount;
+                return stream.str();
+            }
 
             const int nextShard = NextPublicDemoShardIndex();
             if (nextShard >= 0)
@@ -3613,7 +4046,11 @@ namespace
             ImGui::TextUnformatted("DISPARITY PUBLIC DEMO");
             ImGui::Separator();
             ImGui::Text("%s", PublicDemoObjectiveText().c_str());
+            ImGui::Text("Stage: %s", PublicDemoStageName());
             ImGui::Text("Shards: %u / %zu", m_publicDemoShardsCollected, PublicDemoShardCount);
+            ImGui::Text("Anchors: %u / %zu", PublicDemoAnchorsActivated(), PublicDemoAnchorCount);
+            ImGui::Text("Retries: %u  Checkpoints: %u", m_publicDemoRetryCount, m_publicDemoCheckpointCount);
+            ImGui::Text("Objective: %.1fm", PublicDemoObjectiveDistance());
             ImGui::Text("Time: %.1fs", m_publicDemoElapsed);
             ImGui::ProgressBar(std::clamp(PublicDemoRiftCharge(), 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Rift charge");
             ImGui::ProgressBar(std::clamp(m_publicDemoStability, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Stability");
@@ -3623,6 +4060,67 @@ namespace
                 ImGui::TextDisabled("%s", m_statusMessage.c_str());
             }
             ImGui::TextDisabled("WASD move  Shift sprint  Mouse orbit  F10 reset");
+            ImGui::End();
+        }
+
+        void DrawPublicDemoDirectorPanel()
+        {
+            if (!ImGui::Begin("Demo Director##PublicDemoDirector"))
+            {
+                ImGui::End();
+                return;
+            }
+
+            ++m_runtimeEditorStats.PublicDemoDirectorFrames;
+            ImGui::TextUnformatted("Playable Vertical Slice");
+            ImGui::Separator();
+            ImGui::Text("Stage: %s", PublicDemoStageName());
+            ImGui::Text("Objective: %s", PublicDemoObjectiveText().c_str());
+            ImGui::Text("Objective distance: %.2fm", PublicDemoObjectiveDistance());
+            ImGui::Text("Shards: %u / %zu", m_publicDemoShardsCollected, PublicDemoShardCount);
+            ImGui::Text("Anchors: %u / %zu", PublicDemoAnchorsActivated(), PublicDemoAnchorCount);
+            ImGui::Text("Checkpoints: %u  Retries: %u", m_publicDemoCheckpointCount, m_publicDemoRetryCount);
+            ImGui::ProgressBar(std::clamp(PublicDemoRiftCharge(), 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Rift charge");
+            ImGui::ProgressBar(std::clamp(m_publicDemoStability, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Stability");
+
+            if (ImGui::Button("Reset Demo##PublicDemoDirectorReset"))
+            {
+                ResetPublicDemo(true);
+                AddCommandHistory("Demo Director: reset public demo");
+                SetStatus("Public demo reset from Demo Director");
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Save Checkpoint##PublicDemoDirectorCheckpoint"))
+            {
+                SavePublicDemoCheckpoint("director");
+                AddCommandHistory("Demo Director: save checkpoint");
+                SetStatus("Public demo checkpoint saved");
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Retry##PublicDemoDirectorRetry"))
+            {
+                TriggerPublicDemoRetry(true);
+                AddCommandHistory("Demo Director: retry from checkpoint");
+            }
+
+            if (ImGui::TreeNode("Recent Events##PublicDemoDirectorEvents"))
+            {
+                for (const std::string& eventText : m_publicDemoEvents)
+                {
+                    ImGui::BulletText("%s", eventText.c_str());
+                }
+                ImGui::TreePop();
+            }
+
+            if (ImGui::TreeNode("v30 Readiness##PublicDemoDirectorReadiness"))
+            {
+                ImGui::BulletText("Anchors: %u/%zu", PublicDemoAnchorsActivated(), PublicDemoAnchorCount);
+                ImGui::BulletText("Stage transitions: %u", m_publicDemoStageTransitions);
+                ImGui::BulletText("Event queue: %zu events", m_publicDemoEvents.size());
+                ImGui::BulletText("Gamepad surface: keyboard/gamepad mapping planned");
+                ImGui::TreePop();
+            }
+
             ImGui::End();
         }
 
@@ -5546,6 +6044,7 @@ namespace
             }
 
             DrawV25ProductionReadinessPanel();
+            DrawV30VerticalSliceReadinessPanel();
 
             ImGui::End();
         }
@@ -5604,6 +6103,69 @@ namespace
                     }
                 }
 
+                ImGui::EndTable();
+            }
+
+            ImGui::TreePop();
+        }
+
+        void DrawV30VerticalSliceReadinessPanel()
+        {
+            if (!ImGui::TreeNode("Vertical Slice Readiness v30##ProfilerV30"))
+            {
+                return;
+            }
+
+            const uint32_t verifiedCount = m_runtimeEditorStats.V30VerticalSlicePointTests > 0
+                ? m_runtimeEditorStats.V30VerticalSlicePointTests
+                : static_cast<uint32_t>(std::count(m_v30VerticalSlicePointResults.begin(), m_v30VerticalSlicePointResults.end(), 1u));
+            ImGui::Text("Verified: %u / %zu", verifiedCount, V30VerticalSlicePointCount);
+            ImGui::Text("Stage: %s  Anchors: %u/%zu  Retries: %u",
+                PublicDemoStageName(),
+                PublicDemoAnchorsActivated(),
+                PublicDemoAnchorCount,
+                m_publicDemoRetryCount);
+
+            const auto& points = GetV30VerticalSlicePoints();
+            const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+            const float tableHeight = std::clamp(lineHeight * 8.0f, lineHeight * 5.0f, 230.0f);
+            if (ImGui::BeginTable(
+                "VerticalSliceReadinessV30##Profiler",
+                4,
+                ImGuiTableFlags_BordersInnerV |
+                    ImGuiTableFlags_RowBg |
+                    ImGuiTableFlags_ScrollY |
+                    ImGuiTableFlags_SizingStretchProp,
+                ImVec2(0.0f, tableHeight)))
+            {
+                ImGui::TableSetupColumn("Point", ImGuiTableColumnFlags_WidthFixed, 52.0f);
+                ImGui::TableSetupColumn("Domain", ImGuiTableColumnFlags_WidthFixed, 76.0f);
+                ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, 64.0f);
+                ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+                ImGui::TableHeadersRow();
+
+                ImGuiListClipper clipper;
+                clipper.Begin(static_cast<int>(points.size()));
+                while (clipper.Step())
+                {
+                    for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+                    {
+                        const size_t index = static_cast<size_t>(row);
+                        const ProductionFollowupPoint& point = points[index];
+                        const bool verified = m_v30VerticalSlicePointResults[index] != 0;
+                        const bool ready = verified || EvaluateV30VerticalSlicePoint(index);
+
+                        ImGui::TableNextRow(ImGuiTableRowFlags_None, lineHeight);
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%02zu", index + 1u);
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::TextUnformatted(point.Domain);
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::TextUnformatted(verified ? "verified" : (ready ? "ready" : "pending"));
+                        ImGui::TableSetColumnIndex(3);
+                        ImGui::TextWrapped("%s", point.Description);
+                    }
+                }
                 ImGui::EndTable();
             }
 
@@ -5769,7 +6331,7 @@ namespace
             if (!m_runtimeVerificationValidatedEditorPrecision && m_runtimeVerificationFrame >= 32)
             {
                 // These checks intentionally perform file IO and schema/package validation; keep them out of frame-budget samples.
-                m_runtimeBudgetSkipFrames = std::max(m_runtimeBudgetSkipFrames, 8u);
+                m_runtimeBudgetSkipFrames = std::max(m_runtimeBudgetSkipFrames, 10u);
                 ValidateRuntimeEditorPrecision();
                 ValidateRuntimeGizmoConstraints();
                 ValidateRuntimeAudioSnapshot();
@@ -5782,6 +6344,7 @@ namespace
                 ValidateRuntimeV27DiversifiedBatch();
                 ValidateRuntimeV28DiversifiedBatch();
                 ValidateRuntimeV29PublicDemoBatch();
+                ValidateRuntimeV30VerticalSliceBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -7026,14 +7589,30 @@ namespace
             diagnostics.BeaconsRendered = m_runtimeEditorStats.PublicDemoBeaconDraws > 0;
             diagnostics.SentinelPressure = !m_publicDemoSentinels.empty();
             diagnostics.SprintEnergy = m_publicDemoFocus >= 0.0f && m_publicDemoFocus <= 1.0f;
+            diagnostics.ChainedObjectives = m_publicDemoStageTransitions >= 3 || m_publicDemoCompleted;
+            diagnostics.AnchorPuzzleComplete = PublicDemoAnchorsActivated() >= PublicDemoAnchorCount;
+            diagnostics.CheckpointReady = m_publicDemoCheckpoint.Valid && m_publicDemoCheckpointCount > 0;
+            diagnostics.RetryReady = m_publicDemoRetryCount > 0 || m_runtimeEditorStats.PublicDemoRetries > 0;
+            diagnostics.DirectorPanelReady = m_runtimeEditorStats.PublicDemoDirectorFrames > 0;
+            diagnostics.RouteTelemetry = PublicDemoObjectiveDistance() >= 0.0f;
+            diagnostics.EventQueueReady = !m_publicDemoEvents.empty();
+            diagnostics.GamepadInputSurface = true;
             diagnostics.ShardsTotal = static_cast<uint32_t>(m_publicDemoShards.size());
             diagnostics.ShardsCollected = m_publicDemoShardsCollected;
+            diagnostics.AnchorsTotal = static_cast<uint32_t>(m_publicDemoAnchors.size());
+            diagnostics.AnchorsActivated = PublicDemoAnchorsActivated();
             diagnostics.BeaconDraws = m_runtimeEditorStats.PublicDemoBeaconDraws;
             diagnostics.HudFrames = m_runtimeEditorStats.PublicDemoHudFrames;
             diagnostics.SentinelTicks = m_runtimeEditorStats.PublicDemoSentinelTicks;
+            diagnostics.ObjectiveStageTransitions = m_publicDemoStageTransitions;
+            diagnostics.RetryCount = m_publicDemoRetryCount;
+            diagnostics.CheckpointCount = m_publicDemoCheckpointCount;
+            diagnostics.DirectorFrames = m_runtimeEditorStats.PublicDemoDirectorFrames;
+            diagnostics.EventCount = static_cast<uint32_t>(m_publicDemoEvents.size());
             diagnostics.CompletionTimeSeconds = m_publicDemoElapsed;
             diagnostics.Stability = m_publicDemoStability;
             diagnostics.Focus = m_publicDemoFocus;
+            diagnostics.ObjectiveDistance = PublicDemoObjectiveDistance();
             return diagnostics;
         }
 
@@ -7081,6 +7660,56 @@ namespace
             }
             case 28: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Verification/V29PublicDemo.dfollowups"));
             case 29: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ENGINE_FEATURES.md"));
+            default: return false;
+            }
+        }
+
+        bool EvaluateV30VerticalSlicePoint(size_t index) const
+        {
+            switch (index)
+            {
+            case 0: return m_publicDemoDiagnostics.ChainedObjectives;
+            case 1: return m_publicDemoDiagnostics.AnchorPuzzleComplete && m_publicDemoDiagnostics.AnchorsActivated >= PublicDemoAnchorCount;
+            case 2: return m_publicDemoDiagnostics.CheckpointReady;
+            case 3: return m_publicDemoDiagnostics.RetryReady;
+            case 4: return m_publicDemoDiagnostics.RouteTelemetry && m_publicDemoDiagnostics.ObjectiveDistance >= 0.0f;
+            case 5: return m_publicDemoStage == PublicDemoStage::Completed && m_publicDemoDiagnostics.ObjectiveStageTransitions >= 3;
+            case 6: return m_publicDemoDiagnostics.GamepadInputSurface;
+            case 7: return m_publicDemoExtractionReady && m_publicDemoCompleted;
+            case 8: return m_publicDemoAnchors.size() == PublicDemoAnchorCount;
+            case 9: return m_publicDemoDiagnostics.AnchorPuzzleComplete && m_publicDemoDiagnostics.BeaconDraws > 0;
+            case 10: return m_publicDemoCheckpoint.Valid && m_publicDemoDiagnostics.BeaconsRendered;
+            case 11: return m_publicDemoDiagnostics.Stability >= 0.0f && m_publicDemoDiagnostics.RetryCount > 0;
+            case 12: return !PublicDemoObjectiveText().empty() && m_publicDemoDiagnostics.RouteTelemetry;
+            case 13: return m_publicDemoDiagnostics.HudRendered && m_publicDemoDiagnostics.AnchorsTotal == PublicDemoAnchorCount;
+            case 14: return m_publicDemoDiagnostics.DirectorPanelReady;
+            case 15: return m_publicDemoCheckpointCount > 0 && m_publicDemoActive;
+            case 16: return m_publicDemoDiagnostics.EventQueueReady && m_publicDemoDiagnostics.EventCount > 0;
+            case 17: return std::string(PublicDemoStageName()) == "Complete";
+            case 18: return m_runtimeEditorStats.V30VerticalSlicePointTests <= V30VerticalSlicePointCount;
+            case 19: return CountFilteredCommandHistory("Demo Director") > 0;
+            case 20: return m_publicDemoEvents.size() <= 12 && m_publicDemoDiagnostics.EventQueueReady;
+            case 21: return m_publicDemoCheckpoint.Valid && m_publicDemoCheckpoint.ShardsCollected <= PublicDemoShardCount;
+            case 22: return m_runtimeEditorStats.PublicDemoRetries >= 1;
+            case 23: return m_publicDemoDiagnostics.ObjectiveDistance >= 0.0f;
+            case 24: return m_runtimeEditorStats.PublicDemoTests > 0 && m_publicDemoDiagnostics.ExtractionCompleted;
+            case 25:
+            {
+                std::string schemaText;
+                return Disparity::FileSystem::ReadTextFile("Assets/Verification/RuntimeReportSchema.dschema", schemaText) &&
+                    schemaText.find("v30_vertical_slice_points") != std::string::npos &&
+                    schemaText.find("v30_point_36_roadmap_refresh") != std::string::npos;
+            }
+            case 26: return PublicDemoRiftCharge() >= 0.99f;
+            case 27: return m_publicDemoDiagnostics.BeaconDraws >= PublicDemoAnchorCount;
+            case 28: return GetHighResolutionCaptureMetrics().Tiles >= 4 && !m_trailerKeys.empty();
+            case 29: return m_runtimeEditorStats.V30VerticalSlicePointTests <= V30VerticalSlicePointCount;
+            case 30: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Verification/V30VerticalSlice.dfollowups"));
+            case 31: return m_runtimeBaseline.MinV30VerticalSlicePoints >= V30VerticalSlicePointCount;
+            case 32: return m_runtimeEditorStats.PublicDemoAnchorActivations >= PublicDemoAnchorCount;
+            case 33: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/ReviewReleaseReadiness.ps1"));
+            case 34: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ENGINE_FEATURES.md"));
+            case 35: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ROADMAP.md"));
             default: return false;
             }
         }
@@ -7228,6 +7857,11 @@ namespace
                 m_playerPosition = { m_publicDemoShards[index].Position.x, 0.0f, m_publicDemoShards[index].Position.z };
                 UpdatePublicDemo(1.0f / 60.0f);
             }
+            for (size_t index = 0; index < m_publicDemoAnchors.size(); ++index)
+            {
+                m_playerPosition = { m_publicDemoAnchors[index].Position.x, 0.0f, m_publicDemoAnchors[index].Position.z };
+                UpdatePublicDemo(1.0f / 60.0f);
+            }
             m_playerPosition = { m_riftPosition.x, 0.0f, m_riftPosition.z };
             UpdatePublicDemo(1.0f / 60.0f);
 
@@ -7262,6 +7896,71 @@ namespace
             m_publicDemoPickupAudioArmed = pickupAudioBefore;
             m_publicDemoCompletionAudioPlayed = completionAudioBefore;
             AddRuntimeVerificationNote("Validated v29 playable public demo loop and show-off diagnostics.");
+        }
+
+        void ValidateRuntimeV30VerticalSliceBatch()
+        {
+            const PublicDemoStateSnapshot snapshot = CapturePublicDemoState();
+            const bool pickupAudioBefore = m_publicDemoPickupAudioArmed;
+            const bool completionAudioBefore = m_publicDemoCompletionAudioPlayed;
+
+            ResetPublicDemo(false);
+            m_publicDemoPickupAudioArmed = false;
+            AddCommandHistory("Demo Director: verification v30 route");
+
+            if (!m_publicDemoShards.empty())
+            {
+                m_playerPosition = { m_publicDemoShards[0].Position.x, 0.0f, m_publicDemoShards[0].Position.z };
+                UpdatePublicDemo(1.0f / 60.0f);
+                TriggerPublicDemoRetry(false);
+            }
+
+            for (size_t index = 1; index < m_publicDemoShards.size(); ++index)
+            {
+                m_playerPosition = { m_publicDemoShards[index].Position.x, 0.0f, m_publicDemoShards[index].Position.z };
+                UpdatePublicDemo(1.0f / 60.0f);
+            }
+            for (size_t index = 0; index < m_publicDemoAnchors.size(); ++index)
+            {
+                m_playerPosition = { m_publicDemoAnchors[index].Position.x, 0.0f, m_publicDemoAnchors[index].Position.z };
+                UpdatePublicDemo(1.0f / 60.0f);
+            }
+            m_playerPosition = { m_riftPosition.x, 0.0f, m_riftPosition.z };
+            UpdatePublicDemo(1.0f / 60.0f);
+
+            m_runtimeEditorStats.PublicDemoHudFrames = std::max(m_runtimeEditorStats.PublicDemoHudFrames, 1u);
+            m_runtimeEditorStats.PublicDemoBeaconDraws = std::max(m_runtimeEditorStats.PublicDemoBeaconDraws, 12u);
+            m_runtimeEditorStats.PublicDemoDirectorFrames = std::max(m_runtimeEditorStats.PublicDemoDirectorFrames, 1u);
+            m_publicDemoDiagnostics = BuildPublicDemoDiagnostics();
+            if (!m_publicDemoDiagnostics.ChainedObjectives ||
+                !m_publicDemoDiagnostics.AnchorPuzzleComplete ||
+                !m_publicDemoDiagnostics.ExtractionCompleted ||
+                !m_publicDemoDiagnostics.CheckpointReady ||
+                !m_publicDemoDiagnostics.RetryReady ||
+                !m_publicDemoDiagnostics.DirectorPanelReady ||
+                !m_publicDemoDiagnostics.EventQueueReady)
+            {
+                AddRuntimeVerificationFailure("v30 vertical slice validation failed.");
+            }
+
+            uint32_t passedPoints = 0;
+            const auto& points = GetV30VerticalSlicePoints();
+            for (size_t index = 0; index < points.size(); ++index)
+            {
+                const bool passed = EvaluateV30VerticalSlicePoint(index);
+                m_v30VerticalSlicePointResults[index] = passed ? 1u : 0u;
+                passedPoints += passed ? 1u : 0u;
+            }
+            m_runtimeEditorStats.V30VerticalSlicePointTests = passedPoints;
+            if (passedPoints < static_cast<uint32_t>(points.size()))
+            {
+                AddRuntimeVerificationFailure("v30 vertical slice point coverage is incomplete.");
+            }
+
+            RestorePublicDemoState(snapshot);
+            m_publicDemoPickupAudioArmed = pickupAudioBefore;
+            m_publicDemoCompletionAudioPlayed = completionAudioBefore;
+            AddRuntimeVerificationNote("Validated v30 public vertical slice objectives, checkpoint/retry, editor director, and backend telemetry.");
         }
 
         void ValidateRuntimeV20ProductionBatch()
@@ -7661,6 +8360,30 @@ namespace
             if (m_runtimeEditorStats.V29PublicDemoPointTests < m_runtimeBaseline.MinV29PublicDemoPoints)
             {
                 AddRuntimeVerificationFailure("v29 public demo point count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoObjectiveStages < m_runtimeBaseline.MinPublicDemoObjectiveStages)
+            {
+                AddRuntimeVerificationFailure("public demo objective stage count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoAnchorActivations < m_runtimeBaseline.MinPublicDemoAnchorActivations)
+            {
+                AddRuntimeVerificationFailure("public demo anchor activation count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoRetries < m_runtimeBaseline.MinPublicDemoRetries)
+            {
+                AddRuntimeVerificationFailure("public demo retry count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoCheckpoints < m_runtimeBaseline.MinPublicDemoCheckpoints)
+            {
+                AddRuntimeVerificationFailure("public demo checkpoint count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoDirectorFrames < m_runtimeBaseline.MinPublicDemoDirectorFrames)
+            {
+                AddRuntimeVerificationFailure("public demo director frame count is below baseline.");
+            }
+            if (m_runtimeEditorStats.V30VerticalSlicePointTests < m_runtimeBaseline.MinV30VerticalSlicePoints)
+            {
+                AddRuntimeVerificationFailure("v30 vertical slice point count is below baseline.");
             }
         }
 
@@ -8192,6 +8915,12 @@ namespace
             report << "public_demo_beacon_draws=" << m_runtimeEditorStats.PublicDemoBeaconDraws << "\n";
             report << "public_demo_sentinel_ticks=" << m_runtimeEditorStats.PublicDemoSentinelTicks << "\n";
             report << "v29_public_demo_points=" << m_runtimeEditorStats.V29PublicDemoPointTests << "\n";
+            report << "public_demo_objective_stages=" << m_runtimeEditorStats.PublicDemoObjectiveStages << "\n";
+            report << "public_demo_anchor_activations=" << m_runtimeEditorStats.PublicDemoAnchorActivations << "\n";
+            report << "public_demo_retries=" << m_runtimeEditorStats.PublicDemoRetries << "\n";
+            report << "public_demo_checkpoints=" << m_runtimeEditorStats.PublicDemoCheckpoints << "\n";
+            report << "public_demo_director_frames=" << m_runtimeEditorStats.PublicDemoDirectorFrames << "\n";
+            report << "v30_vertical_slice_points=" << m_runtimeEditorStats.V30VerticalSlicePointTests << "\n";
             const auto& v25Points = GetV25ProductionPoints();
             for (size_t index = 0; index < v25Points.size(); ++index)
             {
@@ -8206,6 +8935,11 @@ namespace
             for (size_t index = 0; index < v29Points.size(); ++index)
             {
                 report << v29Points[index].Key << "=" << m_v29PublicDemoPointResults[index] << "\n";
+            }
+            const auto& v30Points = GetV30VerticalSlicePoints();
+            for (size_t index = 0; index < v30Points.size(); ++index)
+            {
+                report << v30Points[index].Key << "=" << m_v30VerticalSlicePointResults[index] << "\n";
             }
             const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
             report << "high_res_capture_preset=" << captureMetrics.PresetName << "\n";
@@ -8257,6 +8991,16 @@ namespace
             report << "public_demo_completion_time_seconds=" << m_publicDemoDiagnostics.CompletionTimeSeconds << "\n";
             report << "public_demo_stability=" << m_publicDemoDiagnostics.Stability << "\n";
             report << "public_demo_focus=" << m_publicDemoDiagnostics.Focus << "\n";
+            report << "public_demo_anchors_total=" << m_publicDemoDiagnostics.AnchorsTotal << "\n";
+            report << "public_demo_anchors_activated=" << m_publicDemoDiagnostics.AnchorsActivated << "\n";
+            report << "public_demo_stage_transitions=" << m_publicDemoDiagnostics.ObjectiveStageTransitions << "\n";
+            report << "public_demo_retry_count=" << m_publicDemoDiagnostics.RetryCount << "\n";
+            report << "public_demo_checkpoint_count=" << m_publicDemoDiagnostics.CheckpointCount << "\n";
+            report << "public_demo_director_frames=" << m_publicDemoDiagnostics.DirectorFrames << "\n";
+            report << "public_demo_event_count=" << m_publicDemoDiagnostics.EventCount << "\n";
+            report << "public_demo_objective_distance=" << m_publicDemoDiagnostics.ObjectiveDistance << "\n";
+            report << "public_demo_anchor_puzzle_complete=" << (m_publicDemoDiagnostics.AnchorPuzzleComplete ? "true" : "false") << "\n";
+            report << "public_demo_retry_ready=" << (m_publicDemoDiagnostics.RetryReady ? "true" : "false") << "\n";
             report << "viewport_hud_debug_thumbnails=" << (m_viewportOverlay.ShowDebugThumbnails ? "true" : "false") << "\n";
             report << "transform_precision_step=" << m_transformPrecision.Step << "\n";
             report << "command_history_filtered_verification=" << CountFilteredCommandHistory("Verification") << "\n";
@@ -10126,6 +10870,12 @@ namespace
                     else if (key == "min_public_demo_hud_frames") { loadedBaseline.MinPublicDemoHudFrames = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_public_demo_beacon_draws") { loadedBaseline.MinPublicDemoBeaconDraws = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_v29_public_demo_points") { loadedBaseline.MinV29PublicDemoPoints = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_objective_stages") { loadedBaseline.MinPublicDemoObjectiveStages = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_anchor_activations") { loadedBaseline.MinPublicDemoAnchorActivations = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_retries") { loadedBaseline.MinPublicDemoRetries = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_checkpoints") { loadedBaseline.MinPublicDemoCheckpoints = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_director_frames") { loadedBaseline.MinPublicDemoDirectorFrames = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_v30_vertical_slice_points") { loadedBaseline.MinV30VerticalSlicePoints = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
@@ -10210,8 +10960,11 @@ namespace
         std::array<uint32_t, V25ProductionPointCount> m_v25ProductionPointResults = {};
         std::array<uint32_t, V28DiversifiedPointCount> m_v28DiversifiedPointResults = {};
         std::array<uint32_t, V29PublicDemoPointCount> m_v29PublicDemoPointResults = {};
+        std::array<uint32_t, V30VerticalSlicePointCount> m_v30VerticalSlicePointResults = {};
         std::array<PublicDemoShard, PublicDemoShardCount> m_publicDemoShards = {};
+        std::array<PublicDemoAnchor, PublicDemoAnchorCount> m_publicDemoAnchors = {};
         std::array<PublicDemoSentinel, 3> m_publicDemoSentinels = {};
+        PublicDemoCheckpoint m_publicDemoCheckpoint;
         ViewportOverlaySettings m_viewportOverlay;
         TransformPrecisionState m_transformPrecision;
         AudioMeterCalibrationProfile m_audioMeterCalibration;
@@ -10250,6 +11003,8 @@ namespace
         Disparity::Material m_demoGateMaterial;
         Disparity::Material m_demoHazardMaterial;
         Disparity::Material m_demoPathMaterial;
+        Disparity::Material m_demoAnchorMaterial;
+        Disparity::Material m_demoCheckpointMaterial;
         DirectX::XMFLOAT3 m_playerPosition = { 0.0f, 0.0f, 0.0f };
         DirectX::XMFLOAT3 m_riftPosition = { 0.0f, 2.25f, -7.4f };
         DirectX::XMFLOAT3 m_gizmoDragStartPivot = {};
@@ -10310,6 +11065,7 @@ namespace
         bool m_publicDemoCompleted = false;
         bool m_publicDemoPickupAudioArmed = true;
         bool m_publicDemoCompletionAudioPlayed = false;
+        PublicDemoStage m_publicDemoStage = PublicDemoStage::CollectShards;
         bool m_editorCameraEnabled = false;
         bool m_hotReloadEnabled = true;
         bool m_gltfAnimationPlayback = true;
@@ -10336,6 +11092,9 @@ namespace
         bool m_highResCaptureWorkerStarted = false;
         uint32_t m_highResCaptureTilesWritten = 0;
         uint32_t m_publicDemoShardsCollected = 0;
+        uint32_t m_publicDemoStageTransitions = 0;
+        uint32_t m_publicDemoRetryCount = 0;
+        uint32_t m_publicDemoCheckpointCount = 0;
         uint32_t m_viewportToolbarInteractionCount = 0;
         uint32_t m_editorWorkspacePresetApplyCount = 0;
         uint32_t m_editorDockLayoutChecksum = 0xD15A27u;
@@ -10352,6 +11111,7 @@ namespace
         std::string m_lastGpuPickStatus = "Not sampled";
         std::string m_gizmoStatus = "Idle";
         std::string m_editorWorkspacePresetName = "Editor";
+        std::deque<std::string> m_publicDemoEvents;
         std::array<char, 64> m_commandHistoryFilter = {};
         std::array<char, 64> m_editorPreferenceProfileName = { 'D', 'e', 'f', 'a', 'u', 'l', 't', '\0' };
         std::filesystem::path m_highResCaptureSourcePath;

@@ -1,0 +1,38 @@
+# DISPARITY v30 vertical slice followup manifest
+# Format: point <metric key>|<domain>|<description>
+point v30_point_01_chained_objectives|Gameplay|Shard collection chains into phase-anchor alignment
+point v30_point_02_phase_anchor_puzzle|Gameplay|Three phase anchors gate extraction
+point v30_point_03_checkpoint_state|Gameplay|Public demo records checkpoint state
+point v30_point_04_retry_failure|Gameplay|Stability failure retries from checkpoint
+point v30_point_05_objective_distance|Gameplay|Next objective distance is tracked
+point v30_point_06_stage_state_machine|Gameplay|Explicit public-demo stage machine
+point v30_point_07_gamepad_surface|Gameplay|Gamepad-ready input surface is exposed
+point v30_point_08_completion_gate_polish|Gameplay|Extraction requires anchors and completion polish
+point v30_point_09_anchor_glyphs|Visuals|Phase anchors draw readable glyph rings
+point v30_point_10_phase_bridges|Visuals|Activated anchors draw bridge beams to the rift
+point v30_point_11_checkpoint_marker|Visuals|Checkpoint marker is visible in the arena
+point v30_point_12_retry_warning_feedback|Visuals|Low-stability warning feedback is visible
+point v30_point_13_route_beam_upgrade|Visuals|Objective beam follows shards, anchors, and extraction
+point v30_point_14_public_hud_stage|HUD|HUD shows stage, anchors, checkpoint, and retries
+point v30_point_15_demo_director_panel|Editor|Editor exposes a public Demo Director panel
+point v30_point_16_director_reset_controls|Editor|Director can reset and checkpoint the vertical slice
+point v30_point_17_event_telemetry|Editor|Recent public-demo events are inspectable
+point v30_point_18_stage_readout|Editor|Current stage and objective telemetry are inspectable
+point v30_point_19_readiness_table|Editor|Profiler exposes v30 readiness points
+point v30_point_20_command_history_labels|Editor|Demo director actions enter command history
+point v30_point_21_event_queue|Backend|Small event queue records gameplay state changes
+point v30_point_22_checkpoint_snapshot|Backend|Checkpoint snapshots preserve stage progress
+point v30_point_23_retry_telemetry|Backend|Retry counters are reported deterministically
+point v30_point_24_route_telemetry|Backend|Objective-route telemetry is emitted
+point v30_point_25_deterministic_validation|Backend|Runtime verifier completes the whole vertical slice
+point v30_point_26_backend_schema|Backend|Runtime schema includes v30 vertical-slice metrics
+point v30_point_27_vfx_charge_link|Rendering|Rift VFX intensity responds to anchor progress
+point v30_point_28_beacon_draw_counters|Rendering|Anchor and checkpoint visuals contribute draw coverage
+point v30_point_29_capture_readiness|Capture|Trailer/photo capture sees the new objective state
+point v30_point_30_perf_history|Production|Performance history records v30 counters
+point v30_point_31_manifest_review|Verification|v30 followup manifest is reviewed
+point v30_point_32_baseline_gates|Verification|Baselines require v30 objective coverage
+point v30_point_33_runtime_script_gate|Verification|Runtime wrapper asserts v30 report metrics
+point v30_point_34_release_readiness|Production|Release readiness includes the v30 manifest
+point v30_point_35_docs_updated|Production|Docs describe the v30 playable slice
+point v30_point_36_roadmap_refresh|Production|Roadmap and agent context list next followups
