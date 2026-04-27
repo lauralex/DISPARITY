@@ -690,6 +690,7 @@ namespace
         {
             bool Loaded = false;
             bool GpuReady = false;
+            bool ReloadRollbackReady = false;
             uint32_t Meshes = 0;
             uint32_t Primitives = 0;
             uint32_t Materials = 0;
@@ -697,6 +698,7 @@ namespace
             uint32_t Animations = 0;
             uint32_t Skins = 0;
             uint32_t Dependencies = 0;
+            uint32_t DependencyInvalidationPreviewCount = 0;
             uint32_t GpuMeshResources = 0;
             uint32_t GpuMaterialResources = 0;
             uint32_t AnimationClips = 0;
@@ -718,6 +720,9 @@ namespace
             uint32_t DepthFadeParticles = 0;
             uint32_t GpuParticleDispatches = 0;
             uint32_t TemporalHistorySamples = 0;
+            uint32_t EmitterCount = 0;
+            uint32_t SortBuckets = 0;
+            uint32_t GpuBufferBytes = 0;
         };
 
         struct PpmImage
@@ -729,11 +734,26 @@ namespace
 
         struct HighResolutionCaptureMetrics
         {
+            std::string PresetName = "Trailer2x";
             uint32_t Scale = 2;
             uint32_t Tiles = 4;
             uint32_t MsaaSamples = 4;
             uint32_t ResolveSamples = 4;
             std::string ResolveFilter = "tent";
+            bool AsyncCompressionReady = true;
+            bool ExrOutputPlanned = true;
+        };
+
+        struct HighResolutionCapturePresetProfile
+        {
+            std::string Name = "Trailer2x";
+            uint32_t Scale = 2;
+            uint32_t Tiles = 4;
+            uint32_t MsaaSamples = 4;
+            uint32_t ResolveSamples = 4;
+            std::string ResolveFilter = "tent";
+            bool AsyncCompressionReady = true;
+            bool ExrOutputPlanned = true;
         };
 
         struct ViewportOverlaySettings
@@ -765,6 +785,18 @@ namespace
             uint32_t MaxRibbons = 96;
         };
 
+        struct RiftVfxEmitterProfile
+        {
+            bool SoftParticleDepthFade = true;
+            bool PerEmitterSorting = true;
+            bool GpuSimulationBuffers = true;
+            bool TemporalReprojection = true;
+            uint32_t EmitterCount = 5;
+            uint32_t SortBuckets = 6;
+            uint32_t GpuBufferBytesPerParticle = 64;
+            uint32_t GpuBufferBytesPerRibbon = 96;
+        };
+
         struct AudioMeterCalibrationProfile
         {
             float ReferencePeakDb = -12.0f;
@@ -788,6 +820,7 @@ namespace
             bool DockLayout = true;
             bool UserPreferencePath = true;
             std::filesystem::path PreferencePath = "Saved/Editor/editor_preferences.json";
+            std::filesystem::path ProfileDirectory = "Saved/Editor/Profiles";
         };
 
         struct ViewportToolbarProfile
@@ -958,6 +991,10 @@ namespace
             uint32_t MinV25ProductionPoints = static_cast<uint32_t>(V25ProductionPointCount);
             uint32_t MinEditorPreferencePersistenceTests = 1;
             uint32_t MinViewportToolbarTests = 1;
+            uint32_t MinEditorPreferenceProfileTests = 1;
+            uint32_t MinCapturePresetTests = 1;
+            uint32_t MinVfxEmitterProfileTests = 1;
+            uint32_t MinCookedDependencyPreviewTests = 1;
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -1097,6 +1134,10 @@ namespace
             uint32_t EditorPreferencePersistenceTests = 0;
             uint32_t EditorPreferenceSaveTests = 0;
             uint32_t ViewportToolbarTests = 0;
+            uint32_t EditorPreferenceProfileTests = 0;
+            uint32_t CapturePresetTests = 0;
+            uint32_t VfxEmitterProfileTests = 0;
+            uint32_t CookedDependencyPreviewTests = 0;
         };
 
         void InitializeMaterials()
@@ -2265,7 +2306,12 @@ namespace
                 static_cast<uint32_t>((m_riftParticles.size() + m_riftRibbons.size()) * 2u),
                 static_cast<uint32_t>(m_riftParticles.size()),
                 4u,
-                static_cast<uint32_t>(m_riftParticles.size() * 2u)
+                static_cast<uint32_t>(m_riftParticles.size() * 2u),
+                m_riftVfxEmitterProfile.EmitterCount,
+                m_riftVfxEmitterProfile.SortBuckets,
+                static_cast<uint32_t>(
+                    m_riftParticles.size() * m_riftVfxEmitterProfile.GpuBufferBytesPerParticle +
+                    m_riftRibbons.size() * m_riftVfxEmitterProfile.GpuBufferBytesPerRibbon)
             };
         }
 
@@ -2383,7 +2429,16 @@ namespace
 
         HighResolutionCaptureMetrics GetHighResolutionCaptureMetrics() const
         {
-            return {};
+            return {
+                m_highResolutionCapturePreset.Name,
+                m_highResolutionCapturePreset.Scale,
+                m_highResolutionCapturePreset.Tiles,
+                m_highResolutionCapturePreset.MsaaSamples,
+                m_highResolutionCapturePreset.ResolveSamples,
+                m_highResolutionCapturePreset.ResolveFilter,
+                m_highResolutionCapturePreset.AsyncCompressionReady,
+                m_highResolutionCapturePreset.ExrOutputPlanned
+            };
         }
 
         bool WriteSupersampledPpm(const PpmImage& image, const std::filesystem::path& path, const HighResolutionCaptureMetrics& metrics) const
@@ -2476,7 +2531,8 @@ namespace
 
             const HighResolutionCaptureMetrics metrics = GetHighResolutionCaptureMetrics();
             manifest << "{\n";
-            manifest << "  \"schema\": 2,\n";
+            manifest << "  \"schema\": 3,\n";
+            manifest << "  \"preset_name\": \"" << JsonEscape(metrics.PresetName) << "\",\n";
             manifest << "  \"graph_owned_offscreen\": true,\n";
             manifest << "  \"source\": \"" << m_highResCaptureSourcePath.generic_string() << "\",\n";
             manifest << "  \"output\": \"" << m_highResCaptureOutputPath.generic_string() << "\",\n";
@@ -2490,7 +2546,9 @@ namespace
             manifest << "  \"resolve\": \"" << metrics.ResolveFilter << "\",\n";
             manifest << "  \"resolve_samples\": " << metrics.ResolveSamples << ",\n";
             manifest << "  \"tile_jitter\": [[-0.25,-0.25],[0.25,-0.25],[-0.25,0.25],[0.25,0.25]],\n";
-            manifest << "  \"async_compression_worker\": true,\n";
+            manifest << "  \"async_compression_worker\": " << (metrics.AsyncCompressionReady ? "true" : "false") << ",\n";
+            manifest << "  \"async_compression_ready\": " << (metrics.AsyncCompressionReady ? "true" : "false") << ",\n";
+            manifest << "  \"exr_output_planned\": " << (metrics.ExrOutputPlanned ? "true" : "false") << ",\n";
             manifest << "  \"worker\": \"async\"\n";
             manifest << "}\n";
             return manifest.good();
@@ -2952,6 +3010,45 @@ namespace
             std::copy_n(text.data(), copyLength, m_commandHistoryFilter.data());
         }
 
+        std::string EditorPreferenceProfileNameText() const
+        {
+            size_t length = 0;
+            while (length < m_editorPreferenceProfileName.size() && m_editorPreferenceProfileName[length] != '\0')
+            {
+                ++length;
+            }
+            return std::string(m_editorPreferenceProfileName.data(), length);
+        }
+
+        void SetEditorPreferenceProfileNameText(std::string_view text)
+        {
+            m_editorPreferenceProfileName.fill('\0');
+            const size_t copyLength = std::min(text.size(), m_editorPreferenceProfileName.size() - 1u);
+            std::copy_n(text.data(), copyLength, m_editorPreferenceProfileName.data());
+        }
+
+        std::string SanitizedEditorPreferenceProfileName(std::string_view name) const
+        {
+            std::string sanitized;
+            sanitized.reserve(name.size());
+            for (const char character : name)
+            {
+                const unsigned char value = static_cast<unsigned char>(character);
+                sanitized.push_back(std::isalnum(value) || character == '_' || character == '-' || character == '.'
+                    ? character
+                    : '_');
+            }
+
+            sanitized = Trim(sanitized);
+            return sanitized.empty() ? "Default" : sanitized;
+        }
+
+        std::filesystem::path EditorPreferenceProfilePath(std::string_view name) const
+        {
+            return m_editorPreferenceProfile.ProfileDirectory /
+                (SanitizedEditorPreferenceProfileName(name) + ".json");
+        }
+
         std::string JsonEscape(std::string_view text) const
         {
             std::string escaped;
@@ -3013,6 +3110,7 @@ namespace
             stream << "  \"viewport_hud_debug_thumbnails\": " << (m_viewportOverlay.ShowDebugThumbnails ? "true" : "false") << ",\n";
             stream << "  \"viewport_toolbar_visible\": " << (m_viewportToolbarVisible ? "true" : "false") << ",\n";
             stream << "  \"editor_camera_enabled\": " << (m_editorCameraEnabled ? "true" : "false") << ",\n";
+            stream << "  \"profile_name\": \"" << JsonEscape(EditorPreferenceProfileNameText()) << "\",\n";
             stream << "  \"transform_step\": " << std::fixed << std::setprecision(3) << m_transformPrecision.Step << ",\n";
             stream << "  \"transform_pivot\": " << m_transformPrecision.PivotMode << ",\n";
             stream << "  \"transform_orientation\": " << m_transformPrecision.OrientationMode << ",\n";
@@ -3043,11 +3141,39 @@ namespace
             m_viewportOverlay.ShowDebugThumbnails = ReadPreferenceBool(root, "viewport_hud_debug_thumbnails", m_viewportOverlay.ShowDebugThumbnails);
             m_viewportToolbarVisible = ReadPreferenceBool(root, "viewport_toolbar_visible", m_viewportToolbarVisible);
             m_editorCameraEnabled = ReadPreferenceBool(root, "editor_camera_enabled", m_editorCameraEnabled);
+            SetEditorPreferenceProfileNameText(ReadPreferenceString(root, "profile_name", EditorPreferenceProfileNameText()));
             m_transformPrecision.Step = std::clamp(ReadPreferenceFloat(root, "transform_step", m_transformPrecision.Step), 0.01f, 2.0f);
             m_transformPrecision.PivotMode = std::clamp(ReadPreferenceInt(root, "transform_pivot", m_transformPrecision.PivotMode), 0, 2);
             m_transformPrecision.OrientationMode = std::clamp(ReadPreferenceInt(root, "transform_orientation", m_transformPrecision.OrientationMode), 0, 2);
             SetCommandHistoryFilterText(ReadPreferenceString(root, "command_history_filter", CommandHistoryFilterText()));
             return true;
+        }
+
+        bool SaveEditorPreferenceProfile(std::string_view name)
+        {
+            const bool saved = SaveEditorPreferencesToPath(EditorPreferenceProfilePath(name));
+            m_editorPreferencesSaved = m_editorPreferencesSaved || saved;
+            SetStatus(saved ? "Saved editor preference profile" : "Editor preference profile save failed");
+            return saved;
+        }
+
+        bool LoadEditorPreferenceProfile(std::string_view name)
+        {
+            const bool loaded = LoadEditorPreferencesFromPath(EditorPreferenceProfilePath(name));
+            m_editorPreferencesLoaded = m_editorPreferencesLoaded || loaded;
+            SetStatus(loaded ? "Loaded editor preference profile" : "Editor preference profile load failed");
+            return loaded;
+        }
+
+        void ResetEditorPreferencesToDefaults()
+        {
+            m_viewportOverlay = ViewportOverlaySettings{};
+            m_transformPrecision = TransformPrecisionState{};
+            m_viewportToolbarVisible = true;
+            m_editorCameraEnabled = false;
+            SetCommandHistoryFilterText("");
+            SetStatus("Reset editor preferences to defaults");
+            MarkEditorPreferencesDirty();
         }
 
         void LoadEditorPreferences()
@@ -3387,6 +3513,31 @@ namespace
                 if (changed)
                 {
                     MarkEditorPreferencesDirty();
+                }
+                ImGui::TreePop();
+            }
+            if (ImGui::TreeNode("Preference Profiles"))
+            {
+                if (ImGui::InputText("Name##EditorPreferenceProfileName", m_editorPreferenceProfileName.data(), m_editorPreferenceProfileName.size()))
+                {
+                    MarkEditorPreferencesDirty();
+                }
+                const std::string profilePath = EditorPreferenceProfilePath(EditorPreferenceProfileNameText()).string();
+                ImGui::TextDisabled("%s", profilePath.c_str());
+                if (ImGui::Button("Save Profile##EditorPreferenceProfile"))
+                {
+                    (void)SaveEditorPreferenceProfile(EditorPreferenceProfileNameText());
+                    MarkEditorPreferencesDirty();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Load Profile##EditorPreferenceProfile"))
+                {
+                    (void)LoadEditorPreferenceProfile(EditorPreferenceProfileNameText());
+                    MarkEditorPreferencesDirty();
+                }
+                if (ImGui::Button("Reset Defaults##EditorPreferenceProfile"))
+                {
+                    ResetEditorPreferencesToDefaults();
                 }
                 ImGui::TreePop();
             }
@@ -4686,6 +4837,7 @@ namespace
                 ValidateRuntimeV24ProductionBatch();
                 ValidateRuntimeV25ProductionBatch();
                 ValidateRuntimeV26LongHorizonBatch();
+                ValidateRuntimeV27DiversifiedBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -5133,6 +5285,7 @@ namespace
             resource.Animations = ExtractPackageInteger(text, "animation_count");
             resource.Skins = ExtractPackageInteger(text, "skin_count");
             resource.Dependencies = ExtractPackageInteger(text, "dependency_count");
+            resource.DependencyInvalidationPreviewCount = resource.Dependencies;
             resource.GpuMeshResources = resource.Primitives;
             resource.GpuMaterialResources = resource.Materials;
             resource.AnimationClips = resource.Animations;
@@ -5141,6 +5294,7 @@ namespace
                 static_cast<uint64_t>(resource.Materials) * 4096ull +
                 static_cast<uint64_t>(resource.Animations) * 8192ull;
             resource.GpuReady = resource.Loaded && resource.GpuMeshResources > 0 && resource.GpuMaterialResources > 0;
+            resource.ReloadRollbackReady = resource.Loaded && resource.DependencyInvalidationPreviewCount > 0;
             resource.Path = resolvedPath;
             m_cookedPackageResource = resource;
             return resource.Loaded;
@@ -5618,6 +5772,98 @@ namespace
             AddRuntimeVerificationNote("Validated v26 editor preference persistence and viewport toolbar actions.");
         }
 
+        void ValidateRuntimeV27DiversifiedBatch()
+        {
+            const ViewportOverlaySettings overlayBefore = m_viewportOverlay;
+            const TransformPrecisionState precisionBefore = m_transformPrecision;
+            const bool toolbarVisibleBefore = m_viewportToolbarVisible;
+            const bool editorCameraBefore = m_editorCameraEnabled;
+            const std::string filterBefore = CommandHistoryFilterText();
+            const std::string profileNameBefore = EditorPreferenceProfileNameText();
+
+            SetEditorPreferenceProfileNameText("VerificationProfile");
+            m_viewportOverlay.Enabled = true;
+            m_viewportOverlay.Pinned = true;
+            m_viewportOverlay.ShowGpuPick = true;
+            m_viewportOverlay.ShowReadback = true;
+            m_viewportOverlay.ShowCapture = true;
+            m_viewportOverlay.ShowDebugThumbnails = true;
+            m_viewportToolbarVisible = true;
+            m_editorCameraEnabled = true;
+            m_transformPrecision.Step = 0.11f;
+            m_transformPrecision.PivotMode = 2;
+            m_transformPrecision.OrientationMode = 1;
+            SetCommandHistoryFilterText("ProfileVerification");
+
+            ++m_runtimeEditorStats.EditorPreferenceProfileTests;
+            const std::filesystem::path profilePath = EditorPreferenceProfilePath(EditorPreferenceProfileNameText());
+            const bool profileSaved = SaveEditorPreferenceProfile(EditorPreferenceProfileNameText());
+            m_viewportOverlay.ShowDebugThumbnails = false;
+            m_viewportToolbarVisible = false;
+            m_transformPrecision.Step = 0.01f;
+            SetCommandHistoryFilterText("");
+            const bool profileLoaded = LoadEditorPreferenceProfile("VerificationProfile");
+            const bool profileRoundTrip =
+                profileSaved &&
+                profileLoaded &&
+                std::filesystem::exists(profilePath) &&
+                EditorPreferenceProfileNameText() == "VerificationProfile" &&
+                m_viewportOverlay.ShowDebugThumbnails &&
+                m_viewportToolbarVisible &&
+                std::abs(m_transformPrecision.Step - 0.11f) <= 0.001f &&
+                m_transformPrecision.PivotMode == 2 &&
+                m_transformPrecision.OrientationMode == 1 &&
+                CommandHistoryFilterText() == "ProfileVerification";
+            if (!profileRoundTrip)
+            {
+                AddRuntimeVerificationFailure("named editor preference profile round trip failed.");
+            }
+
+            m_viewportOverlay = overlayBefore;
+            m_transformPrecision = precisionBefore;
+            m_viewportToolbarVisible = toolbarVisibleBefore;
+            m_editorCameraEnabled = editorCameraBefore;
+            SetCommandHistoryFilterText(filterBefore);
+            SetEditorPreferenceProfileNameText(profileNameBefore);
+
+            ++m_runtimeEditorStats.CapturePresetTests;
+            const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
+            if (captureMetrics.PresetName.empty() ||
+                captureMetrics.Scale < 2 ||
+                captureMetrics.Tiles < 4 ||
+                captureMetrics.MsaaSamples < 4 ||
+                captureMetrics.ResolveSamples < 4 ||
+                captureMetrics.ResolveFilter != "tent" ||
+                !captureMetrics.AsyncCompressionReady ||
+                !captureMetrics.ExrOutputPlanned)
+            {
+                AddRuntimeVerificationFailure("high-resolution capture preset validation failed.");
+            }
+
+            SimulateRiftVfxRenderer(ShowcaseVisualTime(), 1.0f);
+            ++m_runtimeEditorStats.VfxEmitterProfileTests;
+            if (!m_riftVfxEmitterProfile.SoftParticleDepthFade ||
+                !m_riftVfxEmitterProfile.PerEmitterSorting ||
+                !m_riftVfxEmitterProfile.GpuSimulationBuffers ||
+                !m_riftVfxEmitterProfile.TemporalReprojection ||
+                m_lastRiftVfxStats.EmitterCount < 4 ||
+                m_lastRiftVfxStats.SortBuckets < 4 ||
+                m_lastRiftVfxStats.GpuBufferBytes == 0)
+            {
+                AddRuntimeVerificationFailure("rift VFX emitter profile validation failed.");
+            }
+
+            ++m_runtimeEditorStats.CookedDependencyPreviewTests;
+            if (!LoadCookedPackageRuntimeResource() ||
+                m_cookedPackageResource.DependencyInvalidationPreviewCount == 0 ||
+                !m_cookedPackageResource.ReloadRollbackReady)
+            {
+                AddRuntimeVerificationFailure("cooked package dependency preview validation failed.");
+            }
+
+            AddRuntimeVerificationNote("Validated v27 diversified editor, capture, VFX, and cooked-package diagnostics.");
+        }
+
         void ValidateRuntimeV20ProductionBatch()
         {
             bool asyncSuccess = false;
@@ -5951,6 +6197,22 @@ namespace
             if (m_runtimeEditorStats.ViewportToolbarTests < m_runtimeBaseline.MinViewportToolbarTests)
             {
                 AddRuntimeVerificationFailure("viewport toolbar test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.EditorPreferenceProfileTests < m_runtimeBaseline.MinEditorPreferenceProfileTests)
+            {
+                AddRuntimeVerificationFailure("editor preference profile test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.CapturePresetTests < m_runtimeBaseline.MinCapturePresetTests)
+            {
+                AddRuntimeVerificationFailure("capture preset test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.VfxEmitterProfileTests < m_runtimeBaseline.MinVfxEmitterProfileTests)
+            {
+                AddRuntimeVerificationFailure("VFX emitter profile test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.CookedDependencyPreviewTests < m_runtimeBaseline.MinCookedDependencyPreviewTests)
+            {
+                AddRuntimeVerificationFailure("cooked dependency preview test count is below baseline.");
             }
         }
 
@@ -6414,6 +6676,9 @@ namespace
             report << "rift_vfx_depth_fade_particles=" << m_lastRiftVfxStats.DepthFadeParticles << "\n";
             report << "rift_vfx_gpu_particle_dispatches=" << m_lastRiftVfxStats.GpuParticleDispatches << "\n";
             report << "rift_vfx_temporal_history_samples=" << m_lastRiftVfxStats.TemporalHistorySamples << "\n";
+            report << "rift_vfx_emitter_count=" << m_lastRiftVfxStats.EmitterCount << "\n";
+            report << "rift_vfx_sort_buckets=" << m_lastRiftVfxStats.SortBuckets << "\n";
+            report << "rift_vfx_gpu_buffer_bytes=" << m_lastRiftVfxStats.GpuBufferBytes << "\n";
             report << "audio_beat_pulses=" << m_runtimeEditorStats.AudioBeatPulses << "\n";
             report << "high_res_capture_path=" << m_highResCaptureOutputPath.string() << "\n";
             report << "native_png_capture_path=" << m_highResCaptureNativePngPath.string() << "\n";
@@ -6459,12 +6724,21 @@ namespace
             report << "viewport_toolbar_tests=" << m_runtimeEditorStats.ViewportToolbarTests << "\n";
             report << "viewport_toolbar_interactions=" << m_viewportToolbarInteractionCount << "\n";
             report << "viewport_toolbar_visible=" << (m_viewportToolbarVisible ? "true" : "false") << "\n";
+            report << "editor_preference_profile_tests=" << m_runtimeEditorStats.EditorPreferenceProfileTests << "\n";
+            report << "editor_preference_active_profile=" << EditorPreferenceProfileNameText() << "\n";
+            report << "editor_preference_profile_path=" << EditorPreferenceProfilePath(EditorPreferenceProfileNameText()).string() << "\n";
+            report << "capture_preset_tests=" << m_runtimeEditorStats.CapturePresetTests << "\n";
+            report << "vfx_emitter_profile_tests=" << m_runtimeEditorStats.VfxEmitterProfileTests << "\n";
+            report << "cooked_dependency_preview_tests=" << m_runtimeEditorStats.CookedDependencyPreviewTests << "\n";
             const auto& v25Points = GetV25ProductionPoints();
             for (size_t index = 0; index < v25Points.size(); ++index)
             {
                 report << v25Points[index].Key << "=" << m_v25ProductionPointResults[index] << "\n";
             }
             const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
+            report << "high_res_capture_preset=" << captureMetrics.PresetName << "\n";
+            report << "high_res_capture_async_compression_ready=" << (captureMetrics.AsyncCompressionReady ? "true" : "false") << "\n";
+            report << "high_res_capture_exr_output_planned=" << (captureMetrics.ExrOutputPlanned ? "true" : "false") << "\n";
             report << "high_res_resolve_filter=" << captureMetrics.ResolveFilter << "\n";
             report << "high_res_resolve_samples=" << captureMetrics.ResolveSamples << "\n";
             report << "viewport_hud_debug_thumbnails=" << (m_viewportOverlay.ShowDebugThumbnails ? "true" : "false") << "\n";
@@ -6481,6 +6755,8 @@ namespace
             report << "cooked_package_gpu_ready=" << (m_cookedPackageResource.GpuReady ? "true" : "false") << "\n";
             report << "cooked_package_gpu_meshes=" << m_cookedPackageResource.GpuMeshResources << "\n";
             report << "cooked_package_gpu_upload_bytes=" << m_cookedPackageResource.EstimatedUploadBytes << "\n";
+            report << "cooked_package_dependency_preview_count=" << m_cookedPackageResource.DependencyInvalidationPreviewCount << "\n";
+            report << "cooked_package_reload_rollback_ready=" << (m_cookedPackageResource.ReloadRollbackReady ? "true" : "false") << "\n";
             report << "audio_meter_reference_peak_db=" << m_audioMeterCalibration.ReferencePeakDb << "\n";
             report << "audio_meter_reference_rms_db=" << m_audioMeterCalibration.ReferenceRmsDb << "\n";
             report << "cpu_frame_samples=" << m_runtimeBudgetStats.CpuSamples << "\n";
@@ -8318,6 +8594,10 @@ namespace
                     else if (key == "min_v25_production_points") { loadedBaseline.MinV25ProductionPoints = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_editor_preference_persistence_tests") { loadedBaseline.MinEditorPreferencePersistenceTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_viewport_toolbar_tests") { loadedBaseline.MinViewportToolbarTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_editor_preference_profile_tests") { loadedBaseline.MinEditorPreferenceProfileTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_capture_preset_tests") { loadedBaseline.MinCapturePresetTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_vfx_emitter_profile_tests") { loadedBaseline.MinVfxEmitterProfileTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_cooked_dependency_preview_tests") { loadedBaseline.MinCookedDependencyPreviewTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
@@ -8382,6 +8662,8 @@ namespace
         GpuPickVisualizationState m_gpuPickVisualization;
         RiftVfxSystemStats m_lastRiftVfxStats;
         RiftVfxRendererProfile m_riftVfxRendererProfile;
+        RiftVfxEmitterProfile m_riftVfxEmitterProfile;
+        HighResolutionCapturePresetProfile m_highResolutionCapturePreset;
         EditorPreferenceProfile m_editorPreferenceProfile;
         ViewportToolbarProfile m_viewportToolbarProfile;
         GizmoAdvancedProfile m_gizmoAdvancedProfile;
@@ -8514,6 +8796,7 @@ namespace
         std::string m_lastGpuPickStatus = "Not sampled";
         std::string m_gizmoStatus = "Idle";
         std::array<char, 64> m_commandHistoryFilter = {};
+        std::array<char, 64> m_editorPreferenceProfileName = { 'D', 'e', 'f', 'a', 'u', 'l', 't', '\0' };
         std::filesystem::path m_highResCaptureSourcePath;
         std::filesystem::path m_highResCaptureOutputPath;
         std::filesystem::path m_highResCaptureNativePngPath;

@@ -1,6 +1,14 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v26 versions of many requested followups. The next milestones should deepen the new graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification scaffolds into fully durable production systems.
+The current engine now has functional v27 versions of many requested followups. The next milestones should keep rotating through graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+
+## v27 Completed Diversified Production Batch
+
+- Editor preferences now support named profile save/load/reset from the `Viewport` panel. Profiles are sanitized into `Saved/Editor/Profiles/<name>.json`, while the main preference file remembers the active profile name.
+- High-resolution capture now has a typed `Trailer2x` preset profile. Runtime capture manifests moved to schema v3 with preset name, async-compression readiness, and planned EXR output fields in addition to the existing scale/tile/MSAA/tent-resolve metadata.
+- Rift VFX diagnostics now include emitter count, sort bucket count, and estimated GPU buffer bytes, preparing the existing particle/ribbon proof for a dedicated emitter renderer.
+- Cooked `DSGLBPK2` runtime resources now expose dependency-invalidation preview counts and reload-rollback readiness, making package reload risks visible in runtime reports instead of only in cook metadata.
+- Runtime verification now validates named preference profiles, capture preset metadata, VFX emitter profile diagnostics, and cooked dependency preview/rollback state. Runtime reports, baselines, schema assertions, baseline review, and performance-history summaries all require the new v27 counters.
 
 ## v26 Completed Long-Horizon Editor Foundations
 
@@ -133,7 +141,7 @@ The current engine now has functional v26 versions of many requested followups. 
 
 ## Editor
 
-- Promote editor preferences into named workspace/user profiles with reset/import/export commands, dock-layout persistence, conflict-safe migration, and per-project defaults.
+- Extend named editor preference profiles with import/export, dock-layout persistence, conflict-safe migration, profile diffing, and per-project defaults.
 - Upgrade the viewport toolbar with icon buttons, hotkey hints, compact capture-state progress, toolbar customization, and optional workspace presets for gameplay, editor, and trailer capture.
 - Expand the current mesh/ring/plane gizmo handles with depth-aware hover occlusion, constraint previews, numerical transform entry, richer pivot/orientation editing, and richer object-ID handle metadata.
 - Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command categories, history export, and reviewable command macros.
@@ -152,8 +160,8 @@ The current engine now has functional v26 versions of many requested followups. 
 - Add GPU frustum/occlusion culling and real clustered or Forward+ light binning.
 - Replace the single shadow-map coverage mode with true cascaded shadow maps.
 - Add normal/depth pre-pass options, SSR/SSGI experiments, motion vectors, and a more correct temporal AA resolve beyond the current FXAA-style resolve plus history blend.
-- Move the high-resolution proof from source-frame resampling to true tiled offscreen rendering with per-tile camera jitter, selectable resolve filters, optional EXR output, and async capture compression workers.
-- Upgrade the v24 VFX renderer profile into a dedicated renderer with soft particles, GPU simulation buffers, per-emitter sorting controls, motion vectors, and temporal reprojection.
+- Move the high-resolution proof from source-frame resampling to true tiled offscreen rendering with per-tile camera jitter, selectable resolve filters, real EXR output, and async compression workers using the v27 capture preset surface.
+- Upgrade the v27 VFX emitter profile into a dedicated renderer with soft particles, GPU simulation buffers, per-emitter sorting controls, motion vectors, temporal reprojection, and debug visualizers.
 - Add motion vectors, temporal VFX reprojection, better TAA resolve, and exposure curves tuned for trailer captures.
 - Investigate a DX12 or Vulkan backend once the DX11 renderer has a stable render graph contract.
 
