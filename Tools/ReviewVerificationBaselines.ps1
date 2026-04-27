@@ -57,6 +57,8 @@ $requiredKeys = @(
     "min_asset_invalidation_tests",
     "min_nested_prefab_tests",
     "min_audio_production_tests",
+    "min_viewport_overlay_tests",
+    "min_high_res_resolve_tests",
     "require_editor_gpu_pick_resources",
     "golden_capture_path",
     "golden_mean_tolerance",

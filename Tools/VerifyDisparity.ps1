@@ -235,7 +235,7 @@ Invoke-Step "Baseline approval manifest" {
 }
 
 Invoke-Step "Signed baseline update approval" {
-    & (Join-Path $PSScriptRoot "ApproveVerificationUpdate.ps1") -Reason "v22 verification dry-run"
+    & (Join-Path $PSScriptRoot "ApproveVerificationUpdate.ps1") -Reason "v23 verification dry-run"
     $approvalPath = Join-Path $root "Saved\Verification\baseline_update_approval.json"
     $approval = Get-Content -LiteralPath $approvalPath -Raw | ConvertFrom-Json
     if (!$approval.git_head -or !$approval.git_signature_status -or [int]$approval.file_count -le 0) {

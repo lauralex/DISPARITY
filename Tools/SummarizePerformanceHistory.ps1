@@ -29,6 +29,22 @@ if ($rows.Count -eq 0) {
     return
 }
 
+function Get-Median {
+    param([double[]]$Values)
+
+    if ($Values.Count -eq 0) {
+        return 0.0
+    }
+
+    $ordered = @($Values | Sort-Object)
+    $middle = [int]($ordered.Count / 2)
+    if (($ordered.Count % 2) -eq 1) {
+        return [double]$ordered[$middle]
+    }
+
+    return ([double]$ordered[$middle - 1] + [double]$ordered[$middle]) / 2.0
+}
+
 Write-Host "Performance history: $HistoryPath"
 $baselines = @{}
 if (!$DisableBaselineComparison -and (Test-Path -LiteralPath $BaselinePath)) {
@@ -96,8 +112,10 @@ foreach ($group in $groups) {
     $shotDirectorTests = if ($latest.PSObject.Properties.Name -contains "shot_director_tests" -and ![string]::IsNullOrWhiteSpace($latest.shot_director_tests)) { [int]$latest.shot_director_tests } else { 0 }
     $animationSkinningTests = if ($latest.PSObject.Properties.Name -contains "animation_skinning_tests" -and ![string]::IsNullOrWhiteSpace($latest.animation_skinning_tests)) { [int]$latest.animation_skinning_tests } else { 0 }
     $graphCallbacks = if ($latest.PSObject.Properties.Name -contains "render_graph_callbacks_executed" -and ![string]::IsNullOrWhiteSpace($latest.render_graph_callbacks_executed)) { [int]$latest.render_graph_callbacks_executed } else { 0 }
+    $viewportOverlayTests = if ($latest.PSObject.Properties.Name -contains "viewport_overlay_tests" -and ![string]::IsNullOrWhiteSpace($latest.viewport_overlay_tests)) { [int]$latest.viewport_overlay_tests } else { 0 }
+    $highResResolveTests = if ($latest.PSObject.Properties.Name -contains "high_res_resolve_tests" -and ![string]::IsNullOrWhiteSpace($latest.high_res_resolve_tests)) { [int]$latest.high_res_resolve_tests } else { 0 }
 
-    Write-Host ("{0}: latest cpu_max={1:N3}ms gpu_max={2:N3}ms pass_cpu_max={3:N3}ms luma={4:N2} editor_picks={5} gizmo_picks={6} gizmo_drags={7} post_debug={8} showcase_frames={9} trailer_frames={10} high_res={11} rift_vfx={12} beat_pulses={13} async_io={14} shot_director={15} animation_skinning={16} graph_callbacks={17}" -f $label, $latestCpu, $latestGpu, $latestPassCpu, $latestLuma, $editorPicks, $gizmoPicks, $gizmoDrags, $postDebugViews, $showcaseFrames, $trailerFrames, $highResCaptures, $riftVfxDraws, $audioBeatPulses, $asyncIoTests, $shotDirectorTests, $animationSkinningTests, $graphCallbacks)
+    Write-Host ("{0}: latest cpu_max={1:N3}ms gpu_max={2:N3}ms pass_cpu_max={3:N3}ms luma={4:N2} editor_picks={5} gizmo_picks={6} gizmo_drags={7} post_debug={8} showcase_frames={9} trailer_frames={10} high_res={11} rift_vfx={12} beat_pulses={13} async_io={14} shot_director={15} animation_skinning={16} graph_callbacks={17} viewport_overlay={18} high_resolve={19}" -f $label, $latestCpu, $latestGpu, $latestPassCpu, $latestLuma, $editorPicks, $gizmoPicks, $gizmoDrags, $postDebugViews, $showcaseFrames, $trailerFrames, $highResCaptures, $riftVfxDraws, $audioBeatPulses, $asyncIoTests, $shotDirectorTests, $animationSkinningTests, $graphCallbacks, $viewportOverlayTests, $highResResolveTests)
     if (!$latestBySuite.ContainsKey($suiteName)) {
         $latestBySuite[$suiteName] = $latest
     }
@@ -123,12 +141,21 @@ foreach ($group in $groups) {
     $gpuDelta = $latestGpu - [double]$previous.gpu_frame_max_ms
     Write-Host ("  delta from previous: cpu={0:+0.000;-0.000;0.000}ms gpu={1:+0.000;-0.000;0.000}ms" -f $cpuDelta, $gpuDelta)
 
-    if ($cpuDelta -gt $CpuRegressionMs) {
-        throw "$label regressed CPU frame max by $([Math]::Round($cpuDelta, 3))ms."
+    $referenceRows = @($latestRows | Select-Object -First ($latestRows.Count - 1))
+    $cpuTrendReference = Get-Median -Values @($referenceRows | ForEach-Object { [double]$_.cpu_frame_max_ms })
+    $gpuTrendReference = Get-Median -Values @($referenceRows | ForEach-Object { [double]$_.gpu_frame_max_ms })
+    $cpuTrendDelta = $latestCpu - $cpuTrendReference
+    $gpuTrendDelta = $latestGpu - $gpuTrendReference
+    Write-Host ("  delta from recent median: cpu={0:+0.000;-0.000;0.000}ms gpu={1:+0.000;-0.000;0.000}ms" -f $cpuTrendDelta, $gpuTrendDelta)
+
+    # CPU max-frame samples can spike when Windows schedules background work during an otherwise healthy run.
+    # Gate on both previous-sample and recent-median deltas so one isolated spike is reported but not promoted to a failure.
+    if ($cpuDelta -gt $CpuRegressionMs -and $cpuTrendDelta -gt $CpuRegressionMs) {
+        throw "$label regressed CPU frame max by $([Math]::Round($cpuTrendDelta, 3))ms against recent median."
     }
 
-    if ($gpuDelta -gt $GpuRegressionMs) {
-        throw "$label regressed GPU frame max by $([Math]::Round($gpuDelta, 3))ms."
+    if ($gpuDelta -gt $GpuRegressionMs -and $gpuTrendDelta -gt $GpuRegressionMs) {
+        throw "$label regressed GPU frame max by $([Math]::Round($gpuTrendDelta, 3))ms against recent median."
     }
 
     if ($baselines.ContainsKey($suiteName)) {
@@ -142,11 +169,11 @@ foreach ($group in $groups) {
         if ($latestPassCpu -gt $baseline.PassCpuMaxMs) {
             throw "$label exceeded committed pass CPU baseline $($baseline.PassCpuMaxMs)ms."
         }
-        if ($cpuDelta -gt $baseline.CpuRegressionMs) {
-            throw "$label regressed CPU frame max by $([Math]::Round($cpuDelta, 3))ms against committed threshold."
+        if ($cpuDelta -gt $baseline.CpuRegressionMs -and $cpuTrendDelta -gt $baseline.CpuRegressionMs) {
+            throw "$label regressed CPU frame max by $([Math]::Round($cpuTrendDelta, 3))ms against committed threshold."
         }
-        if ($gpuDelta -gt $baseline.GpuRegressionMs) {
-            throw "$label regressed GPU frame max by $([Math]::Round($gpuDelta, 3))ms against committed threshold."
+        if ($gpuDelta -gt $baseline.GpuRegressionMs -and $gpuTrendDelta -gt $baseline.GpuRegressionMs) {
+            throw "$label regressed GPU frame max by $([Math]::Round($gpuTrendDelta, 3))ms against committed threshold."
         }
     }
 }

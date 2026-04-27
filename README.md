@@ -39,7 +39,7 @@ Controls:
 - `F6`: save the runtime scene snapshot to `Saved/PrototypeRuntime.dscene` and show status in the editor menu bar.
 - `F7`: toggle cinematic showcase mode, hide the editor, boost post-processing, and orbit the animated DISPARITY rift for capture-friendly footage.
 - `F8`: toggle trailer/photo mode with authored camera shots from `Assets/Cinematics/Showcase.dshot`, depth of field, lens dirt, and title-safe guide overlays.
-- `F9`: capture the current presented frame and write a source PPM, source PNG, async 2x PPM photo, and high-resolution capture manifest under `Saved/Captures`.
+- `F9`: capture the current presented frame and write a source PPM, source PNG, async 2x PPM photo, and schema v2 high-resolution capture manifest under `Saved/Captures`.
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 - When the mouse is released with `Tab`, left-click the viewport to pick objects. Hold `Ctrl` while clicking or selecting in the hierarchy to multi-select. The editor tries GPU object-ID readback first and falls back to CPU ray tests.
@@ -51,7 +51,7 @@ Editor UI:
 - `F1`: show/hide Dear ImGui editor panels.
 - Dock panels into the main viewport, or drag panels outside the main window with ImGui multi-viewport enabled.
 - `Hierarchy`: select the player or scene entities, then copy/paste/duplicate/delete scene objects.
-- `Viewport`: enable the independent editor camera, frame the player/selection, choose gizmo translate/rotate/scale and world/local space, inspect GPU pick readback status, and use right-drag plus WASD/QE to move without driving gameplay input.
+- `Viewport`: enable the independent editor camera, frame the player/selection, choose gizmo translate/rotate/scale and world/local space, inspect the live GPU-pick/capture diagnostics HUD, and use right-drag plus WASD/QE to move without driving gameplay input.
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw draggable, camera-scaled 3D axis/ring/plane gizmo handles in the viewport.
 - `Assets`: reload scene/script, toggle hot reload, inspect the asset database and dependency graph, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
 - `Shot Director`: edit, add, save, reload, capture, thumbnail, and preview-scrub v5 `.dshot` trailer keys without leaving the running editor.
@@ -287,12 +287,21 @@ Editor UI:
 - Audio verification now covers mixer voice counts, streamed music layers, spatial emitters, attenuation curves, meter updates, and content pulse counts.
 - Production tooling adds cooked package review, signed baseline update approval intent, symbol publishing to `dist/SymbolServer`, an installer bootstrapper command, OBS scene/profile metadata, and CI artifact upload paths for the new manifests.
 
+## Engine v23 Production Followups Implemented
+
+- The `Viewport` panel now overlays a compact diagnostics HUD on the renderer-owned editor texture, including camera/render mode, bloom/TAA state, last GPU-picked object/depth/stale age, readback latency/cache state, and high-resolution capture tile/resolve state.
+- `F9` high-resolution capture manifests are schema v2 and record scale, tile count, MSAA samples, tile jitter, async worker state, and the current tent-like 2x resolve.
+- The 2x capture proof now uses a row-buffered tent-like resolve instead of nearest-neighbor expansion.
+- Runtime reports and performance history include viewport overlay tests, high-resolution resolve tests, GPU-pick stale frame age, last GPU-picked object, resolve filter, and resolve sample count.
+- `RuntimeVerifyDisparity.ps1` asserts the v23 report schema directly, and performance summaries compare frame-time regressions against both the previous run and recent median to reduce noise from one-off OS scheduling spikes.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
 - Promote graph-owned resource diagnostics into explicit DX11 bind/unbind barriers, real alias lifetime validation, GPU culling, Forward+ lighting, cascaded shadows, and stronger temporal AA.
-- Turn the high-resolution capture proof into true tiled supersampling with per-tile camera jitter, resolve filters, EXR output, and async compression workers.
+- Move the v23 high-resolution capture proof from source-frame tent resampling to true tiled offscreen supersampling with per-tile camera jitter, selectable resolve filters, EXR output, and async compression workers.
+- Add object-ID/depth thumbnails plus pin/hide controls to the viewport diagnostics HUD.
 - Replace cooked package metadata loading with optimized GPU mesh/material/animation resources, live dependency invalidation, runtime streaming, retargeting, and GPU skinning palette uploads.
 - Promote nested prefab metadata into multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
 - Replace audio production counters with real XAudio2 mixer voices, streamed music assets, spatial emitter components, attenuation-curve assets, calibrated meters, and content-driven VFX pulses.

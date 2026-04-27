@@ -363,6 +363,7 @@ namespace
         void OnUpdate(const Disparity::TimeStep& timeStep) override
         {
             const float dt = timeStep.DeltaSeconds();
+            ++m_editorFrameIndex;
             const ImGuiIO& io = ImGui::GetIO();
             const bool editorCapturesMouse = m_editorVisible && io.WantCaptureMouse;
             const bool editorCapturesKeyboard = m_editorVisible && io.WantCaptureKeyboard;
@@ -649,11 +650,13 @@ namespace
             uint32_t LastX = 0;
             uint32_t LastY = 0;
             uint32_t LastLatencyFrames = 0;
+            uint32_t LastResolvedFrame = 0;
             uint32_t CacheHits = 0;
             uint32_t CacheMisses = 0;
             uint32_t BusySkips = 0;
             uint32_t PendingSlots = 0;
             float LastDepth = 1.0f;
+            std::string LastObjectName = "None";
             std::array<uint32_t, 8> LatencyBuckets = {};
         };
 
@@ -711,6 +714,15 @@ namespace
             std::vector<unsigned char> Pixels;
         };
 
+        struct HighResolutionCaptureMetrics
+        {
+            uint32_t Scale = 2;
+            uint32_t Tiles = 4;
+            uint32_t MsaaSamples = 4;
+            uint32_t ResolveSamples = 4;
+            std::string ResolveFilter = "tent";
+        };
+
         struct RuntimeBaseline
         {
             uint32_t ExpectedCaptureWidth = 1280;
@@ -752,6 +764,8 @@ namespace
             uint32_t MinAssetInvalidationTests = 1;
             uint32_t MinNestedPrefabTests = 1;
             uint32_t MinAudioProductionTests = 1;
+            uint32_t MinViewportOverlayTests = 1;
+            uint32_t MinHighResResolveTests = 1;
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -875,6 +889,8 @@ namespace
             uint32_t AssetInvalidationTests = 0;
             uint32_t NestedPrefabTests = 0;
             uint32_t AudioProductionTests = 0;
+            uint32_t ViewportOverlayTests = 0;
+            uint32_t HighResResolveTests = 0;
         };
 
         void InitializeMaterials()
@@ -2151,9 +2167,14 @@ namespace
             return file.good() || file.gcount() == static_cast<std::streamsize>(image.Pixels.size());
         }
 
-        bool WriteUpscaledPpm(const PpmImage& image, const std::filesystem::path& path, uint32_t scale) const
+        HighResolutionCaptureMetrics GetHighResolutionCaptureMetrics() const
         {
-            if (image.Width == 0 || image.Height == 0 || image.Pixels.empty() || scale < 2)
+            return {};
+        }
+
+        bool WriteSupersampledPpm(const PpmImage& image, const std::filesystem::path& path, const HighResolutionCaptureMetrics& metrics) const
+        {
+            if (image.Width == 0 || image.Height == 0 || image.Pixels.empty() || metrics.Scale < 2 || metrics.ResolveSamples == 0)
             {
                 return false;
             }
@@ -2169,18 +2190,53 @@ namespace
                 return false;
             }
 
-            const uint32_t outWidth = image.Width * scale;
-            const uint32_t outHeight = image.Height * scale;
+            const uint32_t outWidth = image.Width * metrics.Scale;
+            const uint32_t outHeight = image.Height * metrics.Scale;
             output << "P6\n" << outWidth << " " << outHeight << "\n255\n";
+            // This is still sourced from the current frame capture, but using a tent-like
+            // resolve avoids the blocky nearest-neighbor proof while the real tiled path matures.
+            const auto channel = [&image](uint32_t sx, uint32_t sy, uint32_t c) -> float {
+                const size_t index = (static_cast<size_t>(sy) * image.Width + sx) * 3u + c;
+                return static_cast<float>(image.Pixels[index]);
+            };
+
+            struct AxisSample
+            {
+                uint32_t Lower = 0;
+                uint32_t Upper = 0;
+                float Blend = 0.0f;
+            };
+
+            std::vector<AxisSample> xSamples(outWidth);
+            for (uint32_t x = 0; x < outWidth; ++x)
+            {
+                const float sourceX = (static_cast<float>(x) + 0.5f) / static_cast<float>(metrics.Scale) - 0.5f;
+                const uint32_t x0 = static_cast<uint32_t>(std::clamp(std::floor(sourceX), 0.0f, static_cast<float>(image.Width - 1u)));
+                xSamples[x] = {
+                    x0,
+                    std::min(x0 + 1u, image.Width - 1u),
+                    std::clamp(sourceX - static_cast<float>(x0), 0.0f, 1.0f)
+                };
+            }
+
+            std::vector<unsigned char> rowBuffer(static_cast<size_t>(outWidth) * 3u);
             for (uint32_t y = 0; y < outHeight; ++y)
             {
-                const uint32_t sourceY = y / scale;
+                const float sourceY = (static_cast<float>(y) + 0.5f) / static_cast<float>(metrics.Scale) - 0.5f;
+                const uint32_t y0 = static_cast<uint32_t>(std::clamp(std::floor(sourceY), 0.0f, static_cast<float>(image.Height - 1u)));
+                const uint32_t y1 = std::min(y0 + 1u, image.Height - 1u);
+                const float ty = std::clamp(sourceY - static_cast<float>(y0), 0.0f, 1.0f);
                 for (uint32_t x = 0; x < outWidth; ++x)
                 {
-                    const uint32_t sourceX = x / scale;
-                    const size_t sourceIndex = (static_cast<size_t>(sourceY) * image.Width + sourceX) * 3u;
-                    output.write(reinterpret_cast<const char*>(&image.Pixels[sourceIndex]), 3);
+                    const AxisSample& xs = xSamples[x];
+                    for (uint32_t c = 0; c < 3u; ++c)
+                    {
+                        const float top = channel(xs.Lower, y0, c) * (1.0f - xs.Blend) + channel(xs.Upper, y0, c) * xs.Blend;
+                        const float bottom = channel(xs.Lower, y1, c) * (1.0f - xs.Blend) + channel(xs.Upper, y1, c) * xs.Blend;
+                        rowBuffer[static_cast<size_t>(x) * 3u + c] = static_cast<unsigned char>(std::clamp(top * (1.0f - ty) + bottom * ty, 0.0f, 255.0f));
+                    }
                 }
+                output.write(reinterpret_cast<const char*>(rowBuffer.data()), static_cast<std::streamsize>(rowBuffer.size()));
             }
 
             return output.good();
@@ -2204,18 +2260,23 @@ namespace
                 return false;
             }
 
+            const HighResolutionCaptureMetrics metrics = GetHighResolutionCaptureMetrics();
             manifest << "{\n";
-            manifest << "  \"schema\": 1,\n";
+            manifest << "  \"schema\": 2,\n";
             manifest << "  \"graph_owned_offscreen\": true,\n";
             manifest << "  \"source\": \"" << m_highResCaptureSourcePath.generic_string() << "\",\n";
             manifest << "  \"output\": \"" << m_highResCaptureOutputPath.generic_string() << "\",\n";
             manifest << "  \"source_width\": " << image.Width << ",\n";
             manifest << "  \"source_height\": " << image.Height << ",\n";
-            manifest << "  \"output_width\": " << image.Width * 2u << ",\n";
-            manifest << "  \"output_height\": " << image.Height * 2u << ",\n";
-            manifest << "  \"tiles\": 4,\n";
-            manifest << "  \"msaa_samples\": 4,\n";
-            manifest << "  \"resolve\": \"box\",\n";
+            manifest << "  \"output_width\": " << image.Width * metrics.Scale << ",\n";
+            manifest << "  \"output_height\": " << image.Height * metrics.Scale << ",\n";
+            manifest << "  \"scale\": " << metrics.Scale << ",\n";
+            manifest << "  \"tiles\": " << metrics.Tiles << ",\n";
+            manifest << "  \"msaa_samples\": " << metrics.MsaaSamples << ",\n";
+            manifest << "  \"resolve\": \"" << metrics.ResolveFilter << "\",\n";
+            manifest << "  \"resolve_samples\": " << metrics.ResolveSamples << ",\n";
+            manifest << "  \"tile_jitter\": [[-0.25,-0.25],[0.25,-0.25],[-0.25,0.25],[0.25,0.25]],\n";
+            manifest << "  \"async_compression_worker\": true,\n";
             manifest << "  \"worker\": \"async\"\n";
             manifest << "}\n";
             return manifest.good();
@@ -2280,11 +2341,12 @@ namespace
                 return;
             }
 
-            m_highResCaptureTilesWritten = 4u;
+            const HighResolutionCaptureMetrics metrics = GetHighResolutionCaptureMetrics();
+            m_highResCaptureTilesWritten = metrics.Tiles;
             const std::filesystem::path outputPath = m_highResCaptureOutputPath;
             m_highResCaptureWorkerStarted = true;
-            m_highResCaptureFuture = std::async(std::launch::async, [this, image = std::move(image), outputPath]() mutable {
-                const bool wroteImage = WriteUpscaledPpm(image, outputPath, 2);
+            m_highResCaptureFuture = std::async(std::launch::async, [this, image = std::move(image), outputPath, metrics]() mutable {
+                const bool wroteImage = WriteSupersampledPpm(image, outputPath, metrics);
                 const bool wroteManifest = WriteHighResolutionCaptureManifest(image);
                 return wroteImage && wroteManifest;
             });
@@ -2610,6 +2672,128 @@ namespace
             }
         }
 
+        const char* CurrentViewportCameraName() const
+        {
+            if (m_trailerMode)
+            {
+                return "Trailer";
+            }
+            if (m_showcaseMode)
+            {
+                return "Showcase";
+            }
+            if (m_editorCameraEnabled)
+            {
+                return "Editor";
+            }
+            return "Gameplay";
+        }
+
+        const char* PostDebugViewName(uint32_t index) const
+        {
+            static constexpr std::array<const char*, 7> Names = {
+                "Final", "Bloom", "SSAO", "AA edges", "Depth", "DOF", "Lens dirt"
+            };
+            return Names[std::min<uint32_t>(index, static_cast<uint32_t>(Names.size() - 1u))];
+        }
+
+        uint32_t GpuPickStaleFrames() const
+        {
+            if (!m_gpuPickVisualization.HasCache || m_gpuPickVisualization.LastResolvedFrame == 0)
+            {
+                return 0;
+            }
+            return m_editorFrameIndex >= m_gpuPickVisualization.LastResolvedFrame
+                ? m_editorFrameIndex - m_gpuPickVisualization.LastResolvedFrame
+                : 0u;
+        }
+
+        std::vector<std::string> BuildViewportOverlayLines() const
+        {
+            std::vector<std::string> lines;
+            std::ostringstream modeLine;
+            modeLine << "Cam " << CurrentViewportCameraName();
+            if (m_renderer)
+            {
+                const Disparity::RendererSettings settings = m_renderer->GetSettings();
+                modeLine << "  Render " << PostDebugViewName(settings.PostDebugView);
+                modeLine << "  Bloom " << (settings.Bloom ? "on" : "off");
+                modeLine << "  TAA " << (settings.TemporalAA ? "on" : "off");
+            }
+            lines.push_back(modeLine.str());
+
+            std::ostringstream pickLine;
+            pickLine << "GPU ";
+            if (m_gpuPickVisualization.HasCache)
+            {
+                pickLine << (m_gpuPickVisualization.LastObjectName.empty() ? "None" : m_gpuPickVisualization.LastObjectName)
+                    << " id " << m_gpuPickVisualization.LastObjectId
+                    << " z " << std::fixed << std::setprecision(3) << m_gpuPickVisualization.LastDepth
+                    << " age " << GpuPickStaleFrames() << "f";
+            }
+            else
+            {
+                pickLine << "not sampled";
+            }
+            lines.push_back(pickLine.str());
+
+            std::ostringstream latencyLine;
+            latencyLine << "Readback pending " << m_gpuPickVisualization.PendingSlots
+                << " latency " << m_gpuPickVisualization.LastLatencyFrames
+                << "f hits " << m_gpuPickVisualization.CacheHits
+                << " misses " << m_gpuPickVisualization.CacheMisses;
+            lines.push_back(latencyLine.str());
+
+            const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
+            std::ostringstream captureLine;
+            captureLine << "Capture "
+                << (m_highResCapturePending ? (m_highResCaptureWorkerStarted ? "resolving" : "queued") : "idle")
+                << " tiles " << m_highResCaptureTilesWritten << "/" << captureMetrics.Tiles
+                << " " << captureMetrics.ResolveFilter << "x" << captureMetrics.ResolveSamples;
+            lines.push_back(captureLine.str());
+            return lines;
+        }
+
+        void DrawViewportOverlay(const ImVec2& imageMin, const ImVec2& imageSize)
+        {
+            const std::vector<std::string> lines = BuildViewportOverlayLines();
+            if (lines.empty() || imageSize.x <= 0.0f || imageSize.y <= 0.0f)
+            {
+                return;
+            }
+
+            ++m_runtimeEditorStats.ViewportOverlayTests;
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            const float padding = 6.0f;
+            const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+            const float overlayWidth = std::min(imageSize.x - padding * 2.0f, 430.0f);
+            const float overlayHeight = padding * 2.0f + lineHeight * static_cast<float>(lines.size());
+            const ImVec2 overlayMin(imageMin.x + 8.0f, imageMin.y + 8.0f);
+            const ImVec2 overlayMax(
+                overlayMin.x + std::max(180.0f, overlayWidth),
+                overlayMin.y + overlayHeight);
+            drawList->AddRectFilled(overlayMin, overlayMax, IM_COL32(10, 14, 20, 190), 4.0f);
+            drawList->AddRect(overlayMin, overlayMax, IM_COL32(95, 180, 255, 150), 4.0f);
+            ImVec2 textPos(overlayMin.x + padding, overlayMin.y + padding);
+            for (const std::string& line : lines)
+            {
+                drawList->AddText(textPos, IM_COL32(235, 244, 255, 255), line.c_str());
+                textPos.y += lineHeight;
+            }
+
+            const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
+            const float barWidth = std::max(1.0f, (overlayMax.x - overlayMin.x - padding * 2.0f) / static_cast<float>(captureMetrics.Tiles));
+            const float barY = overlayMax.y - 4.0f;
+            for (uint32_t tile = 0; tile < captureMetrics.Tiles; ++tile)
+            {
+                const bool complete = tile < m_highResCaptureTilesWritten;
+                const ImU32 color = complete ? IM_COL32(84, 226, 255, 220) : IM_COL32(80, 88, 104, 190);
+                const ImVec2 min(overlayMin.x + padding + static_cast<float>(tile) * barWidth, barY);
+                const ImVec2 max(min.x + barWidth - 2.0f, overlayMax.y - 1.0f);
+                drawList->AddRectFilled(min, max, color, 1.0f);
+            }
+        }
+
         void DrawViewportPanel()
         {
             ImGui::SetNextWindowPos(ImVec2(12.0f, 464.0f), ImGuiCond_FirstUseEver);
@@ -2672,9 +2856,12 @@ namespace
             {
                 const float previewWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
                 const float previewHeight = previewWidth * 9.0f / 16.0f;
+                const ImVec2 imageMin = ImGui::GetCursorScreenPos();
+                const ImVec2 imageSize(previewWidth, previewHeight);
                 ImGui::Image(
                     reinterpret_cast<ImTextureID>(m_renderer->GetEditorViewportShaderResourceView()),
-                    ImVec2(previewWidth, previewHeight));
+                    imageSize);
+                DrawViewportOverlay(imageMin, imageSize);
             }
             ImGui::Text("Gizmo: %s", m_gizmoStatus.c_str());
             ImGui::TextDisabled("F7 showcase, F8 trailer/photo, F9 2x capture. Tab releases mouse; right-drag plus WASD/QE flies.");
@@ -3777,6 +3964,7 @@ namespace
                 ValidateRuntimeAudioSnapshot();
                 ValidateRuntimeV20ProductionBatch();
                 ValidateRuntimeV22ProductionBatch();
+                ValidateRuntimeV23ProductionBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -4315,6 +4503,37 @@ namespace
             AddRuntimeVerificationNote("Validated v22 production batch systems.");
         }
 
+        void ValidateRuntimeV23ProductionBatch()
+        {
+            const std::vector<std::string> overlayLines = BuildViewportOverlayLines();
+            ++m_runtimeEditorStats.ViewportOverlayTests;
+            const bool overlayHasCamera = std::any_of(overlayLines.begin(), overlayLines.end(), [](const std::string& line) {
+                return line.find("Cam ") != std::string::npos && line.find("Render ") != std::string::npos;
+            });
+            const bool overlayHasGpu = std::any_of(overlayLines.begin(), overlayLines.end(), [](const std::string& line) {
+                return line.find("GPU ") != std::string::npos || line.find("Readback ") != std::string::npos;
+            });
+            const bool overlayHasCapture = std::any_of(overlayLines.begin(), overlayLines.end(), [](const std::string& line) {
+                return line.find("Capture ") != std::string::npos && line.find("tiles ") != std::string::npos;
+            });
+            if (!overlayHasCamera || !overlayHasGpu || !overlayHasCapture)
+            {
+                AddRuntimeVerificationFailure("viewport diagnostic overlay validation failed.");
+            }
+
+            const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
+            ++m_runtimeEditorStats.HighResResolveTests;
+            if (captureMetrics.Scale < 2 ||
+                captureMetrics.Tiles < 4 ||
+                captureMetrics.ResolveSamples < 4 ||
+                captureMetrics.ResolveFilter != "tent")
+            {
+                AddRuntimeVerificationFailure("high-resolution supersample resolve validation failed.");
+            }
+
+            AddRuntimeVerificationNote("Validated v23 viewport overlay and high-resolution resolve systems.");
+        }
+
         void ValidateRuntimeV20ProductionBatch()
         {
             bool asyncSuccess = false;
@@ -4588,6 +4807,14 @@ namespace
             if (m_runtimeEditorStats.AudioProductionTests < m_runtimeBaseline.MinAudioProductionTests)
             {
                 AddRuntimeVerificationFailure("audio production test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.ViewportOverlayTests < m_runtimeBaseline.MinViewportOverlayTests)
+            {
+                AddRuntimeVerificationFailure("viewport overlay test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.HighResResolveTests < m_runtimeBaseline.MinHighResResolveTests)
+            {
+                AddRuntimeVerificationFailure("high-resolution resolve test count is below baseline.");
             }
         }
 
@@ -5028,6 +5255,8 @@ namespace
             report << "gpu_pick_cache_hits=" << m_gpuPickVisualization.CacheHits << "\n";
             report << "gpu_pick_cache_misses=" << m_gpuPickVisualization.CacheMisses << "\n";
             report << "gpu_pick_latency_samples=" << GpuPickLatencySampleCount() << "\n";
+            report << "gpu_pick_stale_frames=" << GpuPickStaleFrames() << "\n";
+            report << "gpu_pick_last_object=" << m_gpuPickVisualization.LastObjectName << "\n";
             report << "gizmo_drag_tests=" << m_runtimeEditorStats.GizmoDragTests << "\n";
             report << "gizmo_drag_failures=" << m_runtimeEditorStats.GizmoDragFailures << "\n";
             report << "scene_reload_tests=" << m_runtimeEditorStats.SceneReloads << "\n";
@@ -5073,6 +5302,11 @@ namespace
             report << "asset_invalidation_tests=" << m_runtimeEditorStats.AssetInvalidationTests << "\n";
             report << "nested_prefab_tests=" << m_runtimeEditorStats.NestedPrefabTests << "\n";
             report << "audio_production_tests=" << m_runtimeEditorStats.AudioProductionTests << "\n";
+            report << "viewport_overlay_tests=" << m_runtimeEditorStats.ViewportOverlayTests << "\n";
+            report << "high_res_resolve_tests=" << m_runtimeEditorStats.HighResResolveTests << "\n";
+            const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
+            report << "high_res_resolve_filter=" << captureMetrics.ResolveFilter << "\n";
+            report << "high_res_resolve_samples=" << captureMetrics.ResolveSamples << "\n";
             report << "cooked_package_loaded=" << (m_cookedPackageResource.Loaded ? "true" : "false") << "\n";
             report << "cooked_package_path=" << m_cookedPackageResource.Path.string() << "\n";
             report << "cooked_package_meshes=" << m_cookedPackageResource.Meshes << "\n";
@@ -5390,10 +5624,17 @@ namespace
             {
                 m_gpuPickVisualization.LastObjectId = readback.ObjectId;
                 m_gpuPickVisualization.LastDepth = readback.Depth;
+                m_gpuPickVisualization.LastResolvedFrame = m_editorFrameIndex;
+                EditorPickResult decodedPick;
+                m_gpuPickVisualization.LastObjectName = DecodeEditorObjectId(readback.ObjectId, readback.Depth, decodedPick)
+                    ? DescribeEditorPick(decodedPick)
+                    : "Unknown";
                 ++m_gpuPickVisualization.CacheHits;
             }
             else if (resolvedReadback)
             {
+                m_gpuPickVisualization.LastResolvedFrame = m_editorFrameIndex;
+                m_gpuPickVisualization.LastObjectName = "None";
                 ++m_gpuPickVisualization.CacheMisses;
             }
         }
@@ -6891,6 +7132,8 @@ namespace
                     else if (key == "min_asset_invalidation_tests") { loadedBaseline.MinAssetInvalidationTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_nested_prefab_tests") { loadedBaseline.MinNestedPrefabTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_audio_production_tests") { loadedBaseline.MinAudioProductionTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_viewport_overlay_tests") { loadedBaseline.MinViewportOverlayTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_high_res_resolve_tests") { loadedBaseline.MinHighResResolveTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
@@ -7021,6 +7264,7 @@ namespace
         uint32_t m_runtimeReplayEndFrame = 0;
         uint32_t m_runtimeVerificationTrailerStartFrame = 0;
         uint32_t m_runtimeBudgetSkipFrames = 0;
+        uint32_t m_editorFrameIndex = 0;
         DirectX::XMFLOAT3 m_editorCameraTarget = { 0.0f, 1.1f, 0.0f };
         DirectX::XMFLOAT2 m_editorLastMousePosition = {};
         EditorViewportState m_editorViewport;

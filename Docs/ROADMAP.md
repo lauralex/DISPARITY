@@ -1,6 +1,15 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v22 versions of many requested followups. The next milestones should deepen the new graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification scaffolds into fully durable production systems.
+The current engine now has functional v23 versions of many requested followups. The next milestones should deepen the new graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification scaffolds into fully durable production systems.
+
+## v23 Completed Production Batch
+
+- The editor viewport now draws an in-viewport diagnostics HUD over the dedicated renderer texture. It reports camera mode, post-debug mode, bloom/TAA state, last GPU-picked object name/id/depth, stale readback age, readback pending/latency/cache counters, and high-resolution capture tile/resolve state.
+- High-resolution `F9` capture manifests moved to schema v2 with scale, tile count, MSAA samples, tent resolve filter, resolve sample count, tile jitter, and async worker metadata. The 2x proof now uses a row-buffered tent-like resolve instead of nearest-neighbor expansion.
+- Runtime reports now expose `viewport_overlay_tests`, `high_res_resolve_tests`, `gpu_pick_stale_frames`, `gpu_pick_last_object`, `high_res_resolve_filter`, and `high_res_resolve_samples`.
+- `Tools/RuntimeVerifyDisparity.ps1` now asserts the v23 runtime report schema directly, so missing viewport/capture diagnostics fail targeted and full verification instead of silently producing thin performance history rows.
+- Runtime baselines and baseline review now require viewport overlay and high-resolution resolve coverage.
+- Performance history output now records the v23 counters and compares frame-time regressions against both the previous run and the recent median, keeping one-off OS scheduling spikes visible without making them automatic gate failures.
 
 ## v22 Completed Production Batch
 
@@ -91,8 +100,8 @@ The current engine now has functional v22 versions of many requested followups. 
 
 ## Editor
 
-- Promote the hover-cache and latency histogram diagnostics into viewport overlays for last-frame IDs, object names, depth, and stale-readback age.
-- Add viewport toolbar overlays for camera mode, render mode, object-ID/depth debug images, capture status, and high-resolution tile status on top of the dedicated ImGui viewport texture.
+- Add small object-ID/depth debug thumbnails to the viewport HUD and let artists pin or hide individual overlay rows.
+- Add click-through viewport toolbar controls for camera mode, render debug mode, capture state, object-ID/depth overlays, and high-resolution tile state on top of the dedicated ImGui viewport texture.
 - Expand the current mesh/ring/plane gizmo handles with depth-aware hover occlusion, constraint previews, numerical transform entry, pivot/orientation controls, and richer object-ID handle metadata.
 - Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command filters, and a filterable command history panel.
 - Promote the new prefab variant/parent/nested metadata into nested-prefab instancing, multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
@@ -110,7 +119,7 @@ The current engine now has functional v22 versions of many requested followups. 
 - Add GPU frustum/occlusion culling and real clustered or Forward+ light binning.
 - Replace the single shadow-map coverage mode with true cascaded shadow maps.
 - Add normal/depth pre-pass options, SSR/SSGI experiments, motion vectors, and a more correct temporal AA resolve beyond the current FXAA-style resolve plus history blend.
-- Promote the graph-owned high-resolution proof into true tiled supersampling with per-tile camera jitter, resolve filters, optional EXR output, and async capture compression workers.
+- Move the v23 tent-resolved high-resolution proof from source-frame resampling to true tiled offscreen rendering with per-tile camera jitter, selectable resolve filters, optional EXR output, and async capture compression workers.
 - Upgrade the runtime particle/ribbon VFX resources into a dedicated renderer with soft particles, GPU simulation buffers, per-emitter sorting controls, motion vectors, and temporal reprojection.
 - Add motion vectors, temporal VFX reprojection, better TAA resolve, and exposure curves tuned for trailer captures.
 - Investigate a DX12 or Vulkan backend once the DX11 renderer has a stable render graph contract.
@@ -131,6 +140,7 @@ The current engine now has functional v22 versions of many requested followups. 
 
 - Add more committed per-GPU/driver golden tolerance profiles from real verification machines and tighter local overrides.
 - Promote signed baseline update approvals into a review command that updates goldens/performance thresholds with explicit approver intent and stores an auditable diff package.
+- Promote v23 runtime report schema assertions into a reusable schema manifest so new verification counters can be reviewed without editing PowerShell in multiple places.
 - Run packaged runtime smoke tests by default on a dedicated interactive desktop runner.
 - Replace the bootstrapper command with an actual installer executable and publish symbols through a real symbol server endpoint.
 - Expand OBS scene/profile generation into real OBS WebSocket automation, watermark toggles, capture metadata approval, and packaged vertical-slice launch presets.

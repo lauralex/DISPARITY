@@ -182,6 +182,52 @@ function Get-ProfiledDouble {
     return Get-BaselineDouble -Values $BaselineValues -Name $Name -DefaultValue $DefaultValue
 }
 
+function Get-ReportMetrics {
+    param([string]$Report)
+
+    $metrics = @{}
+    foreach ($line in ($Report -split "`r?`n")) {
+        if ($line -match "^([^=]+)=(.*)$") {
+            $metrics[$Matches[1]] = $Matches[2]
+        }
+    }
+
+    return $metrics
+}
+
+function Assert-RuntimeReportSchema {
+    param([hashtable]$Metrics)
+
+    $requiredMetrics = @(
+        "version",
+        "frames",
+        "viewport_overlay_tests",
+        "high_res_resolve_tests",
+        "gpu_pick_stale_frames",
+        "high_res_resolve_filter",
+        "high_res_resolve_samples"
+    )
+
+    foreach ($metric in $requiredMetrics) {
+        if (!$Metrics.ContainsKey($metric) -or [string]::IsNullOrWhiteSpace([string]$Metrics[$metric])) {
+            throw "Runtime verification report is missing required v23 metric '$metric'."
+        }
+    }
+
+    if ([int]$Metrics["viewport_overlay_tests"] -lt 1) {
+        throw "Runtime verification report did not record viewport overlay coverage."
+    }
+    if ([int]$Metrics["high_res_resolve_tests"] -lt 1) {
+        throw "Runtime verification report did not record high-resolution resolve coverage."
+    }
+    if ([int]$Metrics["high_res_resolve_samples"] -lt 4) {
+        throw "Runtime verification report recorded too few high-resolution resolve samples."
+    }
+    if ($Metrics["high_res_resolve_filter"] -ne "tent") {
+        throw "Runtime verification report expected tent high-resolution resolve filter."
+    }
+}
+
 if (Test-Path -LiteralPath $reportPath) {
     Remove-Item -LiteralPath $reportPath -Force -ErrorAction Ignore
 }
@@ -231,6 +277,9 @@ if (!$DisableCapture -and !(Test-Path -LiteralPath $capturePath)) {
     Write-Host $report
     throw "Runtime verification capture was not written to $capturePath"
 }
+
+$metrics = Get-ReportMetrics -Report $report
+Assert-RuntimeReportSchema -Metrics $metrics
 
 if (!$DisableCapture -and !$DisableGoldenComparison) {
     $resolvedBaselinePath = Resolve-VerificationPath -Path $BaselinePath
@@ -294,19 +343,12 @@ if (!$DisableCapture -and !$DisableGoldenComparison) {
 }
 
 if (!$DisablePerfHistory) {
-    $metrics = @{}
-    foreach ($line in ($report -split "`r?`n")) {
-        if ($line -match "^([^=]+)=(.*)$") {
-            $metrics[$Matches[1]] = $Matches[2]
-        }
-    }
-
     $historyParent = Split-Path -Parent $HistoryPath
     if (![string]::IsNullOrWhiteSpace($historyParent)) {
         New-Item -ItemType Directory -Force -Path $historyParent | Out-Null
     }
 
-    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance,playback_net_distance,editor_pick_tests,editor_pick_failures,gizmo_pick_tests,gizmo_pick_failures,gizmo_drag_tests,gizmo_drag_failures,scene_reload_tests,scene_save_tests,post_debug_view_tests,showcase_frames,trailer_frames,high_res_capture_tests,rift_vfx_draws,rift_vfx_gpu_simulation_batches,rift_vfx_motion_vector_candidates,rift_vfx_temporal_reprojection_samples,rift_vfx_depth_fade_particles,audio_beat_pulses,audio_snapshot_tests,async_io_tests,material_texture_slot_tests,prefab_variant_tests,shot_director_tests,shot_spline_tests,shot_timeline_track_tests,shot_thumbnail_tests,shot_preview_scrub_tests,audio_analysis_tests,xaudio2_backend_tests,vfx_system_tests,gpu_vfx_simulation_tests,animation_skinning_tests,gpu_pick_hover_cache_tests,gpu_pick_latency_histogram_tests,graph_high_res_capture_tests,cooked_package_tests,asset_invalidation_tests,nested_prefab_tests,audio_production_tests,render_graph_allocations,render_graph_aliased_resources,render_graph_barriers,render_graph_resource_bindings,render_graph_bind_hits,render_graph_bind_misses,render_graph_callbacks_bound,render_graph_callbacks_executed,render_graph_dispatch_valid,object_id_readback_ring_size,object_id_readback_pending,object_id_readback_requests,object_id_readback_completions,object_id_readback_latency_frames,object_id_readback_busy_skips,gpu_pick_cache_hits,gpu_pick_latency_samples,graph_high_res_capture_targets,graph_high_res_capture_tiles,graph_high_res_capture_msaa_samples,graph_high_res_capture_passes,editor_viewport_ready,editor_viewport_presented_in_imgui,editor_object_id_ready,editor_object_depth_ready,audio_xaudio2_available,audio_xaudio2_initialized,audio_analysis_peak,audio_analysis_beat_envelope,audio_mixer_voices_created,audio_spatial_emitters,audio_analysis_content_pulses"
+    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance,playback_net_distance,editor_pick_tests,editor_pick_failures,gizmo_pick_tests,gizmo_pick_failures,gizmo_drag_tests,gizmo_drag_failures,scene_reload_tests,scene_save_tests,post_debug_view_tests,showcase_frames,trailer_frames,high_res_capture_tests,rift_vfx_draws,rift_vfx_gpu_simulation_batches,rift_vfx_motion_vector_candidates,rift_vfx_temporal_reprojection_samples,rift_vfx_depth_fade_particles,audio_beat_pulses,audio_snapshot_tests,async_io_tests,material_texture_slot_tests,prefab_variant_tests,shot_director_tests,shot_spline_tests,shot_timeline_track_tests,shot_thumbnail_tests,shot_preview_scrub_tests,audio_analysis_tests,xaudio2_backend_tests,vfx_system_tests,gpu_vfx_simulation_tests,animation_skinning_tests,gpu_pick_hover_cache_tests,gpu_pick_latency_histogram_tests,graph_high_res_capture_tests,cooked_package_tests,asset_invalidation_tests,nested_prefab_tests,audio_production_tests,viewport_overlay_tests,high_res_resolve_tests,render_graph_allocations,render_graph_aliased_resources,render_graph_barriers,render_graph_resource_bindings,render_graph_bind_hits,render_graph_bind_misses,render_graph_callbacks_bound,render_graph_callbacks_executed,render_graph_dispatch_valid,object_id_readback_ring_size,object_id_readback_pending,object_id_readback_requests,object_id_readback_completions,object_id_readback_latency_frames,object_id_readback_busy_skips,gpu_pick_cache_hits,gpu_pick_latency_samples,gpu_pick_stale_frames,graph_high_res_capture_targets,graph_high_res_capture_tiles,graph_high_res_capture_msaa_samples,graph_high_res_capture_passes,high_res_resolve_filter,high_res_resolve_samples,editor_viewport_ready,editor_viewport_presented_in_imgui,editor_object_id_ready,editor_object_depth_ready,audio_xaudio2_available,audio_xaudio2_initialized,audio_analysis_peak,audio_analysis_beat_envelope,audio_mixer_voices_created,audio_spatial_emitters,audio_analysis_content_pulses"
     if (Test-Path -LiteralPath $HistoryPath) {
         $currentHeader = Get-Content -LiteralPath $HistoryPath -First 1
         if ($currentHeader -ne $historyHeader) {
@@ -378,6 +420,8 @@ if (!$DisablePerfHistory) {
         $metrics["asset_invalidation_tests"],
         $metrics["nested_prefab_tests"],
         $metrics["audio_production_tests"],
+        $metrics["viewport_overlay_tests"],
+        $metrics["high_res_resolve_tests"],
         $metrics["render_graph_allocations"],
         $metrics["render_graph_aliased_resources"],
         $metrics["render_graph_barriers"],
@@ -395,10 +439,13 @@ if (!$DisablePerfHistory) {
         $metrics["object_id_readback_busy_skips"],
         $metrics["gpu_pick_cache_hits"],
         $metrics["gpu_pick_latency_samples"],
+        $metrics["gpu_pick_stale_frames"],
         $metrics["graph_high_res_capture_targets"],
         $metrics["graph_high_res_capture_tiles"],
         $metrics["graph_high_res_capture_msaa_samples"],
         $metrics["graph_high_res_capture_passes"],
+        $metrics["high_res_resolve_filter"],
+        $metrics["high_res_resolve_samples"],
         $metrics["editor_viewport_ready"],
         $metrics["editor_viewport_presented_in_imgui"],
         $metrics["editor_object_id_ready"],
