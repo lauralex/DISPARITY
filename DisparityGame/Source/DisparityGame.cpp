@@ -1,4 +1,5 @@
 #include <Disparity/Disparity.h>
+#include <Disparity/Assets/SimpleJson.h>
 
 #include <imgui.h>
 
@@ -347,6 +348,7 @@ namespace
 
             BuildRuntimeRegistry();
             WatchAssets();
+            LoadEditorPreferences();
 
             UpdateCamera();
             UpdateEditorCamera(0.0f, true, true);
@@ -470,6 +472,7 @@ namespace
                 listenerPosition,
                 Normalize(Subtract(Add(m_playerPosition, { 0.0f, 1.2f, 0.0f }), listenerPosition)),
                 { 0.0f, 1.0f, 0.0f });
+            UpdateEditorPreferenceAutosave(dt);
             UpdateStatusTimer(dt);
             UpdateRuntimeVerification(dt);
         }
@@ -953,6 +956,8 @@ namespace
             uint32_t MinAudioMeterCalibrationTests = 1;
             uint32_t MinReleaseReadinessTests = 1;
             uint32_t MinV25ProductionPoints = static_cast<uint32_t>(V25ProductionPointCount);
+            uint32_t MinEditorPreferencePersistenceTests = 1;
+            uint32_t MinViewportToolbarTests = 1;
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -1089,6 +1094,9 @@ namespace
             uint32_t AudioMeterCalibrationTests = 0;
             uint32_t ReleaseReadinessTests = 0;
             uint32_t V25ProductionPointTests = 0;
+            uint32_t EditorPreferencePersistenceTests = 0;
+            uint32_t EditorPreferenceSaveTests = 0;
+            uint32_t ViewportToolbarTests = 0;
         };
 
         void InitializeMaterials()
@@ -2927,6 +2935,182 @@ namespace
             }));
         }
 
+        std::string CommandHistoryFilterText() const
+        {
+            size_t length = 0;
+            while (length < m_commandHistoryFilter.size() && m_commandHistoryFilter[length] != '\0')
+            {
+                ++length;
+            }
+            return std::string(m_commandHistoryFilter.data(), length);
+        }
+
+        void SetCommandHistoryFilterText(std::string_view text)
+        {
+            m_commandHistoryFilter.fill('\0');
+            const size_t copyLength = std::min(text.size(), m_commandHistoryFilter.size() - 1u);
+            std::copy_n(text.data(), copyLength, m_commandHistoryFilter.data());
+        }
+
+        std::string JsonEscape(std::string_view text) const
+        {
+            std::string escaped;
+            escaped.reserve(text.size());
+            for (const char character : text)
+            {
+                switch (character)
+                {
+                case '\\': escaped += "\\\\"; break;
+                case '"': escaped += "\\\""; break;
+                case '\n': escaped += "\\n"; break;
+                case '\r': escaped += "\\r"; break;
+                case '\t': escaped += "\\t"; break;
+                default: escaped += character; break;
+                }
+            }
+            return escaped;
+        }
+
+        const Disparity::JsonValue* FindPreferenceJsonValue(const Disparity::JsonValue& root, const std::string& key) const
+        {
+            return root.IsObject() ? root.Find(key) : nullptr;
+        }
+
+        bool ReadPreferenceBool(const Disparity::JsonValue& root, const std::string& key, bool fallback) const
+        {
+            const Disparity::JsonValue* value = FindPreferenceJsonValue(root, key);
+            return value && value->ValueType == Disparity::JsonValue::Type::Bool ? value->Bool : fallback;
+        }
+
+        float ReadPreferenceFloat(const Disparity::JsonValue& root, const std::string& key, float fallback) const
+        {
+            const Disparity::JsonValue* value = FindPreferenceJsonValue(root, key);
+            return value && value->IsNumber() ? static_cast<float>(value->AsNumber(fallback)) : fallback;
+        }
+
+        int ReadPreferenceInt(const Disparity::JsonValue& root, const std::string& key, int fallback) const
+        {
+            const Disparity::JsonValue* value = FindPreferenceJsonValue(root, key);
+            return value && value->IsNumber() ? value->AsInt(fallback) : fallback;
+        }
+
+        std::string ReadPreferenceString(const Disparity::JsonValue& root, const std::string& key, std::string fallback) const
+        {
+            const Disparity::JsonValue* value = FindPreferenceJsonValue(root, key);
+            return value && value->IsString() ? value->AsString(fallback) : std::move(fallback);
+        }
+
+        bool SaveEditorPreferencesToPath(const std::filesystem::path& path) const
+        {
+            std::ostringstream stream;
+            stream << "{\n";
+            stream << "  \"schema\": 1,\n";
+            stream << "  \"viewport_hud_enabled\": " << (m_viewportOverlay.Enabled ? "true" : "false") << ",\n";
+            stream << "  \"viewport_hud_pinned\": " << (m_viewportOverlay.Pinned ? "true" : "false") << ",\n";
+            stream << "  \"viewport_hud_gpu_pick\": " << (m_viewportOverlay.ShowGpuPick ? "true" : "false") << ",\n";
+            stream << "  \"viewport_hud_readback\": " << (m_viewportOverlay.ShowReadback ? "true" : "false") << ",\n";
+            stream << "  \"viewport_hud_capture\": " << (m_viewportOverlay.ShowCapture ? "true" : "false") << ",\n";
+            stream << "  \"viewport_hud_debug_thumbnails\": " << (m_viewportOverlay.ShowDebugThumbnails ? "true" : "false") << ",\n";
+            stream << "  \"viewport_toolbar_visible\": " << (m_viewportToolbarVisible ? "true" : "false") << ",\n";
+            stream << "  \"editor_camera_enabled\": " << (m_editorCameraEnabled ? "true" : "false") << ",\n";
+            stream << "  \"transform_step\": " << std::fixed << std::setprecision(3) << m_transformPrecision.Step << ",\n";
+            stream << "  \"transform_pivot\": " << m_transformPrecision.PivotMode << ",\n";
+            stream << "  \"transform_orientation\": " << m_transformPrecision.OrientationMode << ",\n";
+            stream << "  \"command_history_filter\": \"" << JsonEscape(CommandHistoryFilterText()) << "\"\n";
+            stream << "}\n";
+            return Disparity::FileSystem::WriteTextFile(path, stream.str());
+        }
+
+        bool LoadEditorPreferencesFromPath(const std::filesystem::path& path)
+        {
+            std::string text;
+            if (!Disparity::FileSystem::ReadTextFile(path, text))
+            {
+                return false;
+            }
+
+            Disparity::JsonValue root;
+            if (!Disparity::SimpleJson::Parse(text, root) || !root.IsObject())
+            {
+                return false;
+            }
+
+            m_viewportOverlay.Enabled = ReadPreferenceBool(root, "viewport_hud_enabled", m_viewportOverlay.Enabled);
+            m_viewportOverlay.Pinned = ReadPreferenceBool(root, "viewport_hud_pinned", m_viewportOverlay.Pinned);
+            m_viewportOverlay.ShowGpuPick = ReadPreferenceBool(root, "viewport_hud_gpu_pick", m_viewportOverlay.ShowGpuPick);
+            m_viewportOverlay.ShowReadback = ReadPreferenceBool(root, "viewport_hud_readback", m_viewportOverlay.ShowReadback);
+            m_viewportOverlay.ShowCapture = ReadPreferenceBool(root, "viewport_hud_capture", m_viewportOverlay.ShowCapture);
+            m_viewportOverlay.ShowDebugThumbnails = ReadPreferenceBool(root, "viewport_hud_debug_thumbnails", m_viewportOverlay.ShowDebugThumbnails);
+            m_viewportToolbarVisible = ReadPreferenceBool(root, "viewport_toolbar_visible", m_viewportToolbarVisible);
+            m_editorCameraEnabled = ReadPreferenceBool(root, "editor_camera_enabled", m_editorCameraEnabled);
+            m_transformPrecision.Step = std::clamp(ReadPreferenceFloat(root, "transform_step", m_transformPrecision.Step), 0.01f, 2.0f);
+            m_transformPrecision.PivotMode = std::clamp(ReadPreferenceInt(root, "transform_pivot", m_transformPrecision.PivotMode), 0, 2);
+            m_transformPrecision.OrientationMode = std::clamp(ReadPreferenceInt(root, "transform_orientation", m_transformPrecision.OrientationMode), 0, 2);
+            SetCommandHistoryFilterText(ReadPreferenceString(root, "command_history_filter", CommandHistoryFilterText()));
+            return true;
+        }
+
+        void LoadEditorPreferences()
+        {
+            if (m_runtimeVerification.Enabled)
+            {
+                return;
+            }
+
+            m_editorPreferencesLoaded = LoadEditorPreferencesFromPath(m_editorPreferenceProfile.PreferencePath);
+            if (m_editorPreferencesLoaded)
+            {
+                SetStatus("Loaded editor preferences");
+            }
+        }
+
+        void SaveEditorPreferences()
+        {
+            if (m_runtimeVerification.Enabled)
+            {
+                return;
+            }
+
+            m_editorPreferencesSaved = SaveEditorPreferencesToPath(m_editorPreferenceProfile.PreferencePath);
+            if (m_editorPreferencesSaved)
+            {
+                m_editorPreferencesDirty = false;
+                m_editorPreferencesSaveDelay = 0.0f;
+                SetStatus("Saved editor preferences");
+            }
+            else
+            {
+                m_editorPreferencesDirty = true;
+                m_editorPreferencesSaveDelay = 5.0f;
+                SetStatus("Editor preference save failed");
+            }
+        }
+
+        void MarkEditorPreferencesDirty()
+        {
+            if (m_runtimeVerification.Enabled)
+            {
+                return;
+            }
+
+            m_editorPreferencesDirty = true;
+            m_editorPreferencesSaveDelay = 0.75f;
+        }
+
+        void UpdateEditorPreferenceAutosave(float dt)
+        {
+            if (m_runtimeVerification.Enabled || !m_editorPreferencesDirty)
+            {
+                return;
+            }
+
+            m_editorPreferencesSaveDelay -= dt;
+            if (m_editorPreferencesSaveDelay <= 0.0f)
+            {
+                SaveEditorPreferences();
+            }
+        }
+
         uint32_t GpuPickStaleFrames() const
         {
             if (!m_gpuPickVisualization.HasCache || m_gpuPickVisualization.LastResolvedFrame == 0)
@@ -3052,6 +3236,115 @@ namespace
             }
         }
 
+        bool DrawViewportToolbarButton(const char* label, const char* tooltip)
+        {
+            const bool clicked = ImGui::Button(label);
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetTooltip("%s", tooltip);
+            }
+            return clicked;
+        }
+
+        void ToggleViewportToolbarCamera()
+        {
+            m_editorCameraEnabled = !m_editorCameraEnabled;
+            ++m_viewportToolbarInteractionCount;
+            MarkEditorPreferencesDirty();
+            SetStatus(m_editorCameraEnabled ? "Viewport toolbar: editor camera" : "Viewport toolbar: gameplay camera");
+        }
+
+        void CycleViewportToolbarDebugView()
+        {
+            if (m_renderer)
+            {
+                Disparity::RendererSettings settings = m_renderer->GetSettings();
+                settings.PostDebugView = (settings.PostDebugView + 1u) % 7u;
+                m_renderer->SetSettings(settings);
+                SetStatus(std::string("Viewport toolbar: ") + PostDebugViewName(settings.PostDebugView));
+            }
+            ++m_viewportToolbarInteractionCount;
+        }
+
+        void TriggerViewportToolbarCapture()
+        {
+            RequestHighResolutionCapture();
+            ++m_viewportToolbarInteractionCount;
+        }
+
+        void ToggleViewportToolbarObjectId()
+        {
+            m_viewportOverlay.ShowGpuPick = !m_viewportOverlay.ShowGpuPick;
+            ++m_viewportToolbarInteractionCount;
+            MarkEditorPreferencesDirty();
+            SetStatus(m_viewportOverlay.ShowGpuPick ? "Viewport toolbar: object IDs visible" : "Viewport toolbar: object IDs hidden");
+        }
+
+        void ToggleViewportToolbarDepth()
+        {
+            m_viewportOverlay.ShowReadback = !m_viewportOverlay.ShowReadback;
+            ++m_viewportToolbarInteractionCount;
+            MarkEditorPreferencesDirty();
+            SetStatus(m_viewportOverlay.ShowReadback ? "Viewport toolbar: depth readback visible" : "Viewport toolbar: depth readback hidden");
+        }
+
+        void ToggleViewportToolbarHud()
+        {
+            m_viewportOverlay.Enabled = !m_viewportOverlay.Enabled;
+            ++m_viewportToolbarInteractionCount;
+            MarkEditorPreferencesDirty();
+            SetStatus(m_viewportOverlay.Enabled ? "Viewport toolbar: HUD visible" : "Viewport toolbar: HUD hidden");
+        }
+
+        void DrawViewportToolbarOverlay(const ImVec2& imageMin, const ImVec2& imageSize)
+        {
+            if (!m_viewportToolbarVisible || imageSize.x <= 0.0f || imageSize.y <= 0.0f)
+            {
+                return;
+            }
+
+            const ImVec2 toolbarPosition(imageMin.x + 8.0f, imageMin.y + std::max(8.0f, imageSize.y - 34.0f));
+            ImGui::SetCursorScreenPos(toolbarPosition);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(7.0f, 4.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4.0f, 4.0f));
+            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(20, 32, 46, 220));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(42, 126, 200, 235));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(64, 174, 240, 255));
+            ImGui::BeginGroup();
+            if (DrawViewportToolbarButton("Cam##ViewportToolbarCamera", "Toggle editor/game camera"))
+            {
+                ToggleViewportToolbarCamera();
+            }
+            ImGui::SameLine();
+            if (DrawViewportToolbarButton("Dbg##ViewportToolbarDebug", "Cycle post-process debug view"))
+            {
+                CycleViewportToolbarDebugView();
+            }
+            ImGui::SameLine();
+            if (DrawViewportToolbarButton("Cap##ViewportToolbarCapture", "Capture source PNG/PPM and 2x PPM"))
+            {
+                TriggerViewportToolbarCapture();
+            }
+            ImGui::SameLine();
+            if (DrawViewportToolbarButton("ID##ViewportToolbarObjectId", "Toggle object-ID overlay row"))
+            {
+                ToggleViewportToolbarObjectId();
+            }
+            ImGui::SameLine();
+            if (DrawViewportToolbarButton("Depth##ViewportToolbarDepth", "Toggle depth/readback overlay row"))
+            {
+                ToggleViewportToolbarDepth();
+            }
+            ImGui::SameLine();
+            if (DrawViewportToolbarButton("HUD##ViewportToolbarHud", "Toggle viewport HUD"))
+            {
+                ToggleViewportToolbarHud();
+            }
+            ImGui::EndGroup();
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(2);
+        }
+
         void DrawViewportPanel()
         {
             ImGui::SetNextWindowPos(ImVec2(12.0f, 464.0f), ImGuiCond_FirstUseEver);
@@ -3080,18 +3373,27 @@ namespace
             ImGui::TextDisabled("%s", m_highResCaptureOutputPath.empty() ? "No capture" : m_highResCaptureOutputPath.string().c_str());
             if (ImGui::TreeNode("Viewport HUD"))
             {
-                ImGui::Checkbox("Enabled##ViewportHUD", &m_viewportOverlay.Enabled);
+                bool changed = false;
+                changed |= ImGui::Checkbox("Enabled##ViewportHUD", &m_viewportOverlay.Enabled);
                 ImGui::SameLine();
-                ImGui::Checkbox("Pinned##ViewportHUD", &m_viewportOverlay.Pinned);
-                ImGui::Checkbox("GPU pick row##ViewportHUD", &m_viewportOverlay.ShowGpuPick);
+                changed |= ImGui::Checkbox("Pinned##ViewportHUD", &m_viewportOverlay.Pinned);
+                changed |= ImGui::Checkbox("GPU pick row##ViewportHUD", &m_viewportOverlay.ShowGpuPick);
                 ImGui::SameLine();
-                ImGui::Checkbox("Readback row##ViewportHUD", &m_viewportOverlay.ShowReadback);
-                ImGui::Checkbox("Capture row##ViewportHUD", &m_viewportOverlay.ShowCapture);
+                changed |= ImGui::Checkbox("Readback row##ViewportHUD", &m_viewportOverlay.ShowReadback);
+                changed |= ImGui::Checkbox("Capture row##ViewportHUD", &m_viewportOverlay.ShowCapture);
                 ImGui::SameLine();
-                ImGui::Checkbox("Debug thumbnails##ViewportHUD", &m_viewportOverlay.ShowDebugThumbnails);
+                changed |= ImGui::Checkbox("Debug thumbnails##ViewportHUD", &m_viewportOverlay.ShowDebugThumbnails);
+                changed |= ImGui::Checkbox("Toolbar##ViewportHUD", &m_viewportToolbarVisible);
+                if (changed)
+                {
+                    MarkEditorPreferencesDirty();
+                }
                 ImGui::TreePop();
             }
-            ImGui::Checkbox("Editor camera", &m_editorCameraEnabled);
+            if (ImGui::Checkbox("Editor camera", &m_editorCameraEnabled))
+            {
+                MarkEditorPreferencesDirty();
+            }
             if (ImGui::Button("Frame Selection"))
             {
                 FrameSelectedObject();
@@ -3101,6 +3403,7 @@ namespace
             {
                 m_editorCameraTarget = Add(m_playerPosition, { 0.0f, 1.1f, 0.0f });
                 m_editorCameraEnabled = true;
+                MarkEditorPreferencesDirty();
             }
 
             ImGui::SliderFloat("Orbit distance", &m_editorCameraDistance, 2.5f, 40.0f);
@@ -3132,7 +3435,10 @@ namespace
                 ImGui::Image(
                     reinterpret_cast<ImTextureID>(m_renderer->GetEditorViewportShaderResourceView()),
                     imageSize);
+                const ImVec2 afterImageCursor = ImGui::GetCursorScreenPos();
+                DrawViewportToolbarOverlay(imageMin, imageSize);
                 DrawViewportOverlay(imageMin, imageSize);
+                ImGui::SetCursorScreenPos(afterImageCursor);
             }
             ImGui::Text("Gizmo: %s", m_gizmoStatus.c_str());
             ImGui::TextDisabled("F7 showcase, F8 trailer/photo, F9 2x capture. Tab releases mouse; right-drag plus WASD/QE flies.");
@@ -3269,6 +3575,10 @@ namespace
                 changed |= ImGui::Combo("Orientation##TransformPrecision", &m_transformPrecision.OrientationMode, orientationModes, IM_ARRAYSIZE(orientationModes));
                 ImGui::Text("Active: %s / %s", TransformPivotModeName(), TransformOrientationModeName());
                 ImGui::TreePop();
+            }
+            if (changed)
+            {
+                MarkEditorPreferencesDirty();
             }
             return changed;
         }
@@ -4127,7 +4437,10 @@ namespace
 
             if (ImGui::TreeNode("Command History"))
             {
-                ImGui::InputText("Filter##CommandHistory", m_commandHistoryFilter.data(), m_commandHistoryFilter.size());
+                if (ImGui::InputText("Filter##CommandHistory", m_commandHistoryFilter.data(), m_commandHistoryFilter.size()))
+                {
+                    MarkEditorPreferencesDirty();
+                }
                 const std::string_view filter(m_commandHistoryFilter.data());
                 ImGui::Text("Showing %zu / %zu", CountFilteredCommandHistory(filter), m_commandHistory.size());
                 for (const std::string& command : m_commandHistory)
@@ -4372,6 +4685,7 @@ namespace
                 ValidateRuntimeV23ProductionBatch();
                 ValidateRuntimeV24ProductionBatch();
                 ValidateRuntimeV25ProductionBatch();
+                ValidateRuntimeV26LongHorizonBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -5205,6 +5519,105 @@ namespace
             AddRuntimeVerificationNote("Validated forty v25 production followup points.");
         }
 
+        void ValidateRuntimeV26LongHorizonBatch()
+        {
+            const ViewportOverlaySettings overlayBefore = m_viewportOverlay;
+            const TransformPrecisionState precisionBefore = m_transformPrecision;
+            const bool editorCameraBefore = m_editorCameraEnabled;
+            const bool toolbarVisibleBefore = m_viewportToolbarVisible;
+            const std::string filterBefore = CommandHistoryFilterText();
+
+            m_viewportOverlay.Enabled = true;
+            m_viewportOverlay.Pinned = false;
+            m_viewportOverlay.ShowGpuPick = true;
+            m_viewportOverlay.ShowReadback = true;
+            m_viewportOverlay.ShowCapture = false;
+            m_viewportOverlay.ShowDebugThumbnails = true;
+            m_viewportToolbarVisible = true;
+            m_editorCameraEnabled = true;
+            m_transformPrecision.Step = 0.17f;
+            m_transformPrecision.PivotMode = 1;
+            m_transformPrecision.OrientationMode = 2;
+            SetCommandHistoryFilterText("Verification");
+
+            const std::filesystem::path preferenceProbePath = "Saved/Verification/editor_preferences_probe.json";
+            ++m_runtimeEditorStats.EditorPreferenceSaveTests;
+            const bool saved = SaveEditorPreferencesToPath(preferenceProbePath);
+            m_editorPreferencesSaved = m_editorPreferencesSaved || saved;
+            if (!saved)
+            {
+                AddRuntimeVerificationFailure("editor preference save probe failed.");
+            }
+
+            m_viewportOverlay.Enabled = false;
+            m_viewportOverlay.Pinned = true;
+            m_viewportOverlay.ShowGpuPick = false;
+            m_viewportOverlay.ShowReadback = false;
+            m_viewportOverlay.ShowCapture = true;
+            m_viewportOverlay.ShowDebugThumbnails = false;
+            m_viewportToolbarVisible = false;
+            m_editorCameraEnabled = false;
+            m_transformPrecision.Step = 0.01f;
+            m_transformPrecision.PivotMode = 0;
+            m_transformPrecision.OrientationMode = 0;
+            SetCommandHistoryFilterText("");
+
+            ++m_runtimeEditorStats.EditorPreferencePersistenceTests;
+            const bool loaded = LoadEditorPreferencesFromPath(preferenceProbePath);
+            m_editorPreferencesLoaded = m_editorPreferencesLoaded || loaded;
+            const bool preferenceRoundTrip =
+                loaded &&
+                m_viewportOverlay.Enabled &&
+                !m_viewportOverlay.Pinned &&
+                m_viewportOverlay.ShowGpuPick &&
+                m_viewportOverlay.ShowReadback &&
+                !m_viewportOverlay.ShowCapture &&
+                m_viewportOverlay.ShowDebugThumbnails &&
+                m_viewportToolbarVisible &&
+                m_editorCameraEnabled &&
+                std::abs(m_transformPrecision.Step - 0.17f) <= 0.001f &&
+                m_transformPrecision.PivotMode == 1 &&
+                m_transformPrecision.OrientationMode == 2 &&
+                CommandHistoryFilterText() == "Verification";
+            if (!preferenceRoundTrip)
+            {
+                AddRuntimeVerificationFailure("editor preference persistence round trip failed.");
+            }
+
+            m_viewportOverlay = overlayBefore;
+            m_transformPrecision = precisionBefore;
+            m_editorCameraEnabled = editorCameraBefore;
+            m_viewportToolbarVisible = toolbarVisibleBefore;
+            SetCommandHistoryFilterText(filterBefore);
+
+            const ViewportOverlaySettings toolbarOverlayBefore = m_viewportOverlay;
+            const bool toolbarCameraBefore = m_editorCameraEnabled;
+            const uint32_t toolbarCountBefore = m_viewportToolbarInteractionCount;
+            const std::optional<Disparity::RendererSettings> rendererBefore = m_renderer ? std::optional<Disparity::RendererSettings>(m_renderer->GetSettings()) : std::nullopt;
+            ToggleViewportToolbarCamera();
+            CycleViewportToolbarDebugView();
+            ToggleViewportToolbarObjectId();
+            ToggleViewportToolbarDepth();
+            ToggleViewportToolbarHud();
+            ++m_runtimeEditorStats.ViewportToolbarTests;
+
+            const bool toolbarCountOk = m_viewportToolbarInteractionCount >= toolbarCountBefore + 5u;
+            bool debugCycleOk = true;
+            if (m_renderer && rendererBefore.has_value())
+            {
+                debugCycleOk = m_renderer->GetSettings().PostDebugView == ((rendererBefore->PostDebugView + 1u) % 7u);
+                m_renderer->SetSettings(*rendererBefore);
+            }
+            if (!toolbarCountOk || !debugCycleOk)
+            {
+                AddRuntimeVerificationFailure("viewport toolbar action validation failed.");
+            }
+
+            m_viewportOverlay = toolbarOverlayBefore;
+            m_editorCameraEnabled = toolbarCameraBefore;
+            AddRuntimeVerificationNote("Validated v26 editor preference persistence and viewport toolbar actions.");
+        }
+
         void ValidateRuntimeV20ProductionBatch()
         {
             bool asyncSuccess = false;
@@ -5530,6 +5943,14 @@ namespace
             if (m_runtimeEditorStats.V25ProductionPointTests < m_runtimeBaseline.MinV25ProductionPoints)
             {
                 AddRuntimeVerificationFailure("v25 production point test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.EditorPreferencePersistenceTests < m_runtimeBaseline.MinEditorPreferencePersistenceTests)
+            {
+                AddRuntimeVerificationFailure("editor preference persistence test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.ViewportToolbarTests < m_runtimeBaseline.MinViewportToolbarTests)
+            {
+                AddRuntimeVerificationFailure("viewport toolbar test count is below baseline.");
             }
         }
 
@@ -6030,6 +6451,14 @@ namespace
             report << "audio_meter_calibration_tests=" << m_runtimeEditorStats.AudioMeterCalibrationTests << "\n";
             report << "release_readiness_tests=" << m_runtimeEditorStats.ReleaseReadinessTests << "\n";
             report << "v25_production_points=" << m_runtimeEditorStats.V25ProductionPointTests << "\n";
+            report << "editor_preference_persistence_tests=" << m_runtimeEditorStats.EditorPreferencePersistenceTests << "\n";
+            report << "editor_preference_save_tests=" << m_runtimeEditorStats.EditorPreferenceSaveTests << "\n";
+            report << "editor_preferences_loaded=" << (m_editorPreferencesLoaded ? "true" : "false") << "\n";
+            report << "editor_preferences_saved=" << (m_editorPreferencesSaved ? "true" : "false") << "\n";
+            report << "editor_preferences_path=" << m_editorPreferenceProfile.PreferencePath.string() << "\n";
+            report << "viewport_toolbar_tests=" << m_runtimeEditorStats.ViewportToolbarTests << "\n";
+            report << "viewport_toolbar_interactions=" << m_viewportToolbarInteractionCount << "\n";
+            report << "viewport_toolbar_visible=" << (m_viewportToolbarVisible ? "true" : "false") << "\n";
             const auto& v25Points = GetV25ProductionPoints();
             for (size_t index = 0; index < v25Points.size(); ++index)
             {
@@ -7887,6 +8316,8 @@ namespace
                     else if (key == "min_audio_meter_calibration_tests") { loadedBaseline.MinAudioMeterCalibrationTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_release_readiness_tests") { loadedBaseline.MinReleaseReadinessTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_v25_production_points") { loadedBaseline.MinV25ProductionPoints = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_editor_preference_persistence_tests") { loadedBaseline.MinEditorPreferencePersistenceTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_viewport_toolbar_tests") { loadedBaseline.MinViewportToolbarTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
@@ -8022,6 +8453,7 @@ namespace
         float m_riftBeatPulse = 0.0f;
         float m_statusTimer = 0.0f;
         float m_hotReloadPollTimer = 0.0f;
+        float m_editorPreferencesSaveDelay = 0.0f;
         float m_runtimeVerificationElapsed = 0.0f;
         int m_lastRiftBeatIndex = -1;
         size_t m_selectedIndex = 0;
@@ -8047,6 +8479,10 @@ namespace
         bool m_hotReloadEnabled = true;
         bool m_gltfAnimationPlayback = true;
         bool m_applyingHistory = false;
+        bool m_editorPreferencesLoaded = false;
+        bool m_editorPreferencesSaved = false;
+        bool m_editorPreferencesDirty = false;
+        bool m_viewportToolbarVisible = true;
         bool m_runtimeVerificationFinished = false;
         bool m_runtimeVerificationReloadedScene = false;
         bool m_runtimeVerificationSavedScene = false;
@@ -8064,6 +8500,7 @@ namespace
         bool m_highResCapturePending = false;
         bool m_highResCaptureWorkerStarted = false;
         uint32_t m_highResCaptureTilesWritten = 0;
+        uint32_t m_viewportToolbarInteractionCount = 0;
         bool m_gizmoDragging = false;
         bool m_gizmoDragMoved = false;
         GizmoAxis m_gizmoDragAxis = GizmoAxis::None;

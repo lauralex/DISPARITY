@@ -1,6 +1,14 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v25 versions of many requested followups. The next milestones should deepen the new graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification scaffolds into fully durable production systems.
+The current engine now has functional v26 versions of many requested followups. The next milestones should deepen the new graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification scaffolds into fully durable production systems.
+
+## v26 Completed Long-Horizon Editor Foundations
+
+- Editor preferences now persist to `Saved/Editor/editor_preferences.json`, covering viewport HUD row visibility, HUD pinning, viewport-toolbar visibility, editor-camera enablement, transform precision, pivot/orientation mode, and the command-history filter.
+- Preference changes autosave shortly after UI edits, while runtime verification uses an isolated `Saved/Verification/editor_preferences_probe.json` round trip so user settings cannot make verification flaky.
+- The `Viewport` panel now draws a compact interactive toolbar directly over the renderer-owned ImGui viewport texture. It can toggle editor/game camera, cycle post debug views, queue captures, and toggle object-ID, depth/readback, and HUD overlay state without leaving the viewport.
+- Runtime verification now validates preference save/load behavior and viewport toolbar actions, writes dedicated report metrics, and requires those counters in every suite baseline.
+- `RuntimeReportSchema.dschema`, `RuntimeVerifyDisparity.ps1`, `ReviewVerificationBaselines.ps1`, and `SummarizePerformanceHistory.ps1` now track the v26 preference/toolbar counters.
 
 ## v25 Completed Forty-Point Production Batch
 
@@ -125,8 +133,8 @@ The current engine now has functional v25 versions of many requested followups. 
 
 ## Editor
 
-- Add click-through viewport toolbar controls for camera mode, render debug mode, capture state, object-ID/depth overlays, and high-resolution tile state on top of the dedicated ImGui viewport texture.
-- Persist viewport HUD row visibility, panel layout, transform precision, and command-history filters as editor preferences.
+- Promote editor preferences into named workspace/user profiles with reset/import/export commands, dock-layout persistence, conflict-safe migration, and per-project defaults.
+- Upgrade the viewport toolbar with icon buttons, hotkey hints, compact capture-state progress, toolbar customization, and optional workspace presets for gameplay, editor, and trailer capture.
 - Expand the current mesh/ring/plane gizmo handles with depth-aware hover occlusion, constraint previews, numerical transform entry, richer pivot/orientation editing, and richer object-ID handle metadata.
 - Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command categories, history export, and reviewable command macros.
 - Promote the new prefab variant/parent/nested metadata into nested-prefab instancing, multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
