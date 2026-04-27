@@ -1,0 +1,18 @@
+# DISPARITY public demo locomotion blend tree.
+# Format: clip/transition/event/rootmotion <name> <metadata>
+clip Idle base_pose loop
+clip Walk camera_relative_loop
+clip Sprint high_focus_loop
+clip Dash traversal_impulse
+clip Stabilize objective_interact
+transition IdleToWalk speed_gt_0_12 smoothstep 0.10
+transition WalkToSprint focus_gt_0_35 smoothstep 0.16
+transition SprintToDash dash_pressed impulse 0.05
+transition DashToStabilize objective_overlap ease_out 0.18
+transition StabilizeToIdle objective_released ease_in 0.14
+event footstep_l footstep SFX
+event footstep_r footstep SFX
+event dash_burst traversal_dash SFX
+event stabilize_lock anchor_align SFX
+rootmotion dash_forward 1.25m 0.18s
+rootmotion sprint_stride 0.42m 0.33s

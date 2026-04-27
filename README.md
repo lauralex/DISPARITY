@@ -364,14 +364,22 @@ Editor UI:
 - Public-demo feedback now reads cue definitions from `Assets/Audio/PublicDemoCues.daudio` and player state names from `Assets/Animation/PublicDemoPlayer.danim`, with player material tinting for idle, walk, sprint, dash, stabilize, failure, and complete states.
 - Runtime reports, schema checks, baselines, release readiness, performance history, and production manifest review now require collision/traversal, enemy, gamepad/menu, failure, content audio, animation, and all `v33_point_*` metrics.
 
+## Engine v34 AAA Foundation Batch Implemented
+
+- `Assets/Verification/V34AAAFoundationBatch.dfollowups` tracks sixty near-AAA foundation points across EncounterAI, Controller, Animation, EditorUX, Rendering, and Production.
+- The public demo now has three enemy archetypes: Hunter, Warden, and Disruptor. They expose role-specific colors, patrol offsets, line-of-sight scoring, telegraph windows, hit-reaction telemetry, and Demo Director readouts.
+- Controller polish now records grounded, slope, material, moving-platform, camera-collision, dash-recovery, and accessibility/title-flow readiness counters for future character-controller work.
+- Animation has a new `Assets/Animation/PublicDemoBlendTree.danimgraph` manifest with clips, transitions, animation events, and root-motion preview entries. Runtime verification exercises blend samples and event routing.
+- Runtime reports, schema checks, baselines, release readiness, performance history, and production manifest review now require v34 enemy/controller/animation/accessibility/rendering/production readiness plus all `v34_point_*` metrics.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Add more advanced encounter design with multiple enemy archetypes, authored patrol paths, line-of-sight checks, readable attack telegraphs, hit reactions, and objective-specific pressure beats.
-- Polish the character controller with grounded state, slopes, ledges, moving platforms, collision layers, friction/material responses, and camera collision.
-- Replace the manifest-level animation state surface with authored clips, blend trees, animation events, root-motion experiments, and transition previews in the editor.
-- Expand the pause/completion/failure flow into a title screen, settings menu, save-slot/checkpoint UI, accessibility options, and replayable demo chapter select.
+- Turn the v34 enemy archetype proof into a data-driven encounter system with behavior trees/state machines, navigation volumes, squad roles, perception memory, difficulty budgets, and designer-authored encounter prefabs.
+- Promote the controller telemetry into a real swept capsule character controller with ledge checks, step-up/step-down, slope limits, material friction, moving-platform parenting, camera obstruction solving, and replay-tested feel presets.
+- Replace the v34 blend-tree manifest with authored clip assets, editor transition previews, animation event tracks, root-motion extraction, additive poses, state-machine debugging, and GPU skinning playback.
+- Expand the title/accessibility/save-slot readiness into actual title/settings/save/chapter-select UI with input remapping, subtitle/color/contrast options, persistence, and controller-first navigation.
 - Promote v28 graph-owned rendering diagnostics into actual DX11 pass execution: explicit bind/unbind barriers, alias lifetime validation, GPU culling, Forward+ lighting, cascaded shadows, motion-vector rendering, and stronger temporal AA.
 - Move the high-resolution capture proof from resolved source-frame sampling to true tiled offscreen supersampling with per-tile camera jitter, selectable resolve filters, real EXR output, and real async compression workers.
 - Turn editor profile import/export/diff and workspace presets into a versioned per-project preference system with dock-layout files, schema migration, conflict-safe merge, and checked-in team defaults.

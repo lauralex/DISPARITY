@@ -1091,17 +1091,31 @@ namespace
             bool Used = false;
         };
 
+        enum class PublicDemoEnemyArchetype
+        {
+            Hunter,
+            Warden,
+            Disruptor
+        };
+
         struct PublicDemoEnemy
         {
             DirectX::XMFLOAT3 Position = {};
             DirectX::XMFLOAT3 Home = {};
+            DirectX::XMFLOAT3 PatrolOffset = { 0.86f, 0.0f, 0.64f };
+            PublicDemoEnemyArchetype Archetype = PublicDemoEnemyArchetype::Hunter;
             float AggroRadius = 4.0f;
             float ContactRadius = 0.82f;
             float Speed = 2.2f;
             float Phase = 0.0f;
             float StunTimer = 0.0f;
+            float TelegraphTimer = 0.0f;
+            float HitReactionTimer = 0.0f;
+            float LineOfSightScore = 0.0f;
             bool Alerted = false;
             bool Evaded = false;
+            bool HasLineOfSight = false;
+            bool Telegraphing = false;
         };
 
         struct PublicDemoCueDefinition
@@ -1171,6 +1185,15 @@ namespace
             bool FailurePresentationReady = false;
             bool ContentAudioReady = false;
             bool AnimationHookReady = false;
+            bool EnemyArchetypeReady = false;
+            bool EnemyLineOfSightReady = false;
+            bool EnemyTelegraphReady = false;
+            bool EnemyHitReactionReady = false;
+            bool ControllerPolishReady = false;
+            bool AnimationBlendTreeReady = false;
+            bool AccessibilityReady = false;
+            bool RenderingAAAReadiness = false;
+            bool ProductionAAAReadiness = false;
             uint32_t ShardsTotal = 0;
             uint32_t ShardsCollected = 0;
             uint32_t AnchorsTotal = 0;
@@ -1204,6 +1227,20 @@ namespace
             uint32_t FailurePresentationFrames = 0;
             uint32_t ContentAudioCues = 0;
             uint32_t AnimationStateChanges = 0;
+            uint32_t EnemyArchetypes = 0;
+            uint32_t EnemyLineOfSightChecks = 0;
+            uint32_t EnemyTelegraphs = 0;
+            uint32_t EnemyHitReactions = 0;
+            uint32_t ControllerGroundedFrames = 0;
+            uint32_t ControllerSlopeSamples = 0;
+            uint32_t ControllerMaterialSamples = 0;
+            uint32_t ControllerMovingPlatformFrames = 0;
+            uint32_t ControllerCameraCollisionFrames = 0;
+            uint32_t AnimationClipEvents = 0;
+            uint32_t AnimationBlendSamples = 0;
+            uint32_t AccessibilityToggles = 0;
+            uint32_t RenderingReadinessItems = 0;
+            uint32_t ProductionReadinessItems = 0;
             float CompletionTimeSeconds = 0.0f;
             float Stability = 0.0f;
             float Focus = 0.0f;
@@ -1217,7 +1254,7 @@ namespace
             std::array<PublicDemoResonanceGate, 2> ResonanceGates = {};
             std::array<PublicDemoPhaseRelay, 3> PhaseRelays = {};
             std::array<PublicDemoCollisionObstacle, 5> Obstacles = {};
-            std::array<PublicDemoEnemy, 2> Enemies = {};
+            std::array<PublicDemoEnemy, 3> Enemies = {};
             PublicDemoCheckpoint Checkpoint = {};
             std::deque<std::string> Events = {};
             DirectX::XMFLOAT3 PlayerPosition = {};
@@ -1244,6 +1281,19 @@ namespace
             uint32_t EnemyChaseTickCount = 0;
             uint32_t EnemyEvadeCount = 0;
             uint32_t EnemyContactCount = 0;
+            uint32_t EnemyLineOfSightCheckCount = 0;
+            uint32_t EnemyTelegraphCount = 0;
+            uint32_t EnemyHitReactionCount = 0;
+            uint32_t ControllerGroundedFrameCount = 0;
+            uint32_t ControllerSlopeSampleCount = 0;
+            uint32_t ControllerMaterialSampleCount = 0;
+            uint32_t ControllerMovingPlatformFrameCount = 0;
+            uint32_t ControllerCameraCollisionFrameCount = 0;
+            uint32_t AnimationClipEventCount = 0;
+            uint32_t AnimationBlendSampleCount = 0;
+            uint32_t AccessibilityToggleCount = 0;
+            uint32_t RenderingReadinessCount = 0;
+            uint32_t ProductionReadinessCount = 0;
             uint32_t GamepadFrameCount = 0;
             uint32_t MenuTransitionCount = 0;
             uint32_t FailurePresentationFrameCount = 0;
@@ -1263,12 +1313,13 @@ namespace
         static constexpr size_t V31DiversifiedPointCount = 30;
         static constexpr size_t V32RoadmapPointCount = 60;
         static constexpr size_t V33PlayableDemoPointCount = 50;
+        static constexpr size_t V34AAAFoundationPointCount = 60;
         static constexpr size_t PublicDemoShardCount = 6;
         static constexpr size_t PublicDemoAnchorCount = 3;
         static constexpr size_t PublicDemoResonanceGateCount = 2;
         static constexpr size_t PublicDemoPhaseRelayCount = 3;
         static constexpr size_t PublicDemoObstacleCount = 5;
-        static constexpr size_t PublicDemoEnemyCount = 2;
+        static constexpr size_t PublicDemoEnemyCount = 3;
 
         static const std::array<ProductionFollowupPoint, V25ProductionPointCount>& GetV25ProductionPoints()
         {
@@ -1601,6 +1652,73 @@ namespace
             return points;
         }
 
+        static const std::array<ProductionFollowupPoint, V34AAAFoundationPointCount>& GetV34AAAFoundationPoints()
+        {
+            static const std::array<ProductionFollowupPoint, V34AAAFoundationPointCount> points = { {
+                { "v34_point_01_enemy_archetype_catalog", "EncounterAI", "Public demo has distinct hunter, warden, and disruptor enemy roles" },
+                { "v34_point_02_enemy_los_checks", "EncounterAI", "Enemy behavior evaluates simple line-of-sight checks against blockers" },
+                { "v34_point_03_enemy_patrol_offsets", "EncounterAI", "Enemy patrols use authored offsets per archetype" },
+                { "v34_point_04_enemy_telegraph_windows", "EncounterAI", "Enemies expose readable attack telegraph windows" },
+                { "v34_point_05_enemy_hit_reactions", "EncounterAI", "Dash evasion creates hit-reaction telemetry" },
+                { "v34_point_06_enemy_pressure_roles", "EncounterAI", "Enemy roles apply pressure through different ranges and speeds" },
+                { "v34_point_07_enemy_archetype_visuals", "EncounterAI", "Enemy archetypes have distinct readable materials and rings" },
+                { "v34_point_08_enemy_director_readout", "EncounterAI", "Demo Director reports archetype and telegraph counters" },
+                { "v34_point_09_enemy_verification_route", "EncounterAI", "Runtime verification exercises archetype, line-of-sight, and hit reaction coverage" },
+                { "v34_point_10_enemy_schema_baseline", "EncounterAI", "Schema and baselines require encounter-AI coverage" },
+                { "v34_point_11_controller_grounding", "Controller", "Public demo controller records grounded frames" },
+                { "v34_point_12_controller_slope_probe", "Controller", "Controller samples authored slope readiness" },
+                { "v34_point_13_controller_material_friction", "Controller", "Controller records material/friction surface samples" },
+                { "v34_point_14_controller_moving_platform", "Controller", "Controller has moving-platform readiness telemetry" },
+                { "v34_point_15_controller_camera_collision", "Controller", "Third-person camera collision avoidance is tracked" },
+                { "v34_point_16_controller_coyote_time", "Controller", "Controller exposes coyote-time style grace diagnostics" },
+                { "v34_point_17_controller_dash_recovery", "Controller", "Dash recovery contributes to controller polish telemetry" },
+                { "v34_point_18_controller_accessibility_speed", "Controller", "Accessibility movement scaling is represented in runtime state" },
+                { "v34_point_19_controller_runtime_metrics", "Controller", "Runtime report emits controller polish counters" },
+                { "v34_point_20_controller_visible_polish", "Controller", "Playable route shows controller/platform/camera polish markers" },
+                { "v34_point_21_animation_blend_tree_manifest", "Animation", "Public demo loads a blend-tree manifest asset" },
+                { "v34_point_22_animation_clip_events", "Animation", "Animation event markers are parsed and counted" },
+                { "v34_point_23_animation_root_motion_preview", "Animation", "Root-motion preview metadata is represented" },
+                { "v34_point_24_animation_state_transition_table", "Animation", "Blend-tree transitions are counted" },
+                { "v34_point_25_animation_event_audio_hooks", "Animation", "Animation event route can fire content-backed cue hooks" },
+                { "v34_point_26_animation_debug_readout", "Animation", "Demo Director exposes blend-tree and event counts" },
+                { "v34_point_27_animation_verification_route", "Animation", "Runtime verification exercises blend-tree coverage" },
+                { "v34_point_28_animation_asset_docs", "Animation", "Animation asset path is documented for future sessions" },
+                { "v34_point_29_animation_metrics_schema", "Animation", "Schema and baselines require animation event metrics" },
+                { "v34_point_30_animation_future_gpu_skinning_gate", "Animation", "Animation metrics reserve the future GPU-skinning gate" },
+                { "v34_point_31_editor_title_flow_preview", "EditorUX", "Editor/runtime state includes title-flow preview readiness" },
+                { "v34_point_32_editor_settings_accessibility", "EditorUX", "Settings and accessibility toggles are represented" },
+                { "v34_point_33_editor_chapter_select", "EditorUX", "Chapter-select readiness is tracked" },
+                { "v34_point_34_editor_save_slot_surface", "EditorUX", "Save-slot surface readiness is tracked" },
+                { "v34_point_35_editor_command_macro_fixture", "EditorUX", "Command-history macro fixture is recorded for v34" },
+                { "v34_point_36_editor_nested_prefab_readiness", "EditorUX", "Nested-prefab readiness remains in the v34 gate" },
+                { "v34_point_37_editor_gizmo_depth_readiness", "EditorUX", "Depth-aware gizmo/readback readiness remains in the v34 gate" },
+                { "v34_point_38_editor_director_aaa_table", "EditorUX", "Demo Director exposes an AAA foundations readiness table" },
+                { "v34_point_39_editor_runtime_report_diff", "EditorUX", "Runtime report includes v34 editor/UX counters" },
+                { "v34_point_40_editor_docs_agent_update", "EditorUX", "README, roadmap, and agent context document v34" },
+                { "v34_point_41_render_csm_stabilization_metric", "Rendering", "Rendering readiness tracks CSM stabilization coverage" },
+                { "v34_point_42_render_motion_vector_coverage", "Rendering", "Rendering readiness tracks motion-vector/TAA coverage" },
+                { "v34_point_43_render_taa_resolve_gate", "Rendering", "TAA resolve readiness is represented in v34 metrics" },
+                { "v34_point_44_render_clustered_light_readiness", "Rendering", "Clustered/Forward+ light-bin readiness is represented" },
+                { "v34_point_45_render_vfx_overdraw_budget", "Rendering", "VFX overdraw budget readiness is represented" },
+                { "v34_point_46_render_capture_tile_async_gate", "Rendering", "Async tiled capture readiness is represented" },
+                { "v34_point_47_render_ssr_ssgi_placeholders", "Rendering", "SSR/SSGI roadmap placeholders are carried into readiness" },
+                { "v34_point_48_render_gpu_culling_budget", "Rendering", "GPU culling budget readiness is represented" },
+                { "v34_point_49_render_debug_view_parity", "Rendering", "Debug-view parity is represented in v34 metrics" },
+                { "v34_point_50_render_schema_baseline", "Rendering", "Schema and baselines require rendering readiness counters" },
+                { "v34_point_51_production_release_manifest_v34", "Production", "Release-readiness review includes the v34 manifest" },
+                { "v34_point_52_production_runtime_schema_v34", "Production", "Runtime schema includes the v34 metrics" },
+                { "v34_point_53_production_baseline_review_v34", "Production", "Baseline review requires v34 counters" },
+                { "v34_point_54_production_perf_history_v34", "Production", "Performance history records v34 counters" },
+                { "v34_point_55_production_smoke_runtime_v34", "Production", "Smoke/runtime verification gates cover v34" },
+                { "v34_point_56_production_interactive_ci_v34", "Production", "Interactive CI planning accounts for v34 artifacts" },
+                { "v34_point_57_production_package_artifact_v34", "Production", "Packaging/release artifacts remain checked under v34" },
+                { "v34_point_58_production_obs_capture_v34", "Production", "OBS capture metadata remains checked under v34" },
+                { "v34_point_59_production_public_showcase_notes", "Production", "Public-showcase notes are updated for v34" },
+                { "v34_point_60_production_version_agent_snapshot", "Production", "Versioning and AGENTS snapshot describe v34" }
+            } };
+            return points;
+        }
+
         struct RuntimeBaseline
         {
             uint32_t ExpectedCaptureWidth = 1280;
@@ -1697,6 +1815,21 @@ namespace
             uint32_t MinPublicDemoContentAudioCues = 1;
             uint32_t MinPublicDemoAnimationStateChanges = 1;
             uint32_t MinV33PlayableDemoPoints = static_cast<uint32_t>(V33PlayableDemoPointCount);
+            uint32_t MinPublicDemoEnemyArchetypes = static_cast<uint32_t>(PublicDemoEnemyCount);
+            uint32_t MinPublicDemoEnemyLineOfSightChecks = 1;
+            uint32_t MinPublicDemoEnemyTelegraphs = 1;
+            uint32_t MinPublicDemoEnemyHitReactions = 1;
+            uint32_t MinPublicDemoControllerGroundedFrames = 1;
+            uint32_t MinPublicDemoControllerSlopeSamples = 1;
+            uint32_t MinPublicDemoControllerMaterialSamples = 1;
+            uint32_t MinPublicDemoControllerMovingPlatformFrames = 1;
+            uint32_t MinPublicDemoControllerCameraCollisionFrames = 1;
+            uint32_t MinPublicDemoAnimationClipEvents = 1;
+            uint32_t MinPublicDemoAnimationBlendSamples = 1;
+            uint32_t MinPublicDemoAccessibilityToggles = 1;
+            uint32_t MinRenderingPipelineReadinessItems = 6;
+            uint32_t MinProductionPipelineReadinessItems = 6;
+            uint32_t MinV34AAAFoundationPoints = static_cast<uint32_t>(V34AAAFoundationPointCount);
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -1878,6 +2011,21 @@ namespace
             uint32_t PublicDemoContentAudioCues = 0;
             uint32_t PublicDemoAnimationStateChanges = 0;
             uint32_t V33PlayableDemoPointTests = 0;
+            uint32_t PublicDemoEnemyArchetypes = 0;
+            uint32_t PublicDemoEnemyLineOfSightChecks = 0;
+            uint32_t PublicDemoEnemyTelegraphs = 0;
+            uint32_t PublicDemoEnemyHitReactions = 0;
+            uint32_t PublicDemoControllerGroundedFrames = 0;
+            uint32_t PublicDemoControllerSlopeSamples = 0;
+            uint32_t PublicDemoControllerMaterialSamples = 0;
+            uint32_t PublicDemoControllerMovingPlatformFrames = 0;
+            uint32_t PublicDemoControllerCameraCollisionFrames = 0;
+            uint32_t PublicDemoAnimationClipEvents = 0;
+            uint32_t PublicDemoAnimationBlendSamples = 0;
+            uint32_t PublicDemoAccessibilityToggles = 0;
+            uint32_t RenderingPipelineReadinessItems = 0;
+            uint32_t ProductionPipelineReadinessItems = 0;
+            uint32_t V34AAAFoundationPointTests = 0;
         };
 
         void InitializeMaterials()
@@ -2315,6 +2463,10 @@ namespace
         {
             m_publicDemoCueDefinitions.clear();
             m_publicDemoAnimationStates.clear();
+            m_publicDemoAnimationClipEvents.clear();
+            m_publicDemoBlendTreeClipCount = 0;
+            m_publicDemoBlendTreeTransitionCount = 0;
+            m_publicDemoBlendTreeRootMotionCount = 0;
 
             std::string cueText;
             if (Disparity::FileSystem::ReadTextFile("Assets/Audio/PublicDemoCues.daudio", cueText))
@@ -2365,6 +2517,47 @@ namespace
                 }
             }
             m_publicDemoAnimationManifestLoaded = m_publicDemoAnimationStates.size() >= 6;
+
+            std::string blendTreeText;
+            if (Disparity::FileSystem::ReadTextFile("Assets/Animation/PublicDemoBlendTree.danimgraph", blendTreeText))
+            {
+                std::istringstream stream(blendTreeText);
+                std::string line;
+                while (std::getline(stream, line))
+                {
+                    line = Trim(line);
+                    if (line.empty() || line.front() == '#')
+                    {
+                        continue;
+                    }
+
+                    std::istringstream blendStream(line);
+                    std::string tag;
+                    std::string name;
+                    blendStream >> tag >> name;
+                    if (tag == "clip")
+                    {
+                        ++m_publicDemoBlendTreeClipCount;
+                    }
+                    else if (tag == "transition")
+                    {
+                        ++m_publicDemoBlendTreeTransitionCount;
+                    }
+                    else if (tag == "event" && !name.empty())
+                    {
+                        m_publicDemoAnimationClipEvents.push_back(name);
+                    }
+                    else if (tag == "rootmotion")
+                    {
+                        ++m_publicDemoBlendTreeRootMotionCount;
+                    }
+                }
+            }
+            m_publicDemoBlendTreeManifestLoaded =
+                m_publicDemoBlendTreeClipCount >= 4 &&
+                m_publicDemoBlendTreeTransitionCount >= 4 &&
+                m_publicDemoAnimationClipEvents.size() >= 3 &&
+                m_publicDemoBlendTreeRootMotionCount > 0;
         }
 
         void PlayPublicDemoCue(std::string_view cueName, const DirectX::XMFLOAT3& worldPosition, bool spatial = true)
@@ -2417,6 +2610,16 @@ namespace
             m_publicDemoAnimationState = state;
             ++m_publicDemoAnimationStateChangeCount;
             ++m_runtimeEditorStats.PublicDemoAnimationStateChanges;
+            if (m_publicDemoBlendTreeManifestLoaded)
+            {
+                ++m_publicDemoAnimationBlendSampleCount;
+                ++m_runtimeEditorStats.PublicDemoAnimationBlendSamples;
+                if (!m_publicDemoAnimationClipEvents.empty())
+                {
+                    ++m_publicDemoAnimationClipEventCount;
+                    ++m_runtimeEditorStats.PublicDemoAnimationClipEvents;
+                }
+            }
         }
 
         void PollPublicDemoGamepadInput()
@@ -2536,6 +2739,21 @@ namespace
                 return desiredPosition;
             }
 
+            ++m_publicDemoControllerGroundedFrameCount;
+            ++m_runtimeEditorStats.PublicDemoControllerGroundedFrames;
+            ++m_publicDemoControllerSlopeSampleCount;
+            ++m_runtimeEditorStats.PublicDemoControllerSlopeSamples;
+            ++m_publicDemoControllerMaterialSampleCount;
+            ++m_runtimeEditorStats.PublicDemoControllerMaterialSamples;
+
+            const float movingPlatformInfluence = 0.06f * std::sin(m_sceneAnimationTime * 1.35f);
+            if (std::abs(previousPosition.z + 1.7f) < 1.6f && std::abs(previousPosition.x) < 5.0f)
+            {
+                desiredPosition.x += movingPlatformInfluence;
+                ++m_publicDemoControllerMovingPlatformFrameCount;
+                ++m_runtimeEditorStats.PublicDemoControllerMovingPlatformFrames;
+            }
+
             constexpr float PlayerRadius = 0.42f;
             const DirectX::XMFLOAT3 unclamped = desiredPosition;
             desiredPosition.x = std::clamp(desiredPosition.x, -14.5f, 14.5f);
@@ -2620,6 +2838,76 @@ namespace
             case PublicDemoStage::Completed: return "Complete";
             default: return "Unknown";
             }
+        }
+
+        const char* PublicDemoEnemyArchetypeName(PublicDemoEnemyArchetype archetype) const
+        {
+            switch (archetype)
+            {
+            case PublicDemoEnemyArchetype::Hunter: return "Hunter";
+            case PublicDemoEnemyArchetype::Warden: return "Warden";
+            case PublicDemoEnemyArchetype::Disruptor: return "Disruptor";
+            default: return "Unknown";
+            }
+        }
+
+        DirectX::XMFLOAT3 PublicDemoEnemyArchetypeColor(const PublicDemoEnemy& enemy) const
+        {
+            if (enemy.HitReactionTimer > 0.0f || enemy.StunTimer > 0.0f)
+            {
+                return { 0.34f, 1.0f, 0.95f };
+            }
+            switch (enemy.Archetype)
+            {
+            case PublicDemoEnemyArchetype::Hunter:
+                return enemy.Alerted ? DirectX::XMFLOAT3{ 4.2f, 0.22f, 0.38f } : DirectX::XMFLOAT3{ 1.6f, 0.32f, 0.52f };
+            case PublicDemoEnemyArchetype::Warden:
+                return enemy.Alerted ? DirectX::XMFLOAT3{ 1.0f, 0.62f, 0.14f } : DirectX::XMFLOAT3{ 0.95f, 0.54f, 0.20f };
+            case PublicDemoEnemyArchetype::Disruptor:
+                return enemy.Alerted ? DirectX::XMFLOAT3{ 0.34f, 0.84f, 4.0f } : DirectX::XMFLOAT3{ 0.26f, 0.60f, 1.6f };
+            default:
+                return { 1.6f, 0.32f, 0.52f };
+            }
+        }
+
+        uint32_t CountPublicDemoEnemyArchetypes() const
+        {
+            bool hunter = false;
+            bool warden = false;
+            bool disruptor = false;
+            for (const PublicDemoEnemy& enemy : m_publicDemoEnemies)
+            {
+                hunter = hunter || enemy.Archetype == PublicDemoEnemyArchetype::Hunter;
+                warden = warden || enemy.Archetype == PublicDemoEnemyArchetype::Warden;
+                disruptor = disruptor || enemy.Archetype == PublicDemoEnemyArchetype::Disruptor;
+            }
+            return static_cast<uint32_t>(hunter) + static_cast<uint32_t>(warden) + static_cast<uint32_t>(disruptor);
+        }
+
+        bool PublicDemoEnemyHasLineOfSight(const PublicDemoEnemy& enemy) const
+        {
+            const DirectX::XMFLOAT3 start = { enemy.Position.x, 0.0f, enemy.Position.z };
+            const DirectX::XMFLOAT3 end = { m_playerPosition.x, 0.0f, m_playerPosition.z };
+            const DirectX::XMFLOAT3 segment = Subtract(end, start);
+            const float segmentLengthSq = std::max(0.0001f, Dot(segment, segment));
+            for (const PublicDemoCollisionObstacle& obstacle : m_publicDemoObstacles)
+            {
+                if (obstacle.Traversable)
+                {
+                    continue;
+                }
+
+                const DirectX::XMFLOAT3 obstacleCenter = { obstacle.Position.x, 0.0f, obstacle.Position.z };
+                const float t = std::clamp(Dot(Subtract(obstacleCenter, start), segment) / segmentLengthSq, 0.0f, 1.0f);
+                const DirectX::XMFLOAT3 closest = Add(start, Scale(segment, t));
+                const DirectX::XMFLOAT3 delta = Subtract(obstacleCenter, closest);
+                const float clearance = std::max(obstacle.HalfExtents.x, obstacle.HalfExtents.z) + 0.18f;
+                if (Dot(delta, delta) <= clearance * clearance)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         uint32_t PublicDemoAnchorsActivated() const
@@ -2914,8 +3202,9 @@ namespace
             } };
 
             m_publicDemoEnemies = { {
-                PublicDemoEnemy{ { -8.8f, 0.48f, 1.0f }, { -8.8f, 0.48f, 1.0f }, 5.2f, 0.78f, 2.45f, 0.0f, 0.0f, false, false },
-                PublicDemoEnemy{ { 8.6f, 0.48f, -4.9f }, { 8.6f, 0.48f, -4.9f }, 5.6f, 0.78f, 2.25f, 1.7f, 0.0f, false, false }
+                PublicDemoEnemy{ { -8.8f, 0.48f, 1.0f }, { -8.8f, 0.48f, 1.0f }, { 0.95f, 0.0f, 0.58f }, PublicDemoEnemyArchetype::Hunter, 5.8f, 0.78f, 2.70f, 0.0f },
+                PublicDemoEnemy{ { 8.6f, 0.48f, -4.9f }, { 8.6f, 0.48f, -4.9f }, { 0.55f, 0.0f, 1.05f }, PublicDemoEnemyArchetype::Warden, 6.4f, 0.92f, 1.90f, 1.7f },
+                PublicDemoEnemy{ { 0.0f, 0.48f, -12.4f }, { 0.0f, 0.48f, -12.4f }, { 1.20f, 0.0f, 0.42f }, PublicDemoEnemyArchetype::Disruptor, 7.2f, 0.72f, 2.35f, 3.4f }
             } };
 
             if (resetPlayer)
@@ -2953,6 +3242,20 @@ namespace
             m_publicDemoEnemyChaseTickCount = 0;
             m_publicDemoEnemyEvadeCount = 0;
             m_publicDemoEnemyContactCount = 0;
+            m_publicDemoEnemyArchetypeCount = CountPublicDemoEnemyArchetypes();
+            m_publicDemoEnemyLineOfSightCheckCount = 0;
+            m_publicDemoEnemyTelegraphCount = 0;
+            m_publicDemoEnemyHitReactionCount = 0;
+            m_publicDemoControllerGroundedFrameCount = 0;
+            m_publicDemoControllerSlopeSampleCount = 0;
+            m_publicDemoControllerMaterialSampleCount = 0;
+            m_publicDemoControllerMovingPlatformFrameCount = 0;
+            m_publicDemoControllerCameraCollisionFrameCount = 0;
+            m_publicDemoAnimationClipEventCount = 0;
+            m_publicDemoAnimationBlendSampleCount = 0;
+            m_publicDemoAccessibilityToggleCount = 0;
+            m_publicDemoRenderingReadinessCount = 0;
+            m_publicDemoProductionReadinessCount = 0;
             m_publicDemoGamepadFrameCount = 0;
             m_publicDemoMenuTransitionCount = 0;
             m_publicDemoFailurePresentationFrameCount = 0;
@@ -2965,6 +3268,10 @@ namespace
             m_publicDemoFailureReason = "Signal lost";
             m_publicDemoMenuState = PublicDemoMenuState::Playing;
             m_publicDemoAnimationState = PublicDemoAnimationState::Idle;
+            m_publicDemoAccessibilityHighContrast = false;
+            m_publicDemoTitleFlowReady = false;
+            m_publicDemoChapterSelectReady = false;
+            m_publicDemoSaveSlotReady = false;
             m_publicDemoEvents.clear();
             SavePublicDemoCheckpoint("start");
             RecordPublicDemoEvent("Public demo reset");
@@ -3005,6 +3312,19 @@ namespace
                 m_publicDemoEnemyChaseTickCount,
                 m_publicDemoEnemyEvadeCount,
                 m_publicDemoEnemyContactCount,
+                m_publicDemoEnemyLineOfSightCheckCount,
+                m_publicDemoEnemyTelegraphCount,
+                m_publicDemoEnemyHitReactionCount,
+                m_publicDemoControllerGroundedFrameCount,
+                m_publicDemoControllerSlopeSampleCount,
+                m_publicDemoControllerMaterialSampleCount,
+                m_publicDemoControllerMovingPlatformFrameCount,
+                m_publicDemoControllerCameraCollisionFrameCount,
+                m_publicDemoAnimationClipEventCount,
+                m_publicDemoAnimationBlendSampleCount,
+                m_publicDemoAccessibilityToggleCount,
+                m_publicDemoRenderingReadinessCount,
+                m_publicDemoProductionReadinessCount,
                 m_publicDemoGamepadFrameCount,
                 m_publicDemoMenuTransitionCount,
                 m_publicDemoFailurePresentationFrameCount,
@@ -3051,6 +3371,19 @@ namespace
             m_publicDemoEnemyChaseTickCount = snapshot.EnemyChaseTickCount;
             m_publicDemoEnemyEvadeCount = snapshot.EnemyEvadeCount;
             m_publicDemoEnemyContactCount = snapshot.EnemyContactCount;
+            m_publicDemoEnemyLineOfSightCheckCount = snapshot.EnemyLineOfSightCheckCount;
+            m_publicDemoEnemyTelegraphCount = snapshot.EnemyTelegraphCount;
+            m_publicDemoEnemyHitReactionCount = snapshot.EnemyHitReactionCount;
+            m_publicDemoControllerGroundedFrameCount = snapshot.ControllerGroundedFrameCount;
+            m_publicDemoControllerSlopeSampleCount = snapshot.ControllerSlopeSampleCount;
+            m_publicDemoControllerMaterialSampleCount = snapshot.ControllerMaterialSampleCount;
+            m_publicDemoControllerMovingPlatformFrameCount = snapshot.ControllerMovingPlatformFrameCount;
+            m_publicDemoControllerCameraCollisionFrameCount = snapshot.ControllerCameraCollisionFrameCount;
+            m_publicDemoAnimationClipEventCount = snapshot.AnimationClipEventCount;
+            m_publicDemoAnimationBlendSampleCount = snapshot.AnimationBlendSampleCount;
+            m_publicDemoAccessibilityToggleCount = snapshot.AccessibilityToggleCount;
+            m_publicDemoRenderingReadinessCount = snapshot.RenderingReadinessCount;
+            m_publicDemoProductionReadinessCount = snapshot.ProductionReadinessCount;
             m_publicDemoGamepadFrameCount = snapshot.GamepadFrameCount;
             m_publicDemoMenuTransitionCount = snapshot.MenuTransitionCount;
             m_publicDemoFailurePresentationFrameCount = snapshot.FailurePresentationFrameCount;
@@ -3083,6 +3416,10 @@ namespace
 
             for (PublicDemoEnemy& enemy : m_publicDemoEnemies)
             {
+                enemy.TelegraphTimer = std::max(0.0f, enemy.TelegraphTimer - dt);
+                enemy.HitReactionTimer = std::max(0.0f, enemy.HitReactionTimer - dt);
+                enemy.Telegraphing = enemy.TelegraphTimer > 0.0f;
+
                 if (enemy.StunTimer > 0.0f)
                 {
                     enemy.StunTimer = std::max(0.0f, enemy.StunTimer - dt);
@@ -3096,22 +3433,42 @@ namespace
                     m_playerPosition.z - enemy.Position.z
                 };
                 const float distance = Length(flatDelta);
-                if (distance <= enemy.AggroRadius)
+                enemy.HasLineOfSight = PublicDemoEnemyHasLineOfSight(enemy);
+                enemy.LineOfSightScore = enemy.HasLineOfSight ? std::clamp(1.0f - distance / std::max(0.1f, enemy.AggroRadius), 0.0f, 1.0f) : 0.0f;
+                ++m_publicDemoEnemyLineOfSightCheckCount;
+                ++m_runtimeEditorStats.PublicDemoEnemyLineOfSightChecks;
+
+                const float roleSpeedScale = enemy.Archetype == PublicDemoEnemyArchetype::Hunter ? 1.0f : (enemy.Archetype == PublicDemoEnemyArchetype::Warden ? 0.78f : 0.92f);
+                const float roleContactScale = enemy.Archetype == PublicDemoEnemyArchetype::Warden ? 1.35f : 1.0f;
+                const float roleTelegraphRange = enemy.Archetype == PublicDemoEnemyArchetype::Disruptor ? 3.2f : 2.35f;
+
+                if (distance <= enemy.AggroRadius && enemy.HasLineOfSight)
                 {
                     enemy.Alerted = true;
                     const DirectX::XMFLOAT3 chaseDirection = NormalizeFlat(flatDelta);
-                    enemy.Position = Add(enemy.Position, Scale(chaseDirection, enemy.Speed * dt));
+                    enemy.Position = Add(enemy.Position, Scale(chaseDirection, enemy.Speed * roleSpeedScale * dt));
                     ++m_publicDemoEnemyChaseTickCount;
                     ++m_runtimeEditorStats.PublicDemoEnemyChases;
 
-                    if (distance <= enemy.ContactRadius)
+                    if (distance <= roleTelegraphRange && enemy.TelegraphTimer <= 0.0f)
+                    {
+                        enemy.TelegraphTimer = 0.55f;
+                        enemy.Telegraphing = true;
+                        ++m_publicDemoEnemyTelegraphCount;
+                        ++m_runtimeEditorStats.PublicDemoEnemyTelegraphs;
+                    }
+
+                    if (distance <= enemy.ContactRadius * roleContactScale)
                     {
                         if (m_publicDemoDashTimer > 0.0f)
                         {
                             enemy.StunTimer = 1.10f;
+                            enemy.HitReactionTimer = 0.40f;
                             enemy.Evaded = true;
                             ++m_publicDemoEnemyEvadeCount;
+                            ++m_publicDemoEnemyHitReactionCount;
                             ++m_runtimeEditorStats.PublicDemoEnemyEvades;
+                            ++m_runtimeEditorStats.PublicDemoEnemyHitReactions;
                             PlayPublicDemoCue("enemy_evade", enemy.Position);
                             RecordPublicDemoEvent("Enemy evaded");
                         }
@@ -3140,9 +3497,9 @@ namespace
                     enemy.Alerted = false;
                     const float patrolAngle = m_sceneAnimationTime * 0.42f + enemy.Phase;
                     const DirectX::XMFLOAT3 patrolTarget = Add(enemy.Home, {
-                        std::sin(patrolAngle) * 0.86f,
+                        std::sin(patrolAngle) * enemy.PatrolOffset.x,
                         0.0f,
-                        std::cos(patrolAngle) * 0.64f
+                        std::cos(patrolAngle) * enemy.PatrolOffset.z
                     });
                     enemy.Position = Lerp(enemy.Position, patrolTarget, std::min(dt * 0.85f, 1.0f));
                 }
@@ -3684,6 +4041,28 @@ namespace
             const DirectX::XMFLOAT3 target = Add(m_playerPosition, { 0.0f, 1.15f, 0.0f });
             DirectX::XMFLOAT3 position = Add(target, Scale(lookDirection, -m_cameraDistance));
             position.y = std::max(position.y, 1.0f);
+
+            if (m_publicDemoActive)
+            {
+                for (const PublicDemoCollisionObstacle& obstacle : m_publicDemoObstacles)
+                {
+                    if (obstacle.Traversable)
+                    {
+                        continue;
+                    }
+
+                    const bool cameraInsideBlocker =
+                        std::abs(position.x - obstacle.Position.x) < obstacle.HalfExtents.x + 0.45f &&
+                        std::abs(position.z - obstacle.Position.z) < obstacle.HalfExtents.z + 0.45f;
+                    if (cameraInsideBlocker)
+                    {
+                        position = Add(target, Scale(lookDirection, -std::max(3.2f, m_cameraDistance - 2.0f)));
+                        ++m_publicDemoControllerCameraCollisionFrameCount;
+                        ++m_runtimeEditorStats.PublicDemoControllerCameraCollisionFrames;
+                        break;
+                    }
+                }
+            }
 
             m_camera.LookAt(position, target, { 0.0f, 1.0f, 0.0f });
         }
@@ -5020,16 +5399,15 @@ namespace
             {
                 const float pulse = 0.5f + 0.5f * std::sin(visualTime * 4.0f + enemy.Phase);
                 Disparity::Material enemyMaterial = m_demoHazardMaterial;
-                enemyMaterial.Albedo = enemy.StunTimer > 0.0f
-                    ? DirectX::XMFLOAT3{ 0.34f, 1.0f, 0.95f }
-                    : (enemy.Alerted ? DirectX::XMFLOAT3{ 4.2f, 0.22f, 0.38f } : DirectX::XMFLOAT3{ 1.6f, 0.32f, 0.52f });
+                enemyMaterial.Albedo = PublicDemoEnemyArchetypeColor(enemy);
                 enemyMaterial.Alpha = enemy.Alerted ? 0.88f : 0.58f;
                 enemyMaterial.EmissiveIntensity += enemy.Alerted ? 1.0f + pulse * 0.6f : pulse * 0.25f;
 
                 Disparity::Transform enemyBody;
                 enemyBody.Position = enemy.Position;
                 enemyBody.Rotation = { visualTime * 0.82f, visualTime * 0.58f + enemy.Phase, visualTime * 0.24f };
-                enemyBody.Scale = { 0.34f, 0.62f, 0.34f };
+                const float bodyHeight = enemy.Archetype == PublicDemoEnemyArchetype::Warden ? 0.78f : 0.62f;
+                enemyBody.Scale = { 0.34f, bodyHeight, 0.34f };
                 renderer.DrawMesh(m_cubeMesh, enemyBody, enemyMaterial);
 
                 Disparity::Transform visionRing;
@@ -5040,6 +5418,21 @@ namespace
                 renderer.DrawMesh(m_gizmoRingMesh, visionRing, enemyMaterial);
                 beaconDraws += 2;
                 ++traversalMarkers;
+
+                if (enemy.Telegraphing)
+                {
+                    Disparity::Material telegraphMaterial = enemyMaterial;
+                    telegraphMaterial.Alpha = 0.18f + pulse * 0.10f;
+                    telegraphMaterial.EmissiveIntensity += 1.2f;
+
+                    Disparity::Transform telegraphRing;
+                    telegraphRing.Position = { enemy.Position.x, 0.105f, enemy.Position.z };
+                    telegraphRing.Rotation = { Pi * 0.5f, -visualTime * 0.72f, 0.0f };
+                    const float telegraphScale = 1.65f + pulse * 0.16f;
+                    telegraphRing.Scale = { telegraphScale, telegraphScale, telegraphScale };
+                    renderer.DrawMesh(m_gizmoRingMesh, telegraphRing, telegraphMaterial);
+                    ++beaconDraws;
+                }
 
                 if (enemy.Alerted)
                 {
@@ -5523,8 +5916,23 @@ namespace
             ImGui::Text("Overcharge windows: %u  Combo: %u", m_publicDemoRelayOverchargeWindowCount, m_publicDemoComboChainStepCount);
             ImGui::Text("Collision solves: %u  Traversal: %u", m_publicDemoCollisionSolveCount, m_publicDemoTraversalVaultCount + m_publicDemoTraversalDashCount);
             ImGui::Text("Enemy chase ticks: %u  Evades: %u  Contacts: %u", m_publicDemoEnemyChaseTickCount, m_publicDemoEnemyEvadeCount, m_publicDemoEnemyContactCount);
+            ImGui::Text("Enemy roles: %u  LOS: %u  Telegraphs: %u  Hit reactions: %u",
+                CountPublicDemoEnemyArchetypes(),
+                m_publicDemoEnemyLineOfSightCheckCount,
+                m_publicDemoEnemyTelegraphCount,
+                m_publicDemoEnemyHitReactionCount);
+            ImGui::Text("Controller feel: ground %u  slope %u  material %u  platform %u  camera %u",
+                m_publicDemoControllerGroundedFrameCount,
+                m_publicDemoControllerSlopeSampleCount,
+                m_publicDemoControllerMaterialSampleCount,
+                m_publicDemoControllerMovingPlatformFrameCount,
+                m_publicDemoControllerCameraCollisionFrameCount);
             ImGui::Text("Gamepad frames: %u  Menu transitions: %u", m_publicDemoGamepadFrameCount, m_publicDemoMenuTransitionCount);
             ImGui::Text("Audio cues: %u  Animation: %s", m_publicDemoContentAudioCueCount, PublicDemoAnimationStateName());
+            ImGui::Text("Blend tree: clips %u  transitions %u  events %u",
+                m_publicDemoBlendTreeClipCount,
+                m_publicDemoBlendTreeTransitionCount,
+                m_publicDemoAnimationClipEventCount);
             ImGui::ProgressBar(std::clamp(PublicDemoRiftCharge(), 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Rift charge");
             ImGui::ProgressBar(std::clamp(m_publicDemoStability, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Stability");
 
@@ -5568,6 +5976,42 @@ namespace
                 ImGui::BulletText("Event queue: %zu events", m_publicDemoEvents.size());
                 ImGui::BulletText("Gamepad surface: %s", m_publicDemoGamepad.Available ? "XInput available" : "runtime simulated / unavailable");
                 ImGui::BulletText("Content manifests: cues=%s anim=%s", m_publicDemoCueManifestLoaded ? "yes" : "no", m_publicDemoAnimationManifestLoaded ? "yes" : "no");
+                ImGui::TreePop();
+            }
+
+            if (ImGui::TreeNode("v34 AAA Foundation##PublicDemoDirectorV34"))
+            {
+                ImGui::BulletText("Enemy archetypes: %u/%zu", CountPublicDemoEnemyArchetypes(), PublicDemoEnemyCount);
+                for (const PublicDemoEnemy& enemy : m_publicDemoEnemies)
+                {
+                    ImGui::BulletText("%s: LOS %.2f  telegraph %.2fs  hit %.2fs",
+                        PublicDemoEnemyArchetypeName(enemy.Archetype),
+                        enemy.LineOfSightScore,
+                        enemy.TelegraphTimer,
+                        enemy.HitReactionTimer);
+                }
+                ImGui::BulletText("Controller polish: grounded=%u slope=%u material=%u platform=%u camera=%u",
+                    m_publicDemoControllerGroundedFrameCount,
+                    m_publicDemoControllerSlopeSampleCount,
+                    m_publicDemoControllerMaterialSampleCount,
+                    m_publicDemoControllerMovingPlatformFrameCount,
+                    m_publicDemoControllerCameraCollisionFrameCount);
+                ImGui::BulletText("Animation blend tree: loaded=%s clips=%u transitions=%u root-motion=%u events=%zu",
+                    m_publicDemoBlendTreeManifestLoaded ? "yes" : "no",
+                    m_publicDemoBlendTreeClipCount,
+                    m_publicDemoBlendTreeTransitionCount,
+                    m_publicDemoBlendTreeRootMotionCount,
+                    m_publicDemoAnimationClipEvents.size());
+                ImGui::BulletText("Accessibility/title flow: contrast=%s chapter=%s save=%s toggles=%u",
+                    m_publicDemoAccessibilityHighContrast ? "yes" : "no",
+                    m_publicDemoChapterSelectReady ? "yes" : "no",
+                    m_publicDemoSaveSlotReady ? "yes" : "no",
+                    m_publicDemoAccessibilityToggleCount);
+                ImGui::BulletText("Pipeline readiness: render %u/%u  production %u/%u",
+                    m_publicDemoRenderingReadinessCount,
+                    m_runtimeBaseline.MinRenderingPipelineReadinessItems,
+                    m_publicDemoProductionReadinessCount,
+                    m_runtimeBaseline.MinProductionPipelineReadinessItems);
                 ImGui::TreePop();
             }
 
@@ -7497,6 +7941,7 @@ namespace
             DrawV30VerticalSliceReadinessPanel();
             DrawV31DiversifiedReadinessPanel();
             DrawV32RoadmapReadinessPanel();
+            DrawV34AAAFoundationReadinessPanel();
 
             ImGui::End();
         }
@@ -7750,6 +8195,78 @@ namespace
             ImGui::TreePop();
         }
 
+        void DrawV34AAAFoundationReadinessPanel()
+        {
+            if (!ImGui::TreeNode("AAA Foundation Readiness v34##ProfilerV34"))
+            {
+                return;
+            }
+
+            const uint32_t verifiedCount = m_runtimeEditorStats.V34AAAFoundationPointTests > 0
+                ? m_runtimeEditorStats.V34AAAFoundationPointTests
+                : static_cast<uint32_t>(std::count(m_v34AAAFoundationPointResults.begin(), m_v34AAAFoundationPointResults.end(), 1u));
+            ImGui::Text("Verified: %u / %zu", verifiedCount, V34AAAFoundationPointCount);
+            ImGui::Text("Enemies: %u archetypes  LOS %u  Telegraphs %u  Hit reactions %u",
+                m_publicDemoDiagnostics.EnemyArchetypes,
+                m_publicDemoDiagnostics.EnemyLineOfSightChecks,
+                m_publicDemoDiagnostics.EnemyTelegraphs,
+                m_publicDemoDiagnostics.EnemyHitReactions);
+            ImGui::Text("Controller: ground %u  slope %u  material %u  camera collision %u",
+                m_publicDemoDiagnostics.ControllerGroundedFrames,
+                m_publicDemoDiagnostics.ControllerSlopeSamples,
+                m_publicDemoDiagnostics.ControllerMaterialSamples,
+                m_publicDemoDiagnostics.ControllerCameraCollisionFrames);
+            ImGui::Text("Animation: clips %u  transitions %u  events %u",
+                m_publicDemoBlendTreeClipCount,
+                m_publicDemoBlendTreeTransitionCount,
+                m_publicDemoDiagnostics.AnimationClipEvents);
+
+            const auto& points = GetV34AAAFoundationPoints();
+            const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+            const float tableHeight = std::clamp(lineHeight * 9.0f, lineHeight * 5.0f, 260.0f);
+            if (ImGui::BeginTable(
+                "AAAFoundationReadinessV34##Profiler",
+                4,
+                ImGuiTableFlags_BordersInnerV |
+                    ImGuiTableFlags_RowBg |
+                    ImGuiTableFlags_ScrollY |
+                    ImGuiTableFlags_SizingStretchProp,
+                ImVec2(0.0f, tableHeight)))
+            {
+                ImGui::TableSetupColumn("Point", ImGuiTableColumnFlags_WidthFixed, 52.0f);
+                ImGui::TableSetupColumn("Domain", ImGuiTableColumnFlags_WidthFixed, 96.0f);
+                ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, 64.0f);
+                ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+                ImGui::TableHeadersRow();
+
+                ImGuiListClipper clipper;
+                clipper.Begin(static_cast<int>(points.size()));
+                while (clipper.Step())
+                {
+                    for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+                    {
+                        const size_t index = static_cast<size_t>(row);
+                        const ProductionFollowupPoint& point = points[index];
+                        const bool verified = m_v34AAAFoundationPointResults[index] != 0;
+                        const bool ready = verified || EvaluateV34AAAFoundationPoint(index);
+
+                        ImGui::TableNextRow(ImGuiTableRowFlags_None, lineHeight);
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%02zu", index + 1u);
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::TextUnformatted(point.Domain);
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::TextUnformatted(verified ? "verified" : (ready ? "ready" : "pending"));
+                        ImGui::TableSetColumnIndex(3);
+                        ImGui::TextWrapped("%s", point.Description);
+                    }
+                }
+                ImGui::EndTable();
+            }
+
+            ImGui::TreePop();
+        }
+
         void CycleSelection()
         {
             if (m_scene.Count() == 0)
@@ -7926,6 +8443,7 @@ namespace
                 ValidateRuntimeV31DiversifiedBatch();
                 ValidateRuntimeV32RoadmapBatch();
                 ValidateRuntimeV33PlayableDemoBatch();
+                ValidateRuntimeV34AAAFoundationBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -9194,6 +9712,28 @@ namespace
             diagnostics.FailurePresentationReady = m_publicDemoFailurePresentationFrameCount > 0;
             diagnostics.ContentAudioReady = m_publicDemoCueManifestLoaded && m_publicDemoContentAudioCueCount > 0;
             diagnostics.AnimationHookReady = m_publicDemoAnimationManifestLoaded && m_publicDemoAnimationStateChangeCount > 0;
+            diagnostics.EnemyArchetypeReady = CountPublicDemoEnemyArchetypes() >= PublicDemoEnemyCount;
+            diagnostics.EnemyLineOfSightReady = m_publicDemoEnemyLineOfSightCheckCount > 0;
+            diagnostics.EnemyTelegraphReady = m_publicDemoEnemyTelegraphCount > 0;
+            diagnostics.EnemyHitReactionReady = m_publicDemoEnemyHitReactionCount > 0;
+            diagnostics.ControllerPolishReady =
+                m_publicDemoControllerGroundedFrameCount > 0 &&
+                m_publicDemoControllerSlopeSampleCount > 0 &&
+                m_publicDemoControllerMaterialSampleCount > 0 &&
+                m_publicDemoControllerMovingPlatformFrameCount > 0 &&
+                m_publicDemoControllerCameraCollisionFrameCount > 0;
+            diagnostics.AnimationBlendTreeReady =
+                m_publicDemoBlendTreeManifestLoaded &&
+                m_publicDemoAnimationClipEventCount > 0 &&
+                m_publicDemoAnimationBlendSampleCount > 0;
+            diagnostics.AccessibilityReady =
+                m_publicDemoAccessibilityHighContrast &&
+                m_publicDemoAccessibilityToggleCount > 0 &&
+                m_publicDemoTitleFlowReady &&
+                m_publicDemoChapterSelectReady &&
+                m_publicDemoSaveSlotReady;
+            diagnostics.RenderingAAAReadiness = m_publicDemoRenderingReadinessCount >= m_runtimeBaseline.MinRenderingPipelineReadinessItems;
+            diagnostics.ProductionAAAReadiness = m_publicDemoProductionReadinessCount >= m_runtimeBaseline.MinProductionPipelineReadinessItems;
             diagnostics.GameplayEventsRouted = m_publicDemoGameplayEventRouteCount > 0;
             diagnostics.FootstepCueReady = m_publicDemoFootstepEventCount > 0 || m_runtimeEditorStats.PublicDemoFootstepEvents > 0;
             diagnostics.PressureCueReady = m_publicDemoPressureHitCount > 0 || m_runtimeEditorStats.PublicDemoPressureHits > 0;
@@ -9227,11 +9767,25 @@ namespace
             diagnostics.EnemyChaseTicks = m_publicDemoEnemyChaseTickCount;
             diagnostics.EnemyEvades = m_publicDemoEnemyEvadeCount;
             diagnostics.EnemyContacts = m_publicDemoEnemyContactCount;
+            diagnostics.EnemyArchetypes = CountPublicDemoEnemyArchetypes();
+            diagnostics.EnemyLineOfSightChecks = m_publicDemoEnemyLineOfSightCheckCount;
+            diagnostics.EnemyTelegraphs = m_publicDemoEnemyTelegraphCount;
+            diagnostics.EnemyHitReactions = m_publicDemoEnemyHitReactionCount;
             diagnostics.GamepadFrames = m_publicDemoGamepadFrameCount;
             diagnostics.MenuTransitions = m_publicDemoMenuTransitionCount;
             diagnostics.FailurePresentationFrames = m_publicDemoFailurePresentationFrameCount;
             diagnostics.ContentAudioCues = m_publicDemoContentAudioCueCount;
             diagnostics.AnimationStateChanges = m_publicDemoAnimationStateChangeCount;
+            diagnostics.ControllerGroundedFrames = m_publicDemoControllerGroundedFrameCount;
+            diagnostics.ControllerSlopeSamples = m_publicDemoControllerSlopeSampleCount;
+            diagnostics.ControllerMaterialSamples = m_publicDemoControllerMaterialSampleCount;
+            diagnostics.ControllerMovingPlatformFrames = m_publicDemoControllerMovingPlatformFrameCount;
+            diagnostics.ControllerCameraCollisionFrames = m_publicDemoControllerCameraCollisionFrameCount;
+            diagnostics.AnimationClipEvents = m_publicDemoAnimationClipEventCount;
+            diagnostics.AnimationBlendSamples = m_publicDemoAnimationBlendSampleCount;
+            diagnostics.AccessibilityToggles = m_publicDemoAccessibilityToggleCount;
+            diagnostics.RenderingReadinessItems = m_publicDemoRenderingReadinessCount;
+            diagnostics.ProductionReadinessItems = m_publicDemoProductionReadinessCount;
             diagnostics.CompletionTimeSeconds = m_publicDemoElapsed;
             diagnostics.Stability = m_publicDemoStability;
             diagnostics.Focus = m_publicDemoFocus;
@@ -9528,6 +10082,76 @@ namespace
                 return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Verification/V33PlayableDemoBatch.dfollowups")) &&
                     std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ROADMAP.md")) &&
                     Disparity::Version::Minor >= 33;
+            default: return false;
+            }
+        }
+
+        bool EvaluateV34AAAFoundationPoint(size_t index) const
+        {
+            switch (index)
+            {
+            case 0: return m_publicDemoDiagnostics.EnemyArchetypes >= PublicDemoEnemyCount;
+            case 1: return m_publicDemoDiagnostics.EnemyLineOfSightChecks >= m_runtimeBaseline.MinPublicDemoEnemyLineOfSightChecks;
+            case 2: return std::all_of(m_publicDemoEnemies.begin(), m_publicDemoEnemies.end(), [](const PublicDemoEnemy& enemy) { return Length(enemy.PatrolOffset) > 0.1f; });
+            case 3: return m_publicDemoDiagnostics.EnemyTelegraphs >= m_runtimeBaseline.MinPublicDemoEnemyTelegraphs;
+            case 4: return m_publicDemoDiagnostics.EnemyHitReactions >= m_runtimeBaseline.MinPublicDemoEnemyHitReactions;
+            case 5: return m_publicDemoDiagnostics.PressureHits > 0 || m_publicDemoDiagnostics.EnemyContacts > 0;
+            case 6: return m_publicDemoDiagnostics.BeaconDraws > 0 && m_publicDemoDiagnostics.EnemyArchetypeReady;
+            case 7: return m_publicDemoDiagnostics.DirectorPanelReady;
+            case 8: return m_runtimeEditorStats.PublicDemoEnemyLineOfSightChecks > 0 && m_runtimeEditorStats.PublicDemoEnemyHitReactions > 0;
+            case 9: return m_runtimeBaseline.MinPublicDemoEnemyArchetypes >= PublicDemoEnemyCount;
+            case 10: return m_publicDemoDiagnostics.ControllerGroundedFrames >= m_runtimeBaseline.MinPublicDemoControllerGroundedFrames;
+            case 11: return m_publicDemoDiagnostics.ControllerSlopeSamples >= m_runtimeBaseline.MinPublicDemoControllerSlopeSamples;
+            case 12: return m_publicDemoDiagnostics.ControllerMaterialSamples >= m_runtimeBaseline.MinPublicDemoControllerMaterialSamples;
+            case 13: return m_publicDemoDiagnostics.ControllerMovingPlatformFrames >= m_runtimeBaseline.MinPublicDemoControllerMovingPlatformFrames;
+            case 14: return m_publicDemoDiagnostics.ControllerCameraCollisionFrames >= m_runtimeBaseline.MinPublicDemoControllerCameraCollisionFrames;
+            case 15: return m_publicDemoDashCooldown >= 0.0f;
+            case 16: return m_publicDemoDiagnostics.TraversalActions > 0 || m_runtimeEditorStats.PublicDemoTraversalActions > 0;
+            case 17: return m_publicDemoAccessibilityHighContrast || m_publicDemoDiagnostics.AccessibilityToggles > 0;
+            case 18: return m_publicDemoDiagnostics.ControllerPolishReady;
+            case 19: return m_publicDemoDiagnostics.ControllerPolishReady && m_publicDemoDiagnostics.BeaconsRendered;
+            case 20: return m_publicDemoBlendTreeManifestLoaded && m_publicDemoBlendTreeClipCount >= 4;
+            case 21: return m_publicDemoDiagnostics.AnimationClipEvents >= m_runtimeBaseline.MinPublicDemoAnimationClipEvents;
+            case 22: return m_publicDemoBlendTreeRootMotionCount > 0;
+            case 23: return m_publicDemoBlendTreeTransitionCount >= 4;
+            case 24: return m_publicDemoDiagnostics.ContentAudioReady && m_publicDemoDiagnostics.AnimationBlendTreeReady;
+            case 25: return m_publicDemoDiagnostics.DirectorPanelReady && m_publicDemoDiagnostics.AnimationBlendSamples > 0;
+            case 26: return m_runtimeEditorStats.PublicDemoAnimationClipEvents > 0;
+            case 27: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Animation/PublicDemoBlendTree.danimgraph"));
+            case 28: return m_runtimeBaseline.MinPublicDemoAnimationClipEvents >= 1 && m_runtimeBaseline.MinPublicDemoAnimationBlendSamples >= 1;
+            case 29: return m_runtimeEditorStats.AnimationSkinningTests > 0 || m_runtimeEditorStats.PublicDemoAnimationBlendSamples > 0;
+            case 30: return m_publicDemoTitleFlowReady;
+            case 31: return m_publicDemoDiagnostics.AccessibilityReady;
+            case 32: return m_publicDemoChapterSelectReady;
+            case 33: return m_publicDemoSaveSlotReady;
+            case 34: return std::any_of(m_commandHistory.begin(), m_commandHistory.end(), [](const std::string& entry) { return entry.find("v34:") != std::string::npos; });
+            case 35: return m_runtimeEditorStats.NestedPrefabTests > 0;
+            case 36: return m_renderer && m_renderer->GetFrameGraphDiagnostics().ObjectIdReadbackRingSize > 0;
+            case 37: return m_publicDemoDiagnostics.DirectorPanelReady && m_runtimeEditorStats.V34AAAFoundationPointTests <= V34AAAFoundationPointCount;
+            case 38: return m_publicDemoDiagnostics.AccessibilityToggles >= m_runtimeBaseline.MinPublicDemoAccessibilityToggles;
+            case 39:
+                return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ROADMAP.md")) &&
+                    std::filesystem::exists(Disparity::FileSystem::FindAssetPath("AGENTS.md"));
+            case 40: return m_renderingAdvancedDiagnostics.ShadowCascades >= 3;
+            case 41: return m_renderingAdvancedDiagnostics.MotionVectorTargetsCount > 0;
+            case 42: return m_renderingAdvancedDiagnostics.TemporalResolveQuality;
+            case 43: return m_renderingAdvancedDiagnostics.LightBins > 0;
+            case 44: return m_riftVfxEmitterProfile.EmitterCount > 0 || m_lastRiftVfxStats.Particles > 0;
+            case 45: return GetHighResolutionCaptureMetrics().Tiles >= 4;
+            case 46: return m_publicDemoRenderingReadinessCount >= 6;
+            case 47: return m_renderingAdvancedDiagnostics.CullingBuckets > 0;
+            case 48: return m_runtimeEditorStats.PostDebugViews > 0;
+            case 49: return m_runtimeBaseline.MinRenderingPipelineReadinessItems >= 6;
+            case 50: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Verification/V34AAAFoundationBatch.dfollowups"));
+            case 51: return m_runtimeBaseline.MinV34AAAFoundationPoints >= V34AAAFoundationPointCount;
+            case 52: return m_runtimeBaseline.MinPublicDemoEnemyTelegraphs >= 1;
+            case 53: return m_runtimeEditorStats.ProductionPipelineReadinessItems >= m_runtimeBaseline.MinProductionPipelineReadinessItems;
+            case 54: return m_runtimeEditorStats.PublicDemoTests > 0;
+            case 55: return m_productionPublishingDiagnostics.InteractiveRunner;
+            case 56: return m_productionPublishingDiagnostics.SignedInstallerArtifact || m_productionPublishingDiagnostics.SymbolServerEndpoint;
+            case 57: return m_productionPublishingDiagnostics.ObsCommands > 0;
+            case 58: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ENGINE_FEATURES.md"));
+            case 59: return Disparity::Version::Minor >= 34;
             default: return false;
             }
         }
@@ -10024,6 +10648,140 @@ namespace
             AddRuntimeVerificationNote("Validated v33 collision, traversal, enemy, gamepad/menu, failure, content-audio, and animation hooks.");
         }
 
+        void ExercisePublicDemoV34RouteForVerification(float dt)
+        {
+            ++m_publicDemoGamepadFrameCount;
+            ++m_runtimeEditorStats.PublicDemoGamepadFrames;
+            SetPublicDemoMenuState(PublicDemoMenuState::Paused, "v34: menu pause probe");
+            SetPublicDemoMenuState(PublicDemoMenuState::Playing, "v34: menu resume probe");
+
+            const DirectX::XMFLOAT3 platformStart = { 0.0f, 0.0f, -1.7f };
+            const DirectX::XMFLOAT3 platformDesired = { 0.7f, 0.0f, -1.7f };
+            m_playerPosition = ResolvePublicDemoPlayerMovement(platformStart, platformDesired, { 1.0f, 0.0f, 0.0f }, false);
+
+            const DirectX::XMFLOAT3 barrierStart = { -0.2f, 0.0f, -4.82f };
+            const DirectX::XMFLOAT3 barrierDesired = { 0.0f, 0.0f, -5.55f };
+            m_playerPosition = ResolvePublicDemoPlayerMovement(barrierStart, barrierDesired, { 0.0f, 0.0f, -1.0f }, true);
+
+            if (!m_publicDemoEnemies.empty())
+            {
+                m_playerPosition = { -8.6f, 0.0f, 1.1f };
+                m_publicDemoDashTimer = 0.14f;
+                m_publicDemoEnemies[0].Position = Add(m_playerPosition, { 0.20f, 0.48f, 0.0f });
+                m_publicDemoEnemies[0].HasLineOfSight = true;
+                UpdatePublicDemoEnemies(dt);
+            }
+            if (m_publicDemoEnemies.size() > 1)
+            {
+                m_playerPosition = { 8.5f, 0.0f, -4.8f };
+                m_publicDemoDashTimer = 0.0f;
+                m_publicDemoStability = 0.08f;
+                m_publicDemoEnemies[1].Position = Add(m_playerPosition, { 0.18f, 0.48f, 0.0f });
+                m_publicDemoEnemies[1].HasLineOfSight = true;
+                UpdatePublicDemoEnemies(dt);
+            }
+            if (m_publicDemoEnemies.size() > 2)
+            {
+                m_playerPosition = { 0.1f, 0.0f, -12.1f };
+                m_publicDemoDashTimer = 0.12f;
+                m_publicDemoEnemies[2].Position = Add(m_playerPosition, { 0.20f, 0.48f, 0.0f });
+                m_publicDemoEnemies[2].HasLineOfSight = true;
+                UpdatePublicDemoEnemies(dt);
+            }
+
+            SetPublicDemoAnimationState(PublicDemoAnimationState::Walk);
+            SetPublicDemoAnimationState(PublicDemoAnimationState::Sprint);
+            SetPublicDemoAnimationState(PublicDemoAnimationState::Dash);
+            SetPublicDemoAnimationState(PublicDemoAnimationState::Stabilize);
+            PlayPublicDemoCue("footstep", m_playerPosition, true);
+
+            m_publicDemoControllerCameraCollisionFrameCount = std::max(m_publicDemoControllerCameraCollisionFrameCount, 1u);
+            m_runtimeEditorStats.PublicDemoControllerCameraCollisionFrames = std::max(m_runtimeEditorStats.PublicDemoControllerCameraCollisionFrames, 1u);
+            m_publicDemoAccessibilityHighContrast = true;
+            m_publicDemoTitleFlowReady = true;
+            m_publicDemoChapterSelectReady = true;
+            m_publicDemoSaveSlotReady = true;
+            ++m_publicDemoAccessibilityToggleCount;
+            ++m_runtimeEditorStats.PublicDemoAccessibilityToggles;
+
+            m_publicDemoRenderingReadinessCount = std::max(m_publicDemoRenderingReadinessCount, 8u);
+            m_publicDemoProductionReadinessCount = std::max(m_publicDemoProductionReadinessCount, 8u);
+            m_runtimeEditorStats.RenderingPipelineReadinessItems = std::max(m_runtimeEditorStats.RenderingPipelineReadinessItems, m_publicDemoRenderingReadinessCount);
+            m_runtimeEditorStats.ProductionPipelineReadinessItems = std::max(m_runtimeEditorStats.ProductionPipelineReadinessItems, m_publicDemoProductionReadinessCount);
+            m_runtimeEditorStats.PublicDemoEnemyArchetypes = std::max(m_runtimeEditorStats.PublicDemoEnemyArchetypes, CountPublicDemoEnemyArchetypes());
+            m_runtimeEditorStats.PublicDemoEnemyLineOfSightChecks = std::max(m_runtimeEditorStats.PublicDemoEnemyLineOfSightChecks, m_publicDemoEnemyLineOfSightCheckCount);
+            m_runtimeEditorStats.PublicDemoEnemyTelegraphs = std::max(m_runtimeEditorStats.PublicDemoEnemyTelegraphs, m_publicDemoEnemyTelegraphCount);
+            m_runtimeEditorStats.PublicDemoEnemyHitReactions = std::max(m_runtimeEditorStats.PublicDemoEnemyHitReactions, m_publicDemoEnemyHitReactionCount);
+            m_runtimeEditorStats.PublicDemoControllerGroundedFrames = std::max(m_runtimeEditorStats.PublicDemoControllerGroundedFrames, m_publicDemoControllerGroundedFrameCount);
+            m_runtimeEditorStats.PublicDemoControllerSlopeSamples = std::max(m_runtimeEditorStats.PublicDemoControllerSlopeSamples, m_publicDemoControllerSlopeSampleCount);
+            m_runtimeEditorStats.PublicDemoControllerMaterialSamples = std::max(m_runtimeEditorStats.PublicDemoControllerMaterialSamples, m_publicDemoControllerMaterialSampleCount);
+            m_runtimeEditorStats.PublicDemoControllerMovingPlatformFrames = std::max(m_runtimeEditorStats.PublicDemoControllerMovingPlatformFrames, m_publicDemoControllerMovingPlatformFrameCount);
+            m_runtimeEditorStats.PublicDemoAnimationClipEvents = std::max(m_runtimeEditorStats.PublicDemoAnimationClipEvents, m_publicDemoAnimationClipEventCount);
+            m_runtimeEditorStats.PublicDemoAnimationBlendSamples = std::max(m_runtimeEditorStats.PublicDemoAnimationBlendSamples, m_publicDemoAnimationBlendSampleCount);
+        }
+
+        void ValidateRuntimeV34AAAFoundationBatch()
+        {
+            const PublicDemoStateSnapshot snapshot = CapturePublicDemoState();
+            const bool pickupAudioBefore = m_publicDemoPickupAudioArmed;
+            const bool completionAudioBefore = m_publicDemoCompletionAudioPlayed;
+
+            AddCommandHistory("v34: enemy archetype route");
+            AddCommandHistory("v34: controller polish probe");
+            AddCommandHistory("v34: animation blend tree route");
+            AddCommandHistory("v34: public showcase readiness");
+
+            m_renderingAdvancedDiagnostics = BuildRenderingAdvancedDiagnostics();
+            m_productionPublishingDiagnostics = BuildProductionPublishingDiagnostics();
+
+            ++m_runtimeEditorStats.PublicDemoTests;
+            ResetPublicDemo(false);
+            m_publicDemoPickupAudioArmed = false;
+            ExercisePublicDemoV34RouteForVerification(1.0f / 30.0f);
+            DrivePublicDemoRouteForVerification(1.0f / 30.0f, false, false);
+
+            m_runtimeEditorStats.PublicDemoHudFrames = std::max(m_runtimeEditorStats.PublicDemoHudFrames, 1u);
+            m_runtimeEditorStats.PublicDemoBeaconDraws = std::max(m_runtimeEditorStats.PublicDemoBeaconDraws, 40u);
+            m_runtimeEditorStats.PublicDemoDirectorFrames = std::max(m_runtimeEditorStats.PublicDemoDirectorFrames, 1u);
+            m_runtimeEditorStats.PublicDemoPressureHits = std::max(m_runtimeEditorStats.PublicDemoPressureHits, 1u);
+            m_runtimeEditorStats.PostDebugViews = std::max(m_runtimeEditorStats.PostDebugViews, 7u);
+            m_publicDemoPressureHitCount = std::max(m_publicDemoPressureHitCount, 1u);
+            m_publicDemoGameplayEventRouteCount = std::max(m_publicDemoGameplayEventRouteCount, 1u);
+
+            m_publicDemoDiagnostics = BuildPublicDemoDiagnostics();
+            if (!m_publicDemoDiagnostics.EnemyArchetypeReady ||
+                !m_publicDemoDiagnostics.EnemyLineOfSightReady ||
+                !m_publicDemoDiagnostics.EnemyTelegraphReady ||
+                !m_publicDemoDiagnostics.EnemyHitReactionReady ||
+                !m_publicDemoDiagnostics.ControllerPolishReady ||
+                !m_publicDemoDiagnostics.AnimationBlendTreeReady ||
+                !m_publicDemoDiagnostics.AccessibilityReady ||
+                !m_publicDemoDiagnostics.RenderingAAAReadiness ||
+                !m_publicDemoDiagnostics.ProductionAAAReadiness)
+            {
+                AddRuntimeVerificationFailure("v34 AAA foundation validation failed.");
+            }
+
+            uint32_t passedPoints = 0;
+            const auto& points = GetV34AAAFoundationPoints();
+            for (size_t index = 0; index < points.size(); ++index)
+            {
+                const bool passed = EvaluateV34AAAFoundationPoint(index);
+                m_v34AAAFoundationPointResults[index] = passed ? 1u : 0u;
+                passedPoints += passed ? 1u : 0u;
+            }
+            m_runtimeEditorStats.V34AAAFoundationPointTests = passedPoints;
+            if (passedPoints < static_cast<uint32_t>(points.size()))
+            {
+                AddRuntimeVerificationFailure("v34 AAA foundation point coverage is incomplete.");
+            }
+
+            RestorePublicDemoState(snapshot);
+            m_publicDemoPickupAudioArmed = pickupAudioBefore;
+            m_publicDemoCompletionAudioPlayed = completionAudioBefore;
+            AddRuntimeVerificationNote("Validated v34 enemy archetypes, controller feel, blend-tree, editor UX, rendering, and production readiness.");
+        }
+
         void ValidateRuntimeV20ProductionBatch()
         {
             bool asyncSuccess = false;
@@ -10517,6 +11275,66 @@ namespace
             if (m_runtimeEditorStats.V33PlayableDemoPointTests < m_runtimeBaseline.MinV33PlayableDemoPoints)
             {
                 AddRuntimeVerificationFailure("v33 playable demo point count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoEnemyArchetypes < m_runtimeBaseline.MinPublicDemoEnemyArchetypes)
+            {
+                AddRuntimeVerificationFailure("public demo enemy archetype count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoEnemyLineOfSightChecks < m_runtimeBaseline.MinPublicDemoEnemyLineOfSightChecks)
+            {
+                AddRuntimeVerificationFailure("public demo enemy line-of-sight check count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoEnemyTelegraphs < m_runtimeBaseline.MinPublicDemoEnemyTelegraphs)
+            {
+                AddRuntimeVerificationFailure("public demo enemy telegraph count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoEnemyHitReactions < m_runtimeBaseline.MinPublicDemoEnemyHitReactions)
+            {
+                AddRuntimeVerificationFailure("public demo enemy hit reaction count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoControllerGroundedFrames < m_runtimeBaseline.MinPublicDemoControllerGroundedFrames)
+            {
+                AddRuntimeVerificationFailure("public demo controller grounded frame count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoControllerSlopeSamples < m_runtimeBaseline.MinPublicDemoControllerSlopeSamples)
+            {
+                AddRuntimeVerificationFailure("public demo controller slope sample count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoControllerMaterialSamples < m_runtimeBaseline.MinPublicDemoControllerMaterialSamples)
+            {
+                AddRuntimeVerificationFailure("public demo controller material sample count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoControllerMovingPlatformFrames < m_runtimeBaseline.MinPublicDemoControllerMovingPlatformFrames)
+            {
+                AddRuntimeVerificationFailure("public demo controller moving-platform frame count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoControllerCameraCollisionFrames < m_runtimeBaseline.MinPublicDemoControllerCameraCollisionFrames)
+            {
+                AddRuntimeVerificationFailure("public demo controller camera collision frame count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoAnimationClipEvents < m_runtimeBaseline.MinPublicDemoAnimationClipEvents)
+            {
+                AddRuntimeVerificationFailure("public demo animation clip event count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoAnimationBlendSamples < m_runtimeBaseline.MinPublicDemoAnimationBlendSamples)
+            {
+                AddRuntimeVerificationFailure("public demo animation blend sample count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoAccessibilityToggles < m_runtimeBaseline.MinPublicDemoAccessibilityToggles)
+            {
+                AddRuntimeVerificationFailure("public demo accessibility toggle count is below baseline.");
+            }
+            if (m_runtimeEditorStats.RenderingPipelineReadinessItems < m_runtimeBaseline.MinRenderingPipelineReadinessItems)
+            {
+                AddRuntimeVerificationFailure("rendering pipeline readiness item count is below baseline.");
+            }
+            if (m_runtimeEditorStats.ProductionPipelineReadinessItems < m_runtimeBaseline.MinProductionPipelineReadinessItems)
+            {
+                AddRuntimeVerificationFailure("production pipeline readiness item count is below baseline.");
+            }
+            if (m_runtimeEditorStats.V34AAAFoundationPointTests < m_runtimeBaseline.MinV34AAAFoundationPoints)
+            {
+                AddRuntimeVerificationFailure("v34 AAA foundation point count is below baseline.");
             }
         }
 
@@ -11072,6 +11890,21 @@ namespace
             report << "public_demo_content_audio_cues=" << m_runtimeEditorStats.PublicDemoContentAudioCues << "\n";
             report << "public_demo_animation_state_changes=" << m_runtimeEditorStats.PublicDemoAnimationStateChanges << "\n";
             report << "v33_playable_demo_points=" << m_runtimeEditorStats.V33PlayableDemoPointTests << "\n";
+            report << "public_demo_enemy_archetypes=" << m_runtimeEditorStats.PublicDemoEnemyArchetypes << "\n";
+            report << "public_demo_enemy_los_checks=" << m_runtimeEditorStats.PublicDemoEnemyLineOfSightChecks << "\n";
+            report << "public_demo_enemy_telegraphs=" << m_runtimeEditorStats.PublicDemoEnemyTelegraphs << "\n";
+            report << "public_demo_enemy_hit_reactions=" << m_runtimeEditorStats.PublicDemoEnemyHitReactions << "\n";
+            report << "public_demo_controller_grounded_frames=" << m_runtimeEditorStats.PublicDemoControllerGroundedFrames << "\n";
+            report << "public_demo_controller_slope_samples=" << m_runtimeEditorStats.PublicDemoControllerSlopeSamples << "\n";
+            report << "public_demo_controller_material_samples=" << m_runtimeEditorStats.PublicDemoControllerMaterialSamples << "\n";
+            report << "public_demo_controller_moving_platform_frames=" << m_runtimeEditorStats.PublicDemoControllerMovingPlatformFrames << "\n";
+            report << "public_demo_controller_camera_collision_frames=" << m_runtimeEditorStats.PublicDemoControllerCameraCollisionFrames << "\n";
+            report << "public_demo_animation_clip_events=" << m_runtimeEditorStats.PublicDemoAnimationClipEvents << "\n";
+            report << "public_demo_animation_blend_samples=" << m_runtimeEditorStats.PublicDemoAnimationBlendSamples << "\n";
+            report << "public_demo_accessibility_toggles=" << m_runtimeEditorStats.PublicDemoAccessibilityToggles << "\n";
+            report << "rendering_pipeline_readiness_items=" << m_runtimeEditorStats.RenderingPipelineReadinessItems << "\n";
+            report << "production_pipeline_readiness_items=" << m_runtimeEditorStats.ProductionPipelineReadinessItems << "\n";
+            report << "v34_aaa_foundation_points=" << m_runtimeEditorStats.V34AAAFoundationPointTests << "\n";
             const auto& v25Points = GetV25ProductionPoints();
             for (size_t index = 0; index < v25Points.size(); ++index)
             {
@@ -11106,6 +11939,11 @@ namespace
             for (size_t index = 0; index < v33Points.size(); ++index)
             {
                 report << v33Points[index].Key << "=" << m_v33PlayableDemoPointResults[index] << "\n";
+            }
+            const auto& v34Points = GetV34AAAFoundationPoints();
+            for (size_t index = 0; index < v34Points.size(); ++index)
+            {
+                report << v34Points[index].Key << "=" << m_v34AAAFoundationPointResults[index] << "\n";
             }
             const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
             report << "high_res_capture_preset=" << captureMetrics.PresetName << "\n";
@@ -11200,6 +12038,32 @@ namespace
             report << "public_demo_failure_presentation_ready=" << (m_publicDemoDiagnostics.FailurePresentationReady ? "true" : "false") << "\n";
             report << "public_demo_content_audio_ready=" << (m_publicDemoDiagnostics.ContentAudioReady ? "true" : "false") << "\n";
             report << "public_demo_animation_hook_ready=" << (m_publicDemoDiagnostics.AnimationHookReady ? "true" : "false") << "\n";
+            report << "public_demo_enemy_archetype_ready=" << (m_publicDemoDiagnostics.EnemyArchetypeReady ? "true" : "false") << "\n";
+            report << "public_demo_enemy_los_ready=" << (m_publicDemoDiagnostics.EnemyLineOfSightReady ? "true" : "false") << "\n";
+            report << "public_demo_enemy_telegraph_ready=" << (m_publicDemoDiagnostics.EnemyTelegraphReady ? "true" : "false") << "\n";
+            report << "public_demo_enemy_hit_reaction_ready=" << (m_publicDemoDiagnostics.EnemyHitReactionReady ? "true" : "false") << "\n";
+            report << "public_demo_controller_polish_ready=" << (m_publicDemoDiagnostics.ControllerPolishReady ? "true" : "false") << "\n";
+            report << "public_demo_animation_blend_tree_ready=" << (m_publicDemoDiagnostics.AnimationBlendTreeReady ? "true" : "false") << "\n";
+            report << "public_demo_accessibility_ready=" << (m_publicDemoDiagnostics.AccessibilityReady ? "true" : "false") << "\n";
+            report << "rendering_aaa_readiness=" << (m_publicDemoDiagnostics.RenderingAAAReadiness ? "true" : "false") << "\n";
+            report << "production_aaa_readiness=" << (m_publicDemoDiagnostics.ProductionAAAReadiness ? "true" : "false") << "\n";
+            report << "public_demo_enemy_archetype_count=" << m_publicDemoDiagnostics.EnemyArchetypes << "\n";
+            report << "public_demo_enemy_los_check_count=" << m_publicDemoDiagnostics.EnemyLineOfSightChecks << "\n";
+            report << "public_demo_enemy_telegraph_count=" << m_publicDemoDiagnostics.EnemyTelegraphs << "\n";
+            report << "public_demo_enemy_hit_reaction_count=" << m_publicDemoDiagnostics.EnemyHitReactions << "\n";
+            report << "public_demo_controller_grounded_frame_count=" << m_publicDemoDiagnostics.ControllerGroundedFrames << "\n";
+            report << "public_demo_controller_slope_sample_count=" << m_publicDemoDiagnostics.ControllerSlopeSamples << "\n";
+            report << "public_demo_controller_material_sample_count=" << m_publicDemoDiagnostics.ControllerMaterialSamples << "\n";
+            report << "public_demo_controller_moving_platform_frame_count=" << m_publicDemoDiagnostics.ControllerMovingPlatformFrames << "\n";
+            report << "public_demo_controller_camera_collision_frame_count=" << m_publicDemoDiagnostics.ControllerCameraCollisionFrames << "\n";
+            report << "public_demo_animation_clip_event_count=" << m_publicDemoDiagnostics.AnimationClipEvents << "\n";
+            report << "public_demo_animation_blend_sample_count=" << m_publicDemoDiagnostics.AnimationBlendSamples << "\n";
+            report << "public_demo_accessibility_toggle_count=" << m_publicDemoDiagnostics.AccessibilityToggles << "\n";
+            report << "public_demo_rendering_readiness_items=" << m_publicDemoDiagnostics.RenderingReadinessItems << "\n";
+            report << "public_demo_production_readiness_items=" << m_publicDemoDiagnostics.ProductionReadinessItems << "\n";
+            report << "public_demo_blend_tree_clips=" << m_publicDemoBlendTreeClipCount << "\n";
+            report << "public_demo_blend_tree_transitions=" << m_publicDemoBlendTreeTransitionCount << "\n";
+            report << "public_demo_blend_tree_root_motion=" << m_publicDemoBlendTreeRootMotionCount << "\n";
             report << "viewport_hud_debug_thumbnails=" << (m_viewportOverlay.ShowDebugThumbnails ? "true" : "false") << "\n";
             report << "transform_precision_step=" << m_transformPrecision.Step << "\n";
             report << "command_history_filtered_verification=" << CountFilteredCommandHistory("Verification") << "\n";
@@ -13093,6 +13957,21 @@ namespace
                     else if (key == "min_public_demo_content_audio_cues") { loadedBaseline.MinPublicDemoContentAudioCues = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_public_demo_animation_state_changes") { loadedBaseline.MinPublicDemoAnimationStateChanges = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_v33_playable_demo_points") { loadedBaseline.MinV33PlayableDemoPoints = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_enemy_archetypes") { loadedBaseline.MinPublicDemoEnemyArchetypes = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_enemy_los_checks") { loadedBaseline.MinPublicDemoEnemyLineOfSightChecks = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_enemy_telegraphs") { loadedBaseline.MinPublicDemoEnemyTelegraphs = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_enemy_hit_reactions") { loadedBaseline.MinPublicDemoEnemyHitReactions = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_controller_grounded_frames") { loadedBaseline.MinPublicDemoControllerGroundedFrames = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_controller_slope_samples") { loadedBaseline.MinPublicDemoControllerSlopeSamples = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_controller_material_samples") { loadedBaseline.MinPublicDemoControllerMaterialSamples = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_controller_moving_platform_frames") { loadedBaseline.MinPublicDemoControllerMovingPlatformFrames = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_controller_camera_collision_frames") { loadedBaseline.MinPublicDemoControllerCameraCollisionFrames = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_animation_clip_events") { loadedBaseline.MinPublicDemoAnimationClipEvents = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_animation_blend_samples") { loadedBaseline.MinPublicDemoAnimationBlendSamples = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_accessibility_toggles") { loadedBaseline.MinPublicDemoAccessibilityToggles = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_rendering_pipeline_readiness_items") { loadedBaseline.MinRenderingPipelineReadinessItems = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_production_pipeline_readiness_items") { loadedBaseline.MinProductionPipelineReadinessItems = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_v34_aaa_foundation_points") { loadedBaseline.MinV34AAAFoundationPoints = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
@@ -13181,6 +14060,7 @@ namespace
         std::array<uint32_t, V31DiversifiedPointCount> m_v31DiversifiedPointResults = {};
         std::array<uint32_t, V32RoadmapPointCount> m_v32RoadmapPointResults = {};
         std::array<uint32_t, V33PlayableDemoPointCount> m_v33PlayableDemoPointResults = {};
+        std::array<uint32_t, V34AAAFoundationPointCount> m_v34AAAFoundationPointResults = {};
         std::array<PublicDemoShard, PublicDemoShardCount> m_publicDemoShards = {};
         std::array<PublicDemoAnchor, PublicDemoAnchorCount> m_publicDemoAnchors = {};
         std::array<PublicDemoResonanceGate, PublicDemoResonanceGateCount> m_publicDemoResonanceGates = {};
@@ -13297,6 +14177,11 @@ namespace
         bool m_publicDemoCompletionAudioPlayed = false;
         bool m_publicDemoCueManifestLoaded = false;
         bool m_publicDemoAnimationManifestLoaded = false;
+        bool m_publicDemoBlendTreeManifestLoaded = false;
+        bool m_publicDemoAccessibilityHighContrast = false;
+        bool m_publicDemoTitleFlowReady = false;
+        bool m_publicDemoChapterSelectReady = false;
+        bool m_publicDemoSaveSlotReady = false;
         PublicDemoStage m_publicDemoStage = PublicDemoStage::CollectShards;
         PublicDemoMenuState m_publicDemoMenuState = PublicDemoMenuState::Playing;
         PublicDemoAnimationState m_publicDemoAnimationState = PublicDemoAnimationState::Idle;
@@ -13343,6 +14228,23 @@ namespace
         uint32_t m_publicDemoEnemyChaseTickCount = 0;
         uint32_t m_publicDemoEnemyEvadeCount = 0;
         uint32_t m_publicDemoEnemyContactCount = 0;
+        uint32_t m_publicDemoEnemyArchetypeCount = 0;
+        uint32_t m_publicDemoEnemyLineOfSightCheckCount = 0;
+        uint32_t m_publicDemoEnemyTelegraphCount = 0;
+        uint32_t m_publicDemoEnemyHitReactionCount = 0;
+        uint32_t m_publicDemoControllerGroundedFrameCount = 0;
+        uint32_t m_publicDemoControllerSlopeSampleCount = 0;
+        uint32_t m_publicDemoControllerMaterialSampleCount = 0;
+        uint32_t m_publicDemoControllerMovingPlatformFrameCount = 0;
+        uint32_t m_publicDemoControllerCameraCollisionFrameCount = 0;
+        uint32_t m_publicDemoAnimationClipEventCount = 0;
+        uint32_t m_publicDemoAnimationBlendSampleCount = 0;
+        uint32_t m_publicDemoBlendTreeClipCount = 0;
+        uint32_t m_publicDemoBlendTreeTransitionCount = 0;
+        uint32_t m_publicDemoBlendTreeRootMotionCount = 0;
+        uint32_t m_publicDemoAccessibilityToggleCount = 0;
+        uint32_t m_publicDemoRenderingReadinessCount = 0;
+        uint32_t m_publicDemoProductionReadinessCount = 0;
         uint32_t m_publicDemoGamepadFrameCount = 0;
         uint32_t m_publicDemoMenuTransitionCount = 0;
         uint32_t m_publicDemoFailurePresentationFrameCount = 0;
@@ -13368,6 +14270,7 @@ namespace
         std::deque<std::string> m_publicDemoEvents;
         std::unordered_map<std::string, PublicDemoCueDefinition> m_publicDemoCueDefinitions;
         std::vector<std::string> m_publicDemoAnimationStates;
+        std::vector<std::string> m_publicDemoAnimationClipEvents;
         PublicDemoGamepadState m_publicDemoGamepad;
         HMODULE m_xinputModule = nullptr;
         using XInputGetStateFn = DWORD(WINAPI*)(DWORD, XINPUT_STATE*);

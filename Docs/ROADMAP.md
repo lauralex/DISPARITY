@@ -1,6 +1,14 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v33 versions of many requested followups, including a more game-like public vertical slice with collision traversal, simple enemies, gamepad/menu flow, failure presentation, and content-backed cue/animation hooks. The next milestones should keep rotating through gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+The current engine now has functional v34 versions of many requested followups, including a more game-like public vertical slice with collision traversal, enemy archetypes, controller-polish telemetry, blend-tree manifests, gamepad/menu flow, failure presentation, and content-backed cue/animation hooks. The next milestones should keep rotating through gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+
+## v34 Completed AAA Foundation Batch
+
+- Added `Assets/Verification/V34AAAFoundationBatch.dfollowups`, a sixty-point near-AAA foundation batch with ten points each for EncounterAI, Controller, Animation, EditorUX, Rendering, and Production.
+- The public demo now has three distinct enemy archetypes: Hunter, Warden, and Disruptor. They have role-specific colors, patrol offsets, line-of-sight probes, telegraph windows, hit-reaction telemetry, pressure-route coverage, and Demo Director readouts.
+- Controller and UX readiness now records grounded frames, slope/material samples, moving-platform influence, camera-collision readiness, dash recovery, high-contrast/accessibility toggles, title-flow, chapter-select, and save-slot surface readiness.
+- Animation readiness now loads `Assets/Animation/PublicDemoBlendTree.danimgraph`, including clips, transition metadata, animation event markers, and root-motion preview entries. Runtime verification exercises blend samples and clip events.
+- The Profiler includes a v34 AAA Foundation readiness table, while runtime reports, baselines, schema checks, release-readiness review, production-batch review, baseline review, and performance-history summaries all require the new v34 counters and point metrics.
 
 ## v33 Completed Playable Demo Batch
 
@@ -198,6 +206,7 @@ The current engine now has functional v33 versions of many requested followups, 
 - Expand the current mesh/ring/plane gizmo handles with depth-aware hover occlusion, constraint previews, numerical transform entry, richer pivot/orientation editing, and richer object-ID handle metadata.
 - Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command categories, history export, and reviewable command macros.
 - Promote the new prefab variant/parent/nested metadata into nested-prefab instancing, multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
+- Build the v34 title/chapter/save/accessibility readiness into real UI panels with keyboard/gamepad navigation, persistence, and screenshot-friendly public-demo flows.
 
 ## Asset Pipeline
 
@@ -219,10 +228,10 @@ The current engine now has functional v33 versions of many requested followups, 
 
 ## Runtime
 
-- Add more advanced encounter design with multiple enemy archetypes, authored patrol paths, line-of-sight checks, readable attack telegraphs, hit reactions, and objective-specific pressure beats.
-- Polish the character controller with grounded state, slopes, ledges, moving platforms, collision layers, friction/material responses, and camera collision.
-- Replace the v33 manifest-level animation surface with authored clips, blend trees, animation events, root-motion experiments, and editor transition previews.
-- Expand the pause/completion/failure flow into a title screen, settings menu, save-slot/checkpoint UI, accessibility options, and replayable demo chapter select.
+- Turn the v34 enemy archetype proof into data-driven AI with behavior trees/state machines, navigation volumes, perception memory, squad roles, difficulty budgets, and encounter prefab authoring.
+- Promote v34 controller telemetry into a swept capsule character controller with ledges, step-up/step-down, slope limits, material friction, moving-platform parenting, camera obstruction solving, and deterministic feel presets.
+- Replace the v34 blend-tree manifest with authored clips, animation event tracks, editor transition previews, root-motion extraction, additive poses, state-machine debugging, and GPU skinning playback.
+- Expand the pause/completion/failure/title-flow readiness into real title, settings, save-slot, checkpoint, accessibility, and replayable chapter-select UI.
 - Extend the job-system async IO helper into asset streaming, cancellation, priorities, file watching, and frame pacing diagnostics.
 - Add serialization versioning, save-game separation, and deterministic scene IDs.
 - Add physics, collision queries, controller movement, animation-driven character logic, and gameplay event routing.

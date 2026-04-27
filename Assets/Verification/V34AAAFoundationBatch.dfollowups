@@ -1,0 +1,62 @@
+# DISPARITY v34 AAA foundation followup batch.
+# Format: point <key>|<domain>|<description>
+point v34_point_01_enemy_archetype_catalog|EncounterAI|Public demo has distinct enemy archetypes for Hunter, Warden, and Disruptor roles.
+point v34_point_02_enemy_los_checks|EncounterAI|Enemy behavior evaluates simple line-of-sight probes before pressure behavior.
+point v34_point_03_enemy_patrol_offsets|EncounterAI|Enemy patrols use authored offsets instead of a single home-only orbit.
+point v34_point_04_enemy_telegraph_windows|EncounterAI|Enemies expose readable telegraph windows before pressure contact.
+point v34_point_05_enemy_hit_reactions|EncounterAI|Dash evasion creates hit-reaction telemetry for enemies.
+point v34_point_06_enemy_pressure_roles|EncounterAI|Enemy roles apply pressure through chase, contact, or disruptor ranges.
+point v34_point_07_enemy_archetype_visuals|EncounterAI|Enemy archetypes have different visible colors and telegraph rings.
+point v34_point_08_enemy_director_readout|EncounterAI|Demo Director reports archetype, line-of-sight, telegraph, and hit-reaction data.
+point v34_point_09_enemy_verification_route|EncounterAI|Runtime verification exercises the v34 enemy route deterministically.
+point v34_point_10_enemy_schema_baseline|EncounterAI|Schema and baselines require v34 enemy-archetype coverage.
+point v34_point_11_controller_grounding|Controller|Public demo controller records grounded-frame telemetry.
+point v34_point_12_controller_slope_probe|Controller|Controller samples authored slope-probe readiness.
+point v34_point_13_controller_material_friction|Controller|Controller records material-sample readiness for future friction surfaces.
+point v34_point_14_controller_moving_platform|Controller|Controller has moving-platform influence telemetry.
+point v34_point_15_controller_camera_collision|Controller|Third-person camera collision readiness is tracked.
+point v34_point_16_controller_coyote_time|Controller|Controller exposes coyote/dash recovery readiness hooks.
+point v34_point_17_controller_dash_recovery|Controller|Dash recovery contributes to traversal polish metrics.
+point v34_point_18_controller_accessibility_speed|Controller|Accessibility mode can alter public-demo readability without changing the route.
+point v34_point_19_controller_runtime_metrics|Controller|Runtime report emits v34 controller-polish counters.
+point v34_point_20_controller_visible_polish|Controller|Playable route shows traversal beacons alongside controller polish metrics.
+point v34_point_21_animation_blend_tree_manifest|Animation|Public demo loads an authored locomotion blend-tree manifest.
+point v34_point_22_animation_clip_events|Animation|Animation event markers are counted for cue routing.
+point v34_point_23_animation_root_motion_preview|Animation|Root-motion preview entries are present in the blend-tree manifest.
+point v34_point_24_animation_state_transition_table|Animation|Blend-tree transition metadata is parsed and verified.
+point v34_point_25_animation_event_audio_hooks|Animation|Animation event routing hooks coexist with content-backed audio cues.
+point v34_point_26_animation_debug_readout|Animation|Demo Director exposes blend-tree debug telemetry.
+point v34_point_27_animation_verification_route|Animation|Runtime verification exercises blend samples and clip events.
+point v34_point_28_animation_asset_docs|Animation|Animation asset path is documented and versioned for future authored clips.
+point v34_point_29_animation_metrics_schema|Animation|Schema and baselines require v34 animation metrics.
+point v34_point_30_animation_future_gpu_skinning_gate|Animation|Animation metrics keep the future GPU-skinning gate visible.
+point v34_point_31_editor_title_flow_preview|EditorUX|Editor/runtime state includes title-flow readiness for public presentations.
+point v34_point_32_editor_settings_accessibility|EditorUX|Settings and accessibility toggles feed runtime diagnostics.
+point v34_point_33_editor_chapter_select|EditorUX|Chapter-select readiness is tracked for the demo director.
+point v34_point_34_editor_save_slot_surface|EditorUX|Save-slot surface readiness is tracked for future persistence work.
+point v34_point_35_editor_command_macro_fixture|EditorUX|Command-history macro fixtures include v34 tasks.
+point v34_point_36_editor_nested_prefab_readiness|EditorUX|Nested-prefab readiness remains covered during the v34 batch.
+point v34_point_37_editor_gizmo_depth_readiness|EditorUX|Depth-aware gizmo/readback readiness remains covered during the v34 batch.
+point v34_point_38_editor_director_aaa_table|EditorUX|Demo Director and Profiler expose a v34 AAA-foundation table.
+point v34_point_39_editor_runtime_report_diff|EditorUX|Runtime report includes v34 readiness counters for diff review.
+point v34_point_40_editor_docs_agent_update|EditorUX|README, roadmap, and agent context document the v34 AAA foundation.
+point v34_point_41_render_csm_stabilization_metric|Rendering|Rendering readiness tracks CSM cascade coverage.
+point v34_point_42_render_motion_vector_coverage|Rendering|Rendering readiness tracks motion-vector target coverage.
+point v34_point_43_render_taa_resolve_gate|Rendering|TAA resolve readiness is exposed as a verified gate.
+point v34_point_44_render_clustered_light_readiness|Rendering|Clustered/Forward+ light-bin readiness is tracked.
+point v34_point_45_render_vfx_overdraw_budget|Rendering|VFX overdraw budget readiness is linked to emitter/particle counters.
+point v34_point_46_render_capture_tile_async_gate|Rendering|Async tiled capture remains verified for public capture.
+point v34_point_47_render_ssr_ssgi_placeholders|Rendering|SSR/SSGI roadmap placeholders are tracked in the rendering readiness set.
+point v34_point_48_render_gpu_culling_budget|Rendering|GPU-culling budget readiness is tracked.
+point v34_point_49_render_debug_view_parity|Rendering|Debug-view parity is recorded for post stack verification.
+point v34_point_50_render_schema_baseline|Rendering|Schema and baselines require v34 rendering readiness.
+point v34_point_51_production_release_manifest_v34|Production|Release-readiness tooling reviews the v34 followup manifest.
+point v34_point_52_production_runtime_schema_v34|Production|Runtime schema includes all v34 metrics and point keys.
+point v34_point_53_production_baseline_review_v34|Production|Baseline review requires v34 minimum counters.
+point v34_point_54_production_perf_history_v34|Production|Performance history records v34 readiness counters.
+point v34_point_55_production_smoke_runtime_v34|Production|Smoke/runtime verification includes v34 coverage.
+point v34_point_56_production_interactive_ci_v34|Production|Interactive CI plan readiness remains covered for v34.
+point v34_point_57_production_package_artifact_v34|Production|Packaging/release artifact readiness remains covered for v34.
+point v34_point_58_production_obs_capture_v34|Production|OBS capture metadata readiness remains covered for v34.
+point v34_point_59_production_public_showcase_notes|Production|Public-showcase notes mention the v34 visible systems.
+point v34_point_60_production_version_agent_snapshot|Production|Versioning and agent context are bumped for v34.
