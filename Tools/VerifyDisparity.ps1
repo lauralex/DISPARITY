@@ -213,23 +213,7 @@ Invoke-Step "Asset cook manifest" {
 }
 
 Invoke-Step "Optimized glTF package review" {
-    $optimizedPath = Join-Path $root "Saved\CookedAssets\Optimized"
-    $packages = @(Get-ChildItem -LiteralPath $optimizedPath -Filter "*.dglbpack" -File -ErrorAction SilentlyContinue)
-    if ($packages.Count -eq 0) {
-        throw "No optimized .dglbpack packages were produced."
-    }
-    foreach ($package in $packages) {
-        $payload = Get-Content -LiteralPath $package.FullName -Raw | ConvertFrom-Json
-        if ($payload.magic -ne "DSGLBPK2" -or [int]$payload.schema -lt 2) {
-            throw "Optimized package $($package.Name) has an invalid schema."
-        }
-        if ([int]$payload.primitive_count -le 0 -or [int]$payload.mesh_count -le 0) {
-            throw "Optimized package $($package.Name) did not record mesh primitives."
-        }
-        if (!$payload.buffers -or @($payload.buffers).Count -eq 0) {
-            throw "Optimized package $($package.Name) did not record buffer payload metadata."
-        }
-    }
+    & (Join-Path $PSScriptRoot "ReviewCookedPackages.ps1")
 }
 
 Invoke-Step "Crash upload manifest dry run" {
@@ -250,8 +234,19 @@ Invoke-Step "Baseline approval manifest" {
     }
 }
 
+Invoke-Step "Signed baseline update approval" {
+    & (Join-Path $PSScriptRoot "ApproveVerificationUpdate.ps1") -Reason "v22 verification dry-run"
+    $approvalPath = Join-Path $root "Saved\Verification\baseline_update_approval.json"
+    $approval = Get-Content -LiteralPath $approvalPath -Raw | ConvertFrom-Json
+    if (!$approval.git_head -or !$approval.git_signature_status -or [int]$approval.file_count -le 0) {
+        throw "Baseline update approval manifest is missing git or file metadata."
+    }
+}
+
 Invoke-Step "Interactive CI plan" {
     & (Join-Path $PSScriptRoot "GenerateInteractiveCiPlan.ps1") -RuntimeSuiteFile $RuntimeSuiteFile
+    & (Join-Path $PSScriptRoot "LaunchTrailerCapture.ps1") -Configuration Debug -NoLaunch
+    & (Join-Path $PSScriptRoot "GenerateObsSceneProfile.ps1")
 }
 
 if (!$SkipRuntime) {
@@ -290,10 +285,12 @@ if (!$SkipPackage) {
 
     Invoke-Step "Release symbol index" {
         & (Join-Path $PSScriptRoot "IndexDisparitySymbols.ps1") -PackagePath (Join-Path $root "dist\DISPARITY-Release")
+        & (Join-Path $PSScriptRoot "PublishDisparitySymbols.ps1") -PackagePath (Join-Path $root "dist\DISPARITY-Release")
     }
 
     Invoke-Step "Installer payload manifest" {
         & (Join-Path $PSScriptRoot "CreateDisparityInstaller.ps1") -PackagePath (Join-Path $root "dist\DISPARITY-Release") -CreateArchive
+        & (Join-Path $PSScriptRoot "CreateDisparityBootstrapper.ps1") -PackagePath (Join-Path $root "dist\DISPARITY-Release")
     }
 
     if (!$SkipRuntime) {

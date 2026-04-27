@@ -107,6 +107,10 @@ namespace Disparity
         uint32_t ObjectIdReadbackCompletions = 0;
         uint32_t ObjectIdReadbackLatencyFrames = 0;
         uint32_t ObjectIdReadbackBusySkips = 0;
+        uint32_t HighResolutionCaptureTargets = 0;
+        uint32_t HighResolutionCaptureTiles = 0;
+        uint32_t HighResolutionCaptureMsaaSamples = 1;
+        uint32_t HighResolutionCapturePasses = 0;
     };
 
     struct EditorViewportResourcesInfo
@@ -271,10 +275,13 @@ namespace Disparity
         uint32_t m_graphEditorViewport = 0;
         uint32_t m_graphEditorObjectIds = 0;
         uint32_t m_graphEditorObjectDepth = 0;
+        uint32_t m_graphHighResolutionColor = 0;
+        uint32_t m_graphHighResolutionResolve = 0;
         uint32_t m_graphClearPass = std::numeric_limits<uint32_t>::max();
         uint32_t m_graphShadowPass = std::numeric_limits<uint32_t>::max();
         uint32_t m_graphScenePass = std::numeric_limits<uint32_t>::max();
         uint32_t m_graphEditorViewportPass = std::numeric_limits<uint32_t>::max();
+        uint32_t m_graphHighResolutionCapturePass = std::numeric_limits<uint32_t>::max();
         uint32_t m_graphPostPass = std::numeric_limits<uint32_t>::max();
         uint32_t m_graphEditorPass = std::numeric_limits<uint32_t>::max();
         uint32_t m_activeGraphPass = std::numeric_limits<uint32_t>::max();
@@ -294,6 +301,10 @@ namespace Disparity
         mutable uint32_t m_objectIdReadbackCompletions = 0;
         mutable uint32_t m_objectIdReadbackLatencyFrames = 0;
         mutable uint32_t m_objectIdReadbackBusySkips = 0;
+        uint32_t m_highResolutionCaptureTargets = 0;
+        uint32_t m_highResolutionCaptureTiles = 0;
+        uint32_t m_highResolutionCaptureMsaaSamples = 1;
+        uint32_t m_highResolutionCapturePasses = 0;
         uint64_t m_frameIndex = 0;
         std::chrono::steady_clock::time_point m_graphPassStart;
         double m_gpuFrameMilliseconds = 0.0;

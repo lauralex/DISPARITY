@@ -33,13 +33,13 @@ Controls:
 - `Tab`: release or recapture the mouse.
 - `Esc`: quit.
 - `F1`: toggle the Dear ImGui editor.
-- `F2`: play a short generated audio test tone and show status in the editor menu bar.
+- `F2`: play a short generated audio test tone through XAudio2 when available or the warmed WinMM fallback, and show status in the editor menu bar.
 - `F3`: cycle the selected scene object.
 - `F5`: reload the serialized scene and scene script; visible changes appear after editing `Assets/Scenes/Prototype.dscene` or `Assets/Scripts/Prototype.dscript`.
 - `F6`: save the runtime scene snapshot to `Saved/PrototypeRuntime.dscene` and show status in the editor menu bar.
 - `F7`: toggle cinematic showcase mode, hide the editor, boost post-processing, and orbit the animated DISPARITY rift for capture-friendly footage.
 - `F8`: toggle trailer/photo mode with authored camera shots from `Assets/Cinematics/Showcase.dshot`, depth of field, lens dirt, and title-safe guide overlays.
-- `F9`: capture the current presented frame and write a source PPM, source PNG, and 2x PPM photo under `Saved/Captures`.
+- `F9`: capture the current presented frame and write a source PPM, source PNG, async 2x PPM photo, and high-resolution capture manifest under `Saved/Captures`.
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 - When the mouse is released with `Tab`, left-click the viewport to pick objects. Hold `Ctrl` while clicking or selecting in the hierarchy to multi-select. The editor tries GPU object-ID readback first and falls back to CPU ray tests.
@@ -54,9 +54,9 @@ Editor UI:
 - `Viewport`: enable the independent editor camera, frame the player/selection, choose gizmo translate/rotate/scale and world/local space, inspect GPU pick readback status, and use right-drag plus WASD/QE to move without driving gameplay input.
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw draggable, camera-scaled 3D axis/ring/plane gizmo handles in the viewport.
 - `Assets`: reload scene/script, toggle hot reload, inspect the asset database and dependency graph, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
-- `Shot Director`: edit, add, save, reload, and capture `.dshot` trailer keys without leaving the running editor.
+- `Shot Director`: edit, add, save, reload, capture, thumbnail, and preview-scrub v5 `.dshot` trailer keys without leaving the running editor.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
-- `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters, and store/recall a mixer snapshot.
+- `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters/production counters, and store/recall a mixer snapshot.
 
 ## Engine v0 Features
 
@@ -267,17 +267,35 @@ Editor UI:
 - Asset cooking can emit deterministic `.dglbpack` optimized-package placeholders for glTF/glB sources.
 - Verification now requires v20 coverage counters and writes a baseline approval manifest with hashes for baselines and goldens.
 
+## Engine v21 Production Followups Implemented
+
+- Render passes bind resources through graph handles and report binding hits/misses, callback execution, barriers, allocations, alias reuse, and dispatch validity.
+- GPU editor picking uses non-blocking object-ID/depth readback slots and reports pending, busy, completion, and latency diagnostics.
+- `Assets/Cinematics/Showcase.dshot` is now v4 with Catmull-Rom spline mode, timeline-lane metadata, and thumbnail tint metadata.
+- Rift VFX reports GPU-simulation, motion-vector, and temporal-reprojection counters.
+- Generated tones prefer a dynamically loaded XAudio2 source-voice path when available, with WinMM as the fallback.
+- `F9` queues the 2x capture through an async worker, and asset cooking writes structured `DSGLBPK2` package manifests for glTF sources.
+- Baseline approvals include Git signature metadata, and production tooling emits interactive CI, package artifact, symbol-server, bootstrapper, and crash-upload retry plans.
+
+## Engine v22 Production Followups Implemented
+
+- GPU editor picking now records hover-cache samples and latency histogram buckets, with Profiler visualization and runtime baseline coverage.
+- `Assets/Cinematics/Showcase.dshot` is now v5 with editable easing curves, renderer/audio timeline tracks, generated thumbnail paths, and non-modal preview scrubbing.
+- `F9` now records graph-owned high-resolution capture target/tile/MSAA/pass diagnostics and writes `DISPARITY_photo_2x.dcapture.json` next to the async 2x output.
+- Rift VFX keeps particle/ribbon runtime resources, applies depth fade, sorts batches, and reports temporal-history samples.
+- Runtime verification loads optimized `DSGLBPK2` cooked package metadata, validates dependency invalidation, and checks nested prefab instancing coverage.
+- Audio verification now covers mixer voice counts, streamed music layers, spatial emitters, attenuation curves, meter updates, and content pulse counts.
+- Production tooling adds cooked package review, signed baseline update approval intent, symbol publishing to `dist/SymbolServer`, an installer bootstrapper command, OBS scene/profile metadata, and CI artifact upload paths for the new manifests.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Bind renderer resources from graph allocation handles instead of renderer member variables.
-- Replace the object-ID diagnostic ring with fully non-blocking GPU readback and hover cache visualization.
-- Replace `.dglbpack` placeholders with true cooked mesh/material/animation payloads, dependency invalidation, and runtime streaming.
-- Promote prefab variant metadata into nested prefab instancing, multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
-- Replace the WinMM playback path with XAudio2 voices, sends, streamed music, spatial emitters, attenuation curves, content analysis, and live meters.
-- Add real installer bootstrapper output, symbol-server indexing, crash upload authentication/retry, and packaged runtime smoke on interactive CI runners.
-- Replace the current 2x PPM upscaler with offscreen high-resolution render targets, multi-sample resolve options, tiled supersampling, and async capture workers.
-- Expand the v3 shot metadata into spline editing, shot thumbnails, multi-track timeline UI, and non-modal preview scrubbing.
-- Add GPU particle simulation, soft particles, signed-distance fog volumes, motion vectors, and temporal VFX reprojection for the rift.
-- Add OBS/trailer tooling: deterministic camera bookmarks, build watermark toggles, capture metadata, and OBS profile/scene automation.
+- Promote graph-owned resource diagnostics into explicit DX11 bind/unbind barriers, real alias lifetime validation, GPU culling, Forward+ lighting, cascaded shadows, and stronger temporal AA.
+- Turn the high-resolution capture proof into true tiled supersampling with per-tile camera jitter, resolve filters, EXR output, and async compression workers.
+- Replace cooked package metadata loading with optimized GPU mesh/material/animation resources, live dependency invalidation, runtime streaming, retargeting, and GPU skinning palette uploads.
+- Promote nested prefab metadata into multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
+- Replace audio production counters with real XAudio2 mixer voices, streamed music assets, spatial emitter components, attenuation-curve assets, calibrated meters, and content-driven VFX pulses.
+- Expand v5 Shot Director metadata into a full sequencer with curve editing, clip lanes, shot thumbnails, nested sequences, and undoable edits.
+- Promote rift particle/ribbon resources into a dedicated GPU VFX renderer with soft particles, emitter sorting controls, motion vectors, and temporal reprojection.
+- Replace bootstrapper/symbol-server plans with actual publishing/install artifacts, run packaged runtime smoke on interactive CI runners, and expand OBS metadata into OBS WebSocket automation.

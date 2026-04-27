@@ -38,6 +38,11 @@ namespace Disparity
         bool XAudio2Initialized = false;
         uint32_t XAudio2ActiveSourceVoices = 0;
         uint32_t StreamedVoices = 0;
+        uint32_t MixerVoicesCreated = 0;
+        uint32_t StreamedMusicLayers = 0;
+        uint32_t SpatialEmitters = 0;
+        uint32_t AttenuationCurves = 0;
+        uint32_t MeterUpdates = 0;
     };
 
     struct AudioAnalysis
@@ -47,6 +52,7 @@ namespace Disparity
         float BeatEnvelope = 0.0f;
         uint32_t ActiveVoices = 0;
         bool ContentDriven = false;
+        uint32_t ContentPulseCount = 0;
     };
 
     class AudioSystem

@@ -1,0 +1,24 @@
+{
+  "magic": "DSGLBPK2",
+  "schema": 2,
+  "payload_format": "optimized_static_scene",
+  "source": "Assets/Meshes/SampleTriangle.gltf",
+  "kind": "gltf_scene",
+  "dependencies": [
+    "Assets/ImportSettings/Assets/Meshes/SampleTriangle.gltf.dimport"
+  ],
+  "dependency_count": 1,
+  "mesh_count": 1,
+  "primitive_count": 1,
+  "material_count": 1,
+  "node_count": 1,
+  "animation_count": 1,
+  "skin_count": 1,
+  "runtime_resource": {
+    "mesh_stream": "static_triangle",
+    "material_stream": "single_double_sided",
+    "animation_stream": "sample_rotation",
+    "retarget_profile": "humanoid_placeholder",
+    "gpu_skinning_palette_upload": true
+  }
+}

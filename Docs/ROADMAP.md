@@ -1,6 +1,19 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v21 versions of many requested followups. The next milestones should deepen the new graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification scaffolds into fully durable production systems.
+The current engine now has functional v22 versions of many requested followups. The next milestones should deepen the new graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification scaffolds into fully durable production systems.
+
+## v22 Completed Production Batch
+
+- GPU editor picking now records hover-cache samples and latency histogram buckets. The Profiler render-graph tree exposes the cache and bucket state so async object-ID readback behavior can be inspected during editor work and verification.
+- Trailer `.dshot` files moved to v5 with editable easing curves, renderer-track labels, audio-track labels, generated thumbnail paths, and non-modal preview scrubbing. The Shot Director can generate per-shot PPM thumbnails under `Saved/ShotThumbnails`, and runtime verification requires timeline/thumbnail/scrub coverage.
+- High-resolution capture now allocates graph-owned offscreen color/resolve resources, reports target/tile/MSAA/pass diagnostics, and writes a capture manifest next to the async 2x PPM output.
+- Rift VFX simulation now keeps particle and ribbon runtime resources, applies depth fade, sorts render batches, and reports depth-fade particle plus temporal-history counters alongside the existing GPU-simulation/motion-vector/reprojection stats.
+- Optimized `DSGLBPK2` packages are now reviewed by `Tools/ReviewCookedPackages.ps1`, loaded by runtime verification as cooked package resources, and checked for dependency invalidation metadata.
+- Prefab verification now includes nested prefab instancing coverage alongside the existing variant/parent metadata checks.
+- The audio surface now reports production-style mixer voices, streamed music layers, spatial emitters, attenuation curves, meter updates, and content-driven pulse counts. Spatial tone verification exercises the new counters without relying on external background audio.
+- Baseline workflows now include `Tools/ApproveVerificationUpdate.ps1`, which writes explicit signed update intent metadata for baseline/golden changes.
+- Release tooling now includes symbol publishing to `dist/SymbolServer`, an installer bootstrapper command, OBS scene/profile metadata generation, and CI artifact upload paths for the new manifests.
+- `Tools/VerifyDisparity.ps1`, GitHub Actions, runtime baselines, and performance CSV output were expanded to cover the v22 editor, Shot Director, capture, cooked package, nested prefab, audio, symbol, installer, and OBS surfaces.
 
 ## v21 Completed Production Batch
 
@@ -78,18 +91,18 @@ The current engine now has functional v21 versions of many requested followups. 
 
 ## Editor
 
-- Add hover latency histograms, last-frame/object cache visualization, and editor overlays for the new async GPU picking ring.
-- Add viewport toolbar overlays for camera mode, render mode, object-ID/depth debug images, and capture status on top of the dedicated ImGui viewport texture.
+- Promote the hover-cache and latency histogram diagnostics into viewport overlays for last-frame IDs, object names, depth, and stale-readback age.
+- Add viewport toolbar overlays for camera mode, render mode, object-ID/depth debug images, capture status, and high-resolution tile status on top of the dedicated ImGui viewport texture.
 - Expand the current mesh/ring/plane gizmo handles with depth-aware hover occlusion, constraint previews, numerical transform entry, pivot/orientation controls, and richer object-ID handle metadata.
 - Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command filters, and a filterable command history panel.
 - Promote the new prefab variant/parent/nested metadata into nested-prefab instancing, multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
 
 ## Asset Pipeline
 
-- Load the new structured `.dglbpack` mesh/material/animation manifests directly through runtime resources.
+- Promote the structured `.dglbpack` runtime metadata loader into real optimized GPU mesh/material/animation resources.
 - Promote exported texture slots into real texture binding for normal, metallic-roughness, emissive, and occlusion maps instead of metadata-only persistence.
 - Expand the new blend/skinning API into animation clips, skeleton assets, retargeting, state machines, and GPU skinning constant/structured-buffer uploads.
-- Use the dependency graph for hot-reload invalidation so reloading one source asset updates all dependent runtime resources, not only the current prototype scene/script/material set.
+- Use the dependency graph for live hot-reload invalidation so reloading one source asset updates all dependent GPU/runtime resources, not only verification metadata.
 
 ## Rendering
 
@@ -97,8 +110,8 @@ The current engine now has functional v21 versions of many requested followups. 
 - Add GPU frustum/occlusion culling and real clustered or Forward+ light binning.
 - Replace the single shadow-map coverage mode with true cascaded shadow maps.
 - Add normal/depth pre-pass options, SSR/SSGI experiments, motion vectors, and a more correct temporal AA resolve beyond the current FXAA-style resolve plus history blend.
-- Replace the current async 2x photo worker with graph-owned offscreen high-resolution render targets, multi-sample resolves, and true tiled supersampling.
-- Upgrade the VFX stats/simulation surface into a dedicated particle/ribbon renderer with soft particles, depth fade, sorting controls, real GPU simulation, motion vectors, and temporal reprojection.
+- Promote the graph-owned high-resolution proof into true tiled supersampling with per-tile camera jitter, resolve filters, optional EXR output, and async capture compression workers.
+- Upgrade the runtime particle/ribbon VFX resources into a dedicated renderer with soft particles, GPU simulation buffers, per-emitter sorting controls, motion vectors, and temporal reprojection.
 - Add motion vectors, temporal VFX reprojection, better TAA resolve, and exposure curves tuned for trailer captures.
 - Investigate a DX12 or Vulkan backend once the DX11 renderer has a stable render graph contract.
 
@@ -108,16 +121,16 @@ The current engine now has functional v21 versions of many requested followups. 
 - Add serialization versioning, save-game separation, and deterministic scene IDs.
 - Add physics, collision queries, controller movement, animation-driven character logic, and gameplay event routing.
 - Add scripting reload boundaries, script state preservation, and a safer script asset format.
-- Expand v4 shot metadata into editable easing curves, multi-track renderer/audio timelines, generated thumbnails, bookmarks, and non-modal preview scrubbing.
+- Promote v5 shot metadata into a real sequencer with curve editing, clip lanes, shot thumbnails, bookmarks, nested sequences, undoable edits, and non-modal preview scrubbing.
 
 ## Audio
 
-- Expand the new XAudio2 tone path into real mixer voices, sends, snapshots, streamed music layers, spatial emitters, attenuation curves, production meters, and content-driven amplitude analysis that drives VFX pulses from actual audio.
+- Replace the production-counter audio proof with real XAudio2 mixer voices, streamed music assets, spatial emitter components, attenuation-curve assets, calibrated meters, and content-driven amplitude analysis that drives VFX pulses from actual audio buffers.
 
 ## Production
 
 - Add more committed per-GPU/driver golden tolerance profiles from real verification machines and tighter local overrides.
-- Promote signed baseline approvals from metadata into a review command that updates goldens/performance thresholds with explicit approver intent.
+- Promote signed baseline update approvals into a review command that updates goldens/performance thresholds with explicit approver intent and stores an auditable diff package.
 - Run packaged runtime smoke tests by default on a dedicated interactive desktop runner.
-- Replace the bootstrapper plan with an actual installer executable and publish symbols through a real symbol server.
-- Expand trailer automation into OBS profile/scene generation, watermark toggles, capture metadata approval, and packaged vertical-slice launch presets.
+- Replace the bootstrapper command with an actual installer executable and publish symbols through a real symbol server endpoint.
+- Expand OBS scene/profile generation into real OBS WebSocket automation, watermark toggles, capture metadata approval, and packaged vertical-slice launch presets.

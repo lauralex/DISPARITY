@@ -37,6 +37,11 @@ namespace Disparity
         IXAudio2MasteringVoice* g_xaudio2MasteringVoice = nullptr;
         std::atomic<uint32_t> g_xaudio2SourceVoices = 0;
         std::atomic<uint32_t> g_streamedVoices = 0;
+        std::atomic<uint32_t> g_mixerVoicesCreated = 0;
+        std::atomic<uint32_t> g_streamedMusicLayers = 0;
+        std::atomic<uint32_t> g_spatialEmitters = 0;
+        std::atomic<uint32_t> g_attenuationCurves = 1;
+        std::atomic<uint32_t> g_meterUpdates = 0;
         std::string g_backendName = "WinMM prototype mixer";
         DirectX::XMFLOAT3 g_listenerPosition = {};
         DirectX::XMFLOAT3 g_listenerForward = { 0.0f, 0.0f, 1.0f };
@@ -185,6 +190,10 @@ namespace Disparity
             }
             g_xaudio2Initialized = false;
             g_xaudio2SourceVoices = 0;
+            g_mixerVoicesCreated = 0;
+            g_streamedMusicLayers = 0;
+            g_spatialEmitters = 0;
+            g_meterUpdates = 0;
         }
 
         void RefreshBackendName()
@@ -216,6 +225,8 @@ namespace Disparity
             g_analysis.BeatEnvelope = std::max(g_analysis.BeatEnvelope * 0.74f, std::clamp(peak - rms * 0.35f, 0.0f, 1.0f));
             ++g_analysis.ActiveVoices;
             g_analysis.ContentDriven = true;
+            ++g_analysis.ContentPulseCount;
+            ++g_meterUpdates;
         }
 
         void EndVoiceMeter(const std::string& busName)
@@ -475,7 +486,12 @@ namespace Disparity
             g_preferXAudio2,
             g_xaudio2Initialized,
             g_xaudio2SourceVoices.load(),
-            g_streamedVoices.load()
+            g_streamedVoices.load(),
+            g_mixerVoicesCreated.load(),
+            g_streamedMusicLayers.load(),
+            g_spatialEmitters.load(),
+            g_attenuationCurves.load(),
+            g_meterUpdates.load()
         };
     }
 
@@ -510,6 +526,13 @@ namespace Disparity
     void AudioSystem::PlayToneOnBus(const std::string& busName, float frequencyHz, float durationSeconds, float volume)
     {
         EnsureDefaultBuses();
+        ++g_mixerVoicesCreated;
+        {
+            std::scoped_lock lock(g_audioMutex);
+            g_analysis.ContentDriven = true;
+            ++g_analysis.ContentPulseCount;
+            ++g_meterUpdates;
+        }
         std::thread(PlayGeneratedTone, frequencyHz, durationSeconds, volume, busName, 0.0f).detach();
     }
 
@@ -538,6 +561,16 @@ namespace Disparity
         const float projectedRight = dx * listenerRight.x + dy * listenerRight.y + dz * listenerRight.z;
         const float pan = std::clamp(projectedRight / 8.0f, -1.0f, 1.0f);
 
+        ++g_mixerVoicesCreated;
+        ++g_spatialEmitters;
+        ++g_attenuationCurves;
+        {
+            std::scoped_lock lock(g_audioMutex);
+            g_analysis.ContentDriven = true;
+            g_analysis.BeatEnvelope = std::max(g_analysis.BeatEnvelope, std::clamp(volume * attenuation, 0.0f, 1.0f));
+            ++g_analysis.ContentPulseCount;
+            ++g_meterUpdates;
+        }
         std::thread(PlayGeneratedTone, frequencyHz, durationSeconds, volume * attenuation, busName, pan).detach();
     }
 
@@ -566,6 +599,10 @@ namespace Disparity
         if (started)
         {
             g_streamedVoices = loop ? 1u : 0u;
+            if (busName == "Music")
+            {
+                ++g_streamedMusicLayers;
+            }
         }
         return started;
     }

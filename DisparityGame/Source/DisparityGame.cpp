@@ -22,6 +22,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -634,6 +635,57 @@ namespace
             std::string SplineMode = "catmull";
             std::string TimelineLane = "camera";
             DirectX::XMFLOAT3 ThumbnailTint = { 0.42f, 0.82f, 1.0f };
+            std::string EasingCurve = "smoothstep";
+            std::string RendererTrack = "post_stack";
+            std::string AudioTrack = "cue";
+            std::string ThumbnailPath;
+        };
+
+        struct GpuPickVisualizationState
+        {
+            bool HasCache = false;
+            bool LastResolved = false;
+            uint32_t LastObjectId = 0;
+            uint32_t LastX = 0;
+            uint32_t LastY = 0;
+            uint32_t LastLatencyFrames = 0;
+            uint32_t CacheHits = 0;
+            uint32_t CacheMisses = 0;
+            uint32_t BusySkips = 0;
+            uint32_t PendingSlots = 0;
+            float LastDepth = 1.0f;
+            std::array<uint32_t, 8> LatencyBuckets = {};
+        };
+
+        struct RiftVfxParticle
+        {
+            DirectX::XMFLOAT3 Position = {};
+            float Size = 0.1f;
+            float Depth = 0.0f;
+            float DepthFade = 1.0f;
+            float Roll = 0.0f;
+            bool Hot = false;
+        };
+
+        struct RiftVfxRibbonSegment
+        {
+            DirectX::XMFLOAT3 Position = {};
+            DirectX::XMFLOAT3 Rotation = {};
+            DirectX::XMFLOAT3 Scale = {};
+            float Depth = 0.0f;
+        };
+
+        struct CookedPackageRuntimeResource
+        {
+            bool Loaded = false;
+            uint32_t Meshes = 0;
+            uint32_t Primitives = 0;
+            uint32_t Materials = 0;
+            uint32_t Nodes = 0;
+            uint32_t Animations = 0;
+            uint32_t Skins = 0;
+            uint32_t Dependencies = 0;
+            std::filesystem::path Path;
         };
 
         struct RiftVfxSystemStats
@@ -647,6 +699,9 @@ namespace
             uint32_t GpuSimulationBatches = 0;
             uint32_t MotionVectorCandidates = 0;
             uint32_t TemporalReprojectionSamples = 0;
+            uint32_t DepthFadeParticles = 0;
+            uint32_t GpuParticleDispatches = 0;
+            uint32_t TemporalHistorySamples = 0;
         };
 
         struct PpmImage
@@ -687,6 +742,16 @@ namespace
             uint32_t MinVfxSystemTests = 1;
             uint32_t MinGpuVfxSimulationTests = 1;
             uint32_t MinAnimationSkinningTests = 1;
+            uint32_t MinGpuPickHoverCacheTests = 1;
+            uint32_t MinGpuPickLatencyHistogramTests = 1;
+            uint32_t MinShotTimelineTrackTests = 1;
+            uint32_t MinShotThumbnailTests = 1;
+            uint32_t MinShotPreviewScrubTests = 1;
+            uint32_t MinGraphHighResCaptureTests = 1;
+            uint32_t MinCookedPackageTests = 1;
+            uint32_t MinAssetInvalidationTests = 1;
+            uint32_t MinNestedPrefabTests = 1;
+            uint32_t MinAudioProductionTests = 1;
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -800,6 +865,16 @@ namespace
             uint32_t VfxSystemTests = 0;
             uint32_t GpuVfxSimulationTests = 0;
             uint32_t AnimationSkinningTests = 0;
+            uint32_t GpuPickHoverCacheTests = 0;
+            uint32_t GpuPickLatencyHistogramTests = 0;
+            uint32_t ShotTimelineTrackTests = 0;
+            uint32_t ShotThumbnailTests = 0;
+            uint32_t ShotPreviewScrubTests = 0;
+            uint32_t GraphHighResCaptureTests = 0;
+            uint32_t CookedPackageTests = 0;
+            uint32_t AssetInvalidationTests = 0;
+            uint32_t NestedPrefabTests = 0;
+            uint32_t AudioProductionTests = 0;
         };
 
         void InitializeMaterials()
@@ -1370,7 +1445,24 @@ namespace
         float ApplyShotEasing(float value, const TrailerShotKey& a, const TrailerShotKey& b) const
         {
             const float clamped = std::clamp(value, 0.0f, 1.0f);
-            const float shaped = SmoothStep01(clamped);
+            const std::string& curve = !b.EasingCurve.empty() ? b.EasingCurve : a.EasingCurve;
+            float shaped = SmoothStep01(clamped);
+            if (curve == "linear")
+            {
+                shaped = clamped;
+            }
+            else if (curve == "ease_in")
+            {
+                shaped = clamped * clamped;
+            }
+            else if (curve == "ease_out")
+            {
+                shaped = 1.0f - (1.0f - clamped) * (1.0f - clamped);
+            }
+            else if (curve == "expo")
+            {
+                shaped = clamped <= 0.0f ? 0.0f : std::pow(2.0f, 10.0f * (clamped - 1.0f));
+            }
             const float blend = std::clamp((std::max(0.0f, a.EaseOut) + std::max(0.0f, b.EaseIn)) * 0.5f, 0.0f, 1.0f);
             return clamped + (shaped - clamped) * blend;
         }
@@ -1735,6 +1827,10 @@ namespace
                     if (fields.size() > 12 && !fields[12].empty()) { key.SplineMode = fields[12]; }
                     if (fields.size() > 13 && !fields[13].empty()) { key.TimelineLane = fields[13]; }
                     if (fields.size() > 14) { (void)ParseShotFloat3(fields[14], key.ThumbnailTint); }
+                    if (fields.size() > 15 && !fields[15].empty()) { key.EasingCurve = fields[15]; }
+                    if (fields.size() > 16 && !fields[16].empty()) { key.RendererTrack = fields[16]; }
+                    if (fields.size() > 17 && !fields[17].empty()) { key.AudioTrack = fields[17]; }
+                    if (fields.size() > 18 && !fields[18].empty()) { key.ThumbnailPath = fields[18]; }
                 }
                 catch (...)
                 {
@@ -1771,8 +1867,8 @@ namespace
                 return false;
             }
 
-            file << "# DISPARITY cinematic shot track v4\n";
-            file << "# key time|position(x,y,z)|target(x,y,z)|focus|dof_strength|lens_dirt|letterbox|ease_in|ease_out|renderer_pulse|audio_cue|bookmark|spline|lane|thumbnail_tint\n";
+            file << "# DISPARITY cinematic shot track v5\n";
+            file << "# key time|position(x,y,z)|target(x,y,z)|focus|dof_strength|lens_dirt|letterbox|ease_in|ease_out|renderer_pulse|audio_cue|bookmark|spline|lane|thumbnail_tint|easing_curve|renderer_track|audio_track|thumbnail_path\n";
             for (const TrailerShotKey& key : m_trailerKeys)
             {
                 file << "key "
@@ -1790,10 +1886,63 @@ namespace
                     << key.Bookmark << '|'
                     << key.SplineMode << '|'
                     << key.TimelineLane << '|'
-                    << FormatShotFloat3(key.ThumbnailTint) << '\n';
+                    << FormatShotFloat3(key.ThumbnailTint) << '|'
+                    << key.EasingCurve << '|'
+                    << key.RendererTrack << '|'
+                    << key.AudioTrack << '|'
+                    << key.ThumbnailPath << '\n';
             }
 
             return file.good();
+        }
+
+        bool WriteShotThumbnail(size_t index, TrailerShotKey& key)
+        {
+            const std::filesystem::path outputDirectory = "Saved/ShotThumbnails";
+            std::filesystem::create_directories(outputDirectory);
+            const std::string bookmark = key.Bookmark.empty() ? ("shot_" + std::to_string(index)) : SafeFileStem(key.Bookmark);
+            const std::filesystem::path outputPath = outputDirectory / ("shot_" + std::to_string(index) + "_" + bookmark + ".ppm");
+            std::ofstream output(outputPath, std::ios::binary | std::ios::trunc);
+            if (!output)
+            {
+                return false;
+            }
+
+            constexpr uint32_t Width = 96;
+            constexpr uint32_t Height = 54;
+            output << "P6\n" << Width << " " << Height << "\n255\n";
+            for (uint32_t y = 0; y < Height; ++y)
+            {
+                for (uint32_t x = 0; x < Width; ++x)
+                {
+                    const float u = static_cast<float>(x) / static_cast<float>(Width - 1u);
+                    const float v = static_cast<float>(y) / static_cast<float>(Height - 1u);
+                    const float scanline = (y % 9u) == 0u ? 0.18f : 0.0f;
+                    const float pulse = std::clamp(key.RendererPulse * 0.35f + key.AudioCue * 0.25f, 0.0f, 0.6f);
+                    const unsigned char pixel[3] = {
+                        static_cast<unsigned char>(std::clamp((key.ThumbnailTint.x * (0.35f + u * 0.65f) + pulse + scanline) * 255.0f, 0.0f, 255.0f)),
+                        static_cast<unsigned char>(std::clamp((key.ThumbnailTint.y * (0.45f + v * 0.55f) + scanline) * 255.0f, 0.0f, 255.0f)),
+                        static_cast<unsigned char>(std::clamp((key.ThumbnailTint.z * (0.55f + (1.0f - u) * 0.45f) + pulse * 0.5f) * 255.0f, 0.0f, 255.0f))
+                    };
+                    output.write(reinterpret_cast<const char*>(pixel), sizeof(pixel));
+                }
+            }
+
+            key.ThumbnailPath = outputPath.generic_string();
+            return output.good();
+        }
+
+        size_t GenerateShotThumbnails()
+        {
+            size_t written = 0;
+            for (size_t index = 0; index < m_trailerKeys.size(); ++index)
+            {
+                if (WriteShotThumbnail(index, m_trailerKeys[index]))
+                {
+                    ++written;
+                }
+            }
+            return written;
         }
 
         Disparity::Transform BeamTransform(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end, float thickness) const
@@ -1822,21 +1971,79 @@ namespace
             return transform;
         }
 
+        void SimulateRiftVfxRenderer(float visualTime, float modeBoost)
+        {
+            m_riftParticles.clear();
+            m_riftRibbons.clear();
+            const DirectX::XMFLOAT3 cameraPosition = GetRenderCamera().GetPosition();
+
+            for (int particleIndex = 0; particleIndex < 36; ++particleIndex)
+            {
+                const float n = static_cast<float>(particleIndex);
+                const float seed = n * 12.9898f;
+                const float angle = n * 0.83f + visualTime * (0.58f + std::fmod(n, 5.0f) * 0.03f);
+                const float radius = 1.35f + std::fmod(n * 1.91f, 3.4f);
+                const float orbitY = std::sin(visualTime * 1.18f + seed) * (0.95f + std::fmod(n, 3.0f) * 0.22f);
+                RiftVfxParticle particle;
+                particle.Position = Add(m_riftPosition, {
+                    std::sin(angle) * radius,
+                    orbitY,
+                    std::cos(angle * 1.11f) * radius * 0.72f
+                });
+                particle.Size = (0.14f + std::fmod(n, 6.0f) * 0.018f + m_riftBeatPulse * 0.16f) * modeBoost;
+                particle.Depth = Length(Subtract(cameraPosition, particle.Position));
+                particle.DepthFade = std::clamp((particle.Depth - 1.0f) / 9.0f, 0.22f, 1.0f);
+                particle.Roll = angle;
+                particle.Hot = particleIndex % 3 == 0;
+                m_riftParticles.push_back(particle);
+            }
+
+            std::sort(m_riftParticles.begin(), m_riftParticles.end(), [](const RiftVfxParticle& a, const RiftVfxParticle& b) {
+                return a.Depth > b.Depth;
+            });
+
+            for (int ribbonIndex = 0; ribbonIndex < 14; ++ribbonIndex)
+            {
+                const float n = static_cast<float>(ribbonIndex);
+                const float angle = visualTime * 0.64f + n * Pi * 2.0f / 14.0f;
+                const float radius = 3.0f + std::sin(visualTime * 0.41f + n) * 0.34f;
+                RiftVfxRibbonSegment ribbon;
+                ribbon.Position = Add(m_riftPosition, {
+                    std::sin(angle) * radius,
+                    std::cos(angle * 1.7f) * 0.55f,
+                    std::cos(angle) * radius * 0.74f
+                });
+                ribbon.Rotation = { 0.08f * std::sin(angle), angle + Pi * 0.5f, 0.22f * std::sin(visualTime + n) };
+                ribbon.Scale = { 0.055f * modeBoost, 0.035f * modeBoost, (1.1f + m_riftBeatPulse * 0.5f) * modeBoost };
+                ribbon.Depth = Length(Subtract(cameraPosition, ribbon.Position));
+                m_riftRibbons.push_back(ribbon);
+            }
+
+            std::sort(m_riftRibbons.begin(), m_riftRibbons.end(), [](const RiftVfxRibbonSegment& a, const RiftVfxRibbonSegment& b) {
+                return a.Depth > b.Depth;
+            });
+
+            m_lastRiftVfxStats = RiftVfxSystemStats{
+                7u,
+                static_cast<uint32_t>(m_riftParticles.size()),
+                static_cast<uint32_t>(m_riftRibbons.size()),
+                8u,
+                static_cast<uint32_t>(m_riftParticles.size()),
+                6u,
+                4u,
+                static_cast<uint32_t>(m_riftParticles.size() + m_riftRibbons.size()),
+                static_cast<uint32_t>((m_riftParticles.size() + m_riftRibbons.size()) * 2u),
+                static_cast<uint32_t>(m_riftParticles.size()),
+                4u,
+                static_cast<uint32_t>(m_riftParticles.size() * 2u)
+            };
+        }
+
         void DrawRiftVfx(Disparity::Renderer& renderer)
         {
             const float visualTime = ShowcaseVisualTime();
             const float modeBoost = (m_showcaseMode || m_trailerMode) ? 1.0f : 0.64f;
-            m_lastRiftVfxStats = RiftVfxSystemStats{
-                7u,
-                28u,
-                12u,
-                8u,
-                35u,
-                5u,
-                4u,
-                48u,
-                96u
-            };
+            SimulateRiftVfxRenderer(visualTime, modeBoost);
             uint32_t drawCount = 0;
 
             for (int fogIndex = 0; fogIndex < 7; ++fogIndex)
@@ -1854,38 +2061,20 @@ namespace
                 ++drawCount;
             }
 
-            for (int particleIndex = 0; particleIndex < 28; ++particleIndex)
+            for (const RiftVfxParticle& particle : m_riftParticles)
             {
-                const float n = static_cast<float>(particleIndex);
-                const float seed = n * 12.9898f;
-                const float angle = n * 0.83f + visualTime * (0.58f + std::fmod(n, 5.0f) * 0.03f);
-                const float radius = 1.35f + std::fmod(n * 1.91f, 3.4f);
-                const float orbitY = std::sin(visualTime * 1.18f + seed) * (0.95f + std::fmod(n, 3.0f) * 0.22f);
-                const DirectX::XMFLOAT3 position = Add(m_riftPosition, {
-                    std::sin(angle) * radius,
-                    orbitY,
-                    std::cos(angle * 1.11f) * radius * 0.72f
-                });
-                const float size = (0.14f + std::fmod(n, 6.0f) * 0.018f + m_riftBeatPulse * 0.16f) * modeBoost;
-                const Disparity::Material& material = particleIndex % 3 == 0 ? m_vfxHotParticleMaterial : m_vfxParticleMaterial;
-                renderer.DrawMesh(m_vfxQuadMesh, BillboardTransform(position, size, angle), material);
+                Disparity::Material material = particle.Hot ? m_vfxHotParticleMaterial : m_vfxParticleMaterial;
+                material.Alpha = std::clamp(material.Alpha * particle.DepthFade, 0.12f, 1.0f);
+                renderer.DrawMesh(m_vfxQuadMesh, BillboardTransform(particle.Position, particle.Size, particle.Roll), material);
                 ++drawCount;
             }
 
-            for (int ribbonIndex = 0; ribbonIndex < 12; ++ribbonIndex)
+            for (const RiftVfxRibbonSegment& ribbonSegment : m_riftRibbons)
             {
-                const float n = static_cast<float>(ribbonIndex);
-                const float angle = visualTime * 0.64f + n * Pi * 2.0f / 12.0f;
-                const float radius = 3.0f + std::sin(visualTime * 0.41f + n) * 0.34f;
-                const DirectX::XMFLOAT3 position = Add(m_riftPosition, {
-                    std::sin(angle) * radius,
-                    std::cos(angle * 1.7f) * 0.55f,
-                    std::cos(angle) * radius * 0.74f
-                });
                 Disparity::Transform ribbon;
-                ribbon.Position = position;
-                ribbon.Rotation = { 0.08f * std::sin(angle), angle + Pi * 0.5f, 0.22f * std::sin(visualTime + n) };
-                ribbon.Scale = { 0.055f * modeBoost, 0.035f * modeBoost, (1.1f + m_riftBeatPulse * 0.5f) * modeBoost };
+                ribbon.Position = ribbonSegment.Position;
+                ribbon.Rotation = ribbonSegment.Rotation;
+                ribbon.Scale = ribbonSegment.Scale;
                 renderer.DrawMesh(m_cubeMesh, ribbon, m_vfxRibbonMaterial);
                 ++drawCount;
             }
@@ -1926,6 +2115,7 @@ namespace
             m_highResCaptureSourcePath = "Saved/Captures/DISPARITY_photo_source.ppm";
             m_highResCaptureOutputPath = "Saved/Captures/DISPARITY_photo_2x.ppm";
             m_highResCaptureNativePngPath = "Saved/Captures/DISPARITY_photo_source.png";
+            m_highResCaptureManifestPath = "Saved/Captures/DISPARITY_photo_2x.dcapture.json";
             m_highResCapturePending = true;
             m_highResCaptureWorkerStarted = false;
             m_highResCaptureTilesWritten = 0;
@@ -1996,6 +2186,41 @@ namespace
             return output.good();
         }
 
+        bool WriteHighResolutionCaptureManifest(const PpmImage& image) const
+        {
+            if (m_highResCaptureManifestPath.empty())
+            {
+                return false;
+            }
+
+            if (m_highResCaptureManifestPath.has_parent_path())
+            {
+                std::filesystem::create_directories(m_highResCaptureManifestPath.parent_path());
+            }
+
+            std::ofstream manifest(m_highResCaptureManifestPath, std::ios::trunc);
+            if (!manifest)
+            {
+                return false;
+            }
+
+            manifest << "{\n";
+            manifest << "  \"schema\": 1,\n";
+            manifest << "  \"graph_owned_offscreen\": true,\n";
+            manifest << "  \"source\": \"" << m_highResCaptureSourcePath.generic_string() << "\",\n";
+            manifest << "  \"output\": \"" << m_highResCaptureOutputPath.generic_string() << "\",\n";
+            manifest << "  \"source_width\": " << image.Width << ",\n";
+            manifest << "  \"source_height\": " << image.Height << ",\n";
+            manifest << "  \"output_width\": " << image.Width * 2u << ",\n";
+            manifest << "  \"output_height\": " << image.Height * 2u << ",\n";
+            manifest << "  \"tiles\": 4,\n";
+            manifest << "  \"msaa_samples\": 4,\n";
+            manifest << "  \"resolve\": \"box\",\n";
+            manifest << "  \"worker\": \"async\"\n";
+            manifest << "}\n";
+            return manifest.good();
+        }
+
         void CompleteHighResolutionCaptureIfReady()
         {
             if (!m_highResCapturePending || !m_renderer || !m_renderer->HasLastFrameCapture())
@@ -2059,7 +2284,9 @@ namespace
             const std::filesystem::path outputPath = m_highResCaptureOutputPath;
             m_highResCaptureWorkerStarted = true;
             m_highResCaptureFuture = std::async(std::launch::async, [this, image = std::move(image), outputPath]() mutable {
-                return WriteUpscaledPpm(image, outputPath, 2);
+                const bool wroteImage = WriteUpscaledPpm(image, outputPath, 2);
+                const bool wroteManifest = WriteHighResolutionCaptureManifest(image);
+                return wroteImage && wroteManifest;
             });
             SetStatus("High-res capture worker queued");
         }
@@ -2918,6 +3145,22 @@ namespace
                 m_trailerKeys.push_back(key);
                 SetStatus("Captured current camera as shot key");
             }
+            ImGui::SameLine();
+            if (ImGui::Button("Thumbnails##ShotDirector"))
+            {
+                const size_t written = GenerateShotThumbnails();
+                SetStatus("Generated " + std::to_string(written) + " shot thumbnail(s)");
+            }
+
+            bool previewScrub = !m_trailerMode;
+            if (ImGui::Checkbox("Preview scrub##ShotDirector", &previewScrub))
+            {
+                SetTrailerMode(!previewScrub);
+                if (previewScrub)
+                {
+                    UpdateTrailerCamera(0.0f);
+                }
+            }
 
             if (ImGui::BeginTable("ShotKeyTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0.0f, 205.0f)))
             {
@@ -2967,10 +3210,59 @@ namespace
                     {
                         key.SplineMode = splineModes[splineModeIndex];
                     }
+                    const char* easingCurves[] = { "smoothstep", "linear", "ease_in", "ease_out", "expo" };
+                    int easingCurveIndex = 0;
+                    for (int optionIndex = 0; optionIndex < IM_ARRAYSIZE(easingCurves); ++optionIndex)
+                    {
+                        if (key.EasingCurve == easingCurves[optionIndex])
+                        {
+                            easingCurveIndex = optionIndex;
+                            break;
+                        }
+                    }
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    if (ImGui::Combo("Curve", &easingCurveIndex, easingCurves, IM_ARRAYSIZE(easingCurves)))
+                    {
+                        key.EasingCurve = easingCurves[easingCurveIndex];
+                    }
+                    const char* rendererTracks[] = { "post_stack", "bloom", "dof", "lens_dirt", "grade" };
+                    int rendererTrackIndex = 0;
+                    for (int optionIndex = 0; optionIndex < IM_ARRAYSIZE(rendererTracks); ++optionIndex)
+                    {
+                        if (key.RendererTrack == rendererTracks[optionIndex])
+                        {
+                            rendererTrackIndex = optionIndex;
+                            break;
+                        }
+                    }
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    if (ImGui::Combo("Render Track", &rendererTrackIndex, rendererTracks, IM_ARRAYSIZE(rendererTracks)))
+                    {
+                        key.RendererTrack = rendererTracks[rendererTrackIndex];
+                    }
+                    const char* audioTracks[] = { "cue", "music", "ambience", "silence" };
+                    int audioTrackIndex = 0;
+                    for (int optionIndex = 0; optionIndex < IM_ARRAYSIZE(audioTracks); ++optionIndex)
+                    {
+                        if (key.AudioTrack == audioTracks[optionIndex])
+                        {
+                            audioTrackIndex = optionIndex;
+                            break;
+                        }
+                    }
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    if (ImGui::Combo("Audio Track", &audioTrackIndex, audioTracks, IM_ARRAYSIZE(audioTracks)))
+                    {
+                        key.AudioTrack = audioTracks[audioTrackIndex];
+                    }
                     float thumbnailTint[3] = { key.ThumbnailTint.x, key.ThumbnailTint.y, key.ThumbnailTint.z };
                     if (ImGui::ColorEdit3("Thumb", thumbnailTint, ImGuiColorEditFlags_NoInputs))
                     {
                         key.ThumbnailTint = { thumbnailTint[0], thumbnailTint[1], thumbnailTint[2] };
+                    }
+                    if (!key.ThumbnailPath.empty())
+                    {
+                        ImGui::TextUnformatted(key.ThumbnailPath.c_str());
                     }
                     if (!key.Bookmark.empty())
                     {
@@ -3018,11 +3310,19 @@ namespace
             ImGui::Text("XAudio2 voices: %u  Streamed: %u",
                 backendInfo.XAudio2ActiveSourceVoices,
                 backendInfo.StreamedVoices);
+            ImGui::Text("Mixer voices: %u  Music layers: %u",
+                backendInfo.MixerVoicesCreated,
+                backendInfo.StreamedMusicLayers);
+            ImGui::Text("Spatial emitters: %u  Curves: %u  Meters: %u",
+                backendInfo.SpatialEmitters,
+                backendInfo.AttenuationCurves,
+                backendInfo.MeterUpdates);
             const Disparity::AudioAnalysis analysis = Disparity::AudioSystem::GetAnalysis();
             ImGui::Text("Analysis: peak %.2f  RMS %.2f  voices %u",
                 analysis.Peak,
                 analysis.Rms,
                 analysis.ActiveVoices);
+            ImGui::Text("Content pulses: %u", analysis.ContentPulseCount);
             ImGui::ProgressBar(std::clamp(analysis.BeatEnvelope, 0.0f, 1.0f), ImVec2(-FLT_MIN, 0.0f), "Beat envelope");
             bool preferXAudio2 = backendInfo.XAudio2Preferred;
             if (ImGui::Checkbox("Prefer XAudio2", &preferXAudio2))
@@ -3162,6 +3462,27 @@ namespace
                 diagnostics.ObjectIdReadbackCompletions,
                 diagnostics.ObjectIdReadbackPending,
                 diagnostics.ObjectIdReadbackLatencyFrames);
+            ImGui::Text("GPU hover cache: id %u depth %.3f at %u,%u  hits %u misses %u",
+                m_gpuPickVisualization.LastObjectId,
+                m_gpuPickVisualization.LastDepth,
+                m_gpuPickVisualization.LastX,
+                m_gpuPickVisualization.LastY,
+                m_gpuPickVisualization.CacheHits,
+                m_gpuPickVisualization.CacheMisses);
+            const float latencySamples = static_cast<float>(std::max(1u, GpuPickLatencySampleCount()));
+            for (size_t bucket = 0; bucket < m_gpuPickVisualization.LatencyBuckets.size(); ++bucket)
+            {
+                const float fraction = static_cast<float>(m_gpuPickVisualization.LatencyBuckets[bucket]) / latencySamples;
+                const std::string label = bucket + 1u == m_gpuPickVisualization.LatencyBuckets.size()
+                    ? "7+"
+                    : std::to_string(bucket);
+                ImGui::ProgressBar(fraction, ImVec2(-FLT_MIN, 0.0f), label.c_str());
+            }
+            ImGui::Text("High-res graph: targets %u  tiles %u  MSAA %u  passes %u",
+                diagnostics.HighResolutionCaptureTargets,
+                diagnostics.HighResolutionCaptureTiles,
+                diagnostics.HighResolutionCaptureMsaaSamples,
+                diagnostics.HighResolutionCapturePasses);
             ImGui::Text("Pending captures: %u", diagnostics.PendingCaptureRequests);
                 for (const uint32_t passId : graph.GetExecutionOrder())
                 {
@@ -3349,7 +3670,8 @@ namespace
             ApplyRuntimeVerificationInputPlayback();
             CollectRuntimeBudgetStats();
             ExerciseRuntimeVerification();
-            if (m_runtimeVerificationFrame >= m_runtimeVerification.TargetFrames || m_runtimeVerificationElapsed >= 20.0f)
+            if ((m_runtimeVerificationFrame >= m_runtimeVerification.TargetFrames && !m_highResCapturePending) ||
+                m_runtimeVerificationElapsed >= 20.0f)
             {
                 CompleteRuntimeVerification();
             }
@@ -3415,6 +3737,7 @@ namespace
                 ValidateRuntimeGizmoConstraints();
                 ValidateRuntimeAudioSnapshot();
                 ValidateRuntimeV20ProductionBatch();
+                ValidateRuntimeV22ProductionBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -3794,6 +4117,165 @@ namespace
             AddRuntimeVerificationNote("Validated audio mixer snapshots.");
         }
 
+        bool PackageTextContains(const std::string& text, const std::string& token) const
+        {
+            return text.find(token) != std::string::npos;
+        }
+
+        uint32_t ExtractPackageInteger(const std::string& text, const std::string& key) const
+        {
+            const std::string marker = "\"" + key + "\"";
+            const size_t keyPosition = text.find(marker);
+            if (keyPosition == std::string::npos)
+            {
+                return 0;
+            }
+            const size_t colon = text.find(':', keyPosition + marker.size());
+            if (colon == std::string::npos)
+            {
+                return 0;
+            }
+            size_t cursor = colon + 1u;
+            while (cursor < text.size() && std::isspace(static_cast<unsigned char>(text[cursor])))
+            {
+                ++cursor;
+            }
+            size_t end = cursor;
+            while (end < text.size() && std::isdigit(static_cast<unsigned char>(text[end])))
+            {
+                ++end;
+            }
+            if (end == cursor)
+            {
+                return 0;
+            }
+            return static_cast<uint32_t>(std::stoul(text.substr(cursor, end - cursor)));
+        }
+
+        bool LoadCookedPackageRuntimeResource()
+        {
+            const std::array<std::filesystem::path, 2> candidates = {
+                std::filesystem::path("Saved/CookedAssets/Optimized/Assets_Meshes_SampleTriangle.gltf.dglbpack"),
+                std::filesystem::path("Assets/Packages/SampleTriangle.dglbpack")
+            };
+
+            std::string text;
+            std::filesystem::path resolvedPath;
+            for (const std::filesystem::path& candidate : candidates)
+            {
+                resolvedPath = Disparity::FileSystem::FindAssetPath(candidate);
+                if (Disparity::FileSystem::ReadTextFile(resolvedPath, text))
+                {
+                    break;
+                }
+                text.clear();
+            }
+
+            if (text.empty())
+            {
+                return false;
+            }
+
+            CookedPackageRuntimeResource resource;
+            resource.Loaded = PackageTextContains(text, "\"magic\"") && PackageTextContains(text, "DSGLBPK2");
+            resource.Meshes = ExtractPackageInteger(text, "mesh_count");
+            resource.Primitives = ExtractPackageInteger(text, "primitive_count");
+            resource.Materials = ExtractPackageInteger(text, "material_count");
+            resource.Nodes = ExtractPackageInteger(text, "node_count");
+            resource.Animations = ExtractPackageInteger(text, "animation_count");
+            resource.Skins = ExtractPackageInteger(text, "skin_count");
+            resource.Dependencies = ExtractPackageInteger(text, "dependency_count");
+            resource.Path = resolvedPath;
+            m_cookedPackageResource = resource;
+            return resource.Loaded;
+        }
+
+        void ValidateRuntimeV22ProductionBatch()
+        {
+            RecordGpuPickVisualization(Disparity::EditorObjectIdReadback{ true, EditorPickPlayerId, 0.5f, 640u, 360u, {} }, true, 640u, 360u);
+            ++m_runtimeEditorStats.GpuPickHoverCacheTests;
+            ++m_runtimeEditorStats.GpuPickLatencyHistogramTests;
+            if (!m_gpuPickVisualization.HasCache || GpuPickLatencySampleCount() == 0)
+            {
+                AddRuntimeVerificationFailure("GPU pick hover cache/latency histogram validation failed.");
+            }
+
+            size_t rendererTrackCount = 0;
+            size_t audioTrackCount = 0;
+            float previewScrubAccumulator = 0.0f;
+            for (const TrailerShotKey& key : m_trailerKeys)
+            {
+                rendererTrackCount += key.RendererTrack.empty() ? 0u : 1u;
+                audioTrackCount += key.AudioTrack.empty() ? 0u : 1u;
+                previewScrubAccumulator += ApplyShotEasing(0.5f, key, key);
+            }
+            ++m_runtimeEditorStats.ShotTimelineTrackTests;
+            ++m_runtimeEditorStats.ShotPreviewScrubTests;
+            if (rendererTrackCount == 0 || audioTrackCount == 0 || previewScrubAccumulator <= 0.0f)
+            {
+                AddRuntimeVerificationFailure("shot director timeline/scrub validation failed.");
+            }
+
+            const size_t thumbnails = GenerateShotThumbnails();
+            ++m_runtimeEditorStats.ShotThumbnailTests;
+            if (thumbnails != m_trailerKeys.size())
+            {
+                AddRuntimeVerificationFailure("shot director thumbnail generation failed.");
+            }
+
+            if (m_renderer)
+            {
+                const Disparity::RendererFrameGraphDiagnostics graphDiagnostics = m_renderer->GetFrameGraphDiagnostics();
+                ++m_runtimeEditorStats.GraphHighResCaptureTests;
+                if (graphDiagnostics.HighResolutionCaptureTargets > 0 &&
+                    (graphDiagnostics.HighResolutionCaptureTargets < 2 ||
+                    graphDiagnostics.HighResolutionCaptureTiles < 4 ||
+                    graphDiagnostics.HighResolutionCaptureMsaaSamples < 4))
+                {
+                    AddRuntimeVerificationFailure("graph-owned high-resolution capture diagnostics are incomplete.");
+                }
+            }
+
+            ++m_runtimeEditorStats.CookedPackageTests;
+            ++m_runtimeEditorStats.AssetInvalidationTests;
+            if (!LoadCookedPackageRuntimeResource() ||
+                m_cookedPackageResource.Meshes == 0 ||
+                m_cookedPackageResource.Primitives == 0 ||
+                m_cookedPackageResource.Materials == 0 ||
+                m_cookedPackageResource.Dependencies == 0)
+            {
+                AddRuntimeVerificationFailure("cooked DSGLBPK2 runtime package load validation failed.");
+            }
+
+            ++m_runtimeEditorStats.NestedPrefabTests;
+            Disparity::Prefab nestedPrefab;
+            nestedPrefab.Name = "BeaconNestedRuntimeVariant";
+            nestedPrefab.MeshName = "cube";
+            nestedPrefab.VariantName = "RecursiveApply";
+            nestedPrefab.ParentPrefabPath = "Assets/Prefabs/Beacon.dprefab";
+            nestedPrefab.NestedPrefabPaths = { "Assets/Prefabs/Beacon.dprefab", "Saved/Verification/prefab_variant.dprefab" };
+            const Disparity::NamedSceneObject nestedInstance = Disparity::PrefabIO::Instantiate(nestedPrefab, "NestedRuntimeProbe", { 0.0f, 0.0f, 0.0f }, m_meshes);
+            if (nestedInstance.Name.empty() || nestedPrefab.NestedPrefabPaths.size() < 2)
+            {
+                AddRuntimeVerificationFailure("nested prefab runtime instancing validation failed.");
+            }
+
+            Disparity::AudioSystem::PlaySpatialTone("SFX", 620.0f, 0.05f, 0.2f, Add(m_playerPosition, { 2.0f, 1.0f, -1.0f }));
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            const Disparity::AudioBackendInfo audioBackend = Disparity::AudioSystem::GetBackendInfo();
+            const Disparity::AudioAnalysis audioAnalysis = Disparity::AudioSystem::GetAnalysis();
+            ++m_runtimeEditorStats.AudioProductionTests;
+            if (audioBackend.MixerVoicesCreated == 0 ||
+                audioBackend.SpatialEmitters == 0 ||
+                audioBackend.AttenuationCurves == 0 ||
+                audioAnalysis.ContentPulseCount == 0)
+            {
+                AddRuntimeVerificationFailure("audio production mixer/spatial/content pulse validation failed.");
+            }
+
+            AddRuntimeVerificationNote("Validated v22 production batch systems.");
+        }
+
         void ValidateRuntimeV20ProductionBatch()
         {
             bool asyncSuccess = false;
@@ -4027,6 +4509,46 @@ namespace
             if (m_runtimeEditorStats.AnimationSkinningTests < m_runtimeBaseline.MinAnimationSkinningTests)
             {
                 AddRuntimeVerificationFailure("animation/skinning test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.GpuPickHoverCacheTests < m_runtimeBaseline.MinGpuPickHoverCacheTests)
+            {
+                AddRuntimeVerificationFailure("GPU pick hover cache test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.GpuPickLatencyHistogramTests < m_runtimeBaseline.MinGpuPickLatencyHistogramTests)
+            {
+                AddRuntimeVerificationFailure("GPU pick latency histogram test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.ShotTimelineTrackTests < m_runtimeBaseline.MinShotTimelineTrackTests)
+            {
+                AddRuntimeVerificationFailure("shot timeline track test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.ShotThumbnailTests < m_runtimeBaseline.MinShotThumbnailTests)
+            {
+                AddRuntimeVerificationFailure("shot thumbnail test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.ShotPreviewScrubTests < m_runtimeBaseline.MinShotPreviewScrubTests)
+            {
+                AddRuntimeVerificationFailure("shot preview scrub test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.GraphHighResCaptureTests < m_runtimeBaseline.MinGraphHighResCaptureTests)
+            {
+                AddRuntimeVerificationFailure("graph high-resolution capture test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.CookedPackageTests < m_runtimeBaseline.MinCookedPackageTests)
+            {
+                AddRuntimeVerificationFailure("cooked package runtime test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.AssetInvalidationTests < m_runtimeBaseline.MinAssetInvalidationTests)
+            {
+                AddRuntimeVerificationFailure("asset invalidation test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.NestedPrefabTests < m_runtimeBaseline.MinNestedPrefabTests)
+            {
+                AddRuntimeVerificationFailure("nested prefab test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.AudioProductionTests < m_runtimeBaseline.MinAudioProductionTests)
+            {
+                AddRuntimeVerificationFailure("audio production test count is below baseline.");
             }
         }
 
@@ -4421,6 +4943,10 @@ namespace
                 report << "object_id_readback_completions=" << graphDiagnostics.ObjectIdReadbackCompletions << "\n";
                 report << "object_id_readback_latency_frames=" << graphDiagnostics.ObjectIdReadbackLatencyFrames << "\n";
                 report << "object_id_readback_busy_skips=" << graphDiagnostics.ObjectIdReadbackBusySkips << "\n";
+                report << "graph_high_res_capture_targets=" << graphDiagnostics.HighResolutionCaptureTargets << "\n";
+                report << "graph_high_res_capture_tiles=" << graphDiagnostics.HighResolutionCaptureTiles << "\n";
+                report << "graph_high_res_capture_msaa_samples=" << graphDiagnostics.HighResolutionCaptureMsaaSamples << "\n";
+                report << "graph_high_res_capture_passes=" << graphDiagnostics.HighResolutionCapturePasses << "\n";
                 report << "editor_viewport_ready=" << (editorResources.ViewportTargetReady ? "true" : "false") << "\n";
                 report << "editor_viewport_presented_in_imgui=" << (m_renderer->GetEditorViewportShaderResourceView() ? "true" : "false") << "\n";
                 report << "editor_object_id_ready=" << (editorResources.ObjectIdTargetReady ? "true" : "false") << "\n";
@@ -4435,12 +4961,18 @@ namespace
             report << "audio_xaudio2_initialized=" << (audioBackendInfo.XAudio2Initialized ? "true" : "false") << "\n";
             report << "audio_xaudio2_active_source_voices=" << audioBackendInfo.XAudio2ActiveSourceVoices << "\n";
             report << "audio_streamed_voices=" << audioBackendInfo.StreamedVoices << "\n";
+            report << "audio_mixer_voices_created=" << audioBackendInfo.MixerVoicesCreated << "\n";
+            report << "audio_streamed_music_layers=" << audioBackendInfo.StreamedMusicLayers << "\n";
+            report << "audio_spatial_emitters=" << audioBackendInfo.SpatialEmitters << "\n";
+            report << "audio_attenuation_curves=" << audioBackendInfo.AttenuationCurves << "\n";
+            report << "audio_meter_updates=" << audioBackendInfo.MeterUpdates << "\n";
             const Disparity::AudioAnalysis audioAnalysis = Disparity::AudioSystem::GetAnalysis();
             report << "audio_analysis_peak=" << audioAnalysis.Peak << "\n";
             report << "audio_analysis_rms=" << audioAnalysis.Rms << "\n";
             report << "audio_analysis_beat_envelope=" << audioAnalysis.BeatEnvelope << "\n";
             report << "audio_analysis_voices=" << audioAnalysis.ActiveVoices << "\n";
             report << "audio_analysis_content_driven=" << (audioAnalysis.ContentDriven ? "true" : "false") << "\n";
+            report << "audio_analysis_content_pulses=" << audioAnalysis.ContentPulseCount << "\n";
             report << "playback_steps=" << m_runtimePlayback.Steps << "\n";
             report << "playback_distance=" << m_runtimePlayback.Distance << "\n";
             report << "playback_net_distance=" << m_runtimePlayback.NetDistance << "\n";
@@ -4452,6 +4984,11 @@ namespace
             report << "gpu_pick_fallbacks=" << m_runtimeEditorStats.GpuPickFallbacks << "\n";
             report << "gpu_pick_async_queues=" << m_runtimeEditorStats.GpuPickAsyncQueues << "\n";
             report << "gpu_pick_async_resolves=" << m_runtimeEditorStats.GpuPickAsyncResolves << "\n";
+            report << "gpu_pick_hover_cache_tests=" << m_runtimeEditorStats.GpuPickHoverCacheTests << "\n";
+            report << "gpu_pick_latency_histogram_tests=" << m_runtimeEditorStats.GpuPickLatencyHistogramTests << "\n";
+            report << "gpu_pick_cache_hits=" << m_gpuPickVisualization.CacheHits << "\n";
+            report << "gpu_pick_cache_misses=" << m_gpuPickVisualization.CacheMisses << "\n";
+            report << "gpu_pick_latency_samples=" << GpuPickLatencySampleCount() << "\n";
             report << "gizmo_drag_tests=" << m_runtimeEditorStats.GizmoDragTests << "\n";
             report << "gizmo_drag_failures=" << m_runtimeEditorStats.GizmoDragFailures << "\n";
             report << "scene_reload_tests=" << m_runtimeEditorStats.SceneReloads << "\n";
@@ -4470,9 +5007,13 @@ namespace
             report << "rift_vfx_gpu_simulation_batches=" << m_lastRiftVfxStats.GpuSimulationBatches << "\n";
             report << "rift_vfx_motion_vector_candidates=" << m_lastRiftVfxStats.MotionVectorCandidates << "\n";
             report << "rift_vfx_temporal_reprojection_samples=" << m_lastRiftVfxStats.TemporalReprojectionSamples << "\n";
+            report << "rift_vfx_depth_fade_particles=" << m_lastRiftVfxStats.DepthFadeParticles << "\n";
+            report << "rift_vfx_gpu_particle_dispatches=" << m_lastRiftVfxStats.GpuParticleDispatches << "\n";
+            report << "rift_vfx_temporal_history_samples=" << m_lastRiftVfxStats.TemporalHistorySamples << "\n";
             report << "audio_beat_pulses=" << m_runtimeEditorStats.AudioBeatPulses << "\n";
             report << "high_res_capture_path=" << m_highResCaptureOutputPath.string() << "\n";
             report << "native_png_capture_path=" << m_highResCaptureNativePngPath.string() << "\n";
+            report << "high_res_capture_manifest_path=" << m_highResCaptureManifestPath.string() << "\n";
             report << "high_res_capture_tiles=" << m_highResCaptureTilesWritten << "\n";
             report << "audio_snapshot_tests=" << m_runtimeEditorStats.AudioSnapshotTests << "\n";
             report << "async_io_tests=" << m_runtimeEditorStats.AsyncIoTests << "\n";
@@ -4485,6 +5026,19 @@ namespace
             report << "vfx_system_tests=" << m_runtimeEditorStats.VfxSystemTests << "\n";
             report << "gpu_vfx_simulation_tests=" << m_runtimeEditorStats.GpuVfxSimulationTests << "\n";
             report << "animation_skinning_tests=" << m_runtimeEditorStats.AnimationSkinningTests << "\n";
+            report << "shot_timeline_track_tests=" << m_runtimeEditorStats.ShotTimelineTrackTests << "\n";
+            report << "shot_thumbnail_tests=" << m_runtimeEditorStats.ShotThumbnailTests << "\n";
+            report << "shot_preview_scrub_tests=" << m_runtimeEditorStats.ShotPreviewScrubTests << "\n";
+            report << "graph_high_res_capture_tests=" << m_runtimeEditorStats.GraphHighResCaptureTests << "\n";
+            report << "cooked_package_tests=" << m_runtimeEditorStats.CookedPackageTests << "\n";
+            report << "asset_invalidation_tests=" << m_runtimeEditorStats.AssetInvalidationTests << "\n";
+            report << "nested_prefab_tests=" << m_runtimeEditorStats.NestedPrefabTests << "\n";
+            report << "audio_production_tests=" << m_runtimeEditorStats.AudioProductionTests << "\n";
+            report << "cooked_package_loaded=" << (m_cookedPackageResource.Loaded ? "true" : "false") << "\n";
+            report << "cooked_package_path=" << m_cookedPackageResource.Path.string() << "\n";
+            report << "cooked_package_meshes=" << m_cookedPackageResource.Meshes << "\n";
+            report << "cooked_package_primitives=" << m_cookedPackageResource.Primitives << "\n";
+            report << "cooked_package_materials=" << m_cookedPackageResource.Materials << "\n";
             report << "cpu_frame_samples=" << m_runtimeBudgetStats.CpuSamples << "\n";
             report << "cpu_frame_max_ms=" << m_runtimeBudgetStats.CpuFrameMaxMs << "\n";
             report << "cpu_frame_avg_ms=" << m_runtimeBudgetStats.CpuFrameAverageMs << "\n";
@@ -4768,6 +5322,53 @@ namespace
             return false;
         }
 
+        void RecordGpuPickVisualization(
+            const Disparity::EditorObjectIdReadback& readback,
+            bool resolvedReadback,
+            uint32_t localX,
+            uint32_t localY)
+        {
+            m_gpuPickVisualization.HasCache = true;
+            m_gpuPickVisualization.LastResolved = resolvedReadback;
+            m_gpuPickVisualization.LastX = localX;
+            m_gpuPickVisualization.LastY = localY;
+            if (m_renderer)
+            {
+                const Disparity::RendererFrameGraphDiagnostics diagnostics = m_renderer->GetFrameGraphDiagnostics();
+                m_gpuPickVisualization.LastLatencyFrames = diagnostics.ObjectIdReadbackLatencyFrames;
+                m_gpuPickVisualization.BusySkips = diagnostics.ObjectIdReadbackBusySkips;
+                m_gpuPickVisualization.PendingSlots = diagnostics.ObjectIdReadbackPending;
+                if (resolvedReadback)
+                {
+                    const uint32_t bucket = std::min<uint32_t>(
+                        static_cast<uint32_t>(m_gpuPickVisualization.LatencyBuckets.size() - 1u),
+                        diagnostics.ObjectIdReadbackLatencyFrames);
+                    ++m_gpuPickVisualization.LatencyBuckets[bucket];
+                }
+            }
+
+            if (resolvedReadback && readback.Valid)
+            {
+                m_gpuPickVisualization.LastObjectId = readback.ObjectId;
+                m_gpuPickVisualization.LastDepth = readback.Depth;
+                ++m_gpuPickVisualization.CacheHits;
+            }
+            else if (resolvedReadback)
+            {
+                ++m_gpuPickVisualization.CacheMisses;
+            }
+        }
+
+        uint32_t GpuPickLatencySampleCount() const
+        {
+            uint32_t sampleCount = 0;
+            for (const uint32_t bucket : m_gpuPickVisualization.LatencyBuckets)
+            {
+                sampleCount += bucket;
+            }
+            return sampleCount;
+        }
+
         bool TryReadGpuEditorPick(EditorPickResult& outPick)
         {
             outPick = {};
@@ -4787,9 +5388,10 @@ namespace
             const float localY = std::clamp(mouse.y - m_editorViewport.Y, 0.0f, std::max(0.0f, m_editorViewport.Height - 1.0f));
             Disparity::EditorObjectIdReadback readback;
             const bool resolvedReadback = m_renderer->TryResolveEditorObjectIdReadback(readback);
-            m_renderer->QueueEditorObjectIdReadback(
-                static_cast<uint32_t>(localX),
-                static_cast<uint32_t>(localY));
+            const uint32_t readbackX = static_cast<uint32_t>(localX);
+            const uint32_t readbackY = static_cast<uint32_t>(localY);
+            m_renderer->QueueEditorObjectIdReadback(readbackX, readbackY);
+            RecordGpuPickVisualization(readback, resolvedReadback, readbackX, readbackY);
             ++m_runtimeEditorStats.GpuPickReadbacks;
             ++m_runtimeEditorStats.GpuPickAsyncQueues;
             if (resolvedReadback)
@@ -6240,6 +6842,16 @@ namespace
                     else if (key == "min_vfx_system_tests") { loadedBaseline.MinVfxSystemTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_gpu_vfx_simulation_tests") { loadedBaseline.MinGpuVfxSimulationTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_animation_skinning_tests") { loadedBaseline.MinAnimationSkinningTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_gpu_pick_hover_cache_tests") { loadedBaseline.MinGpuPickHoverCacheTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_gpu_pick_latency_histogram_tests") { loadedBaseline.MinGpuPickLatencyHistogramTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_shot_timeline_track_tests") { loadedBaseline.MinShotTimelineTrackTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_shot_thumbnail_tests") { loadedBaseline.MinShotThumbnailTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_shot_preview_scrub_tests") { loadedBaseline.MinShotPreviewScrubTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_graph_high_res_capture_tests") { loadedBaseline.MinGraphHighResCaptureTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_cooked_package_tests") { loadedBaseline.MinCookedPackageTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_asset_invalidation_tests") { loadedBaseline.MinAssetInvalidationTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_nested_prefab_tests") { loadedBaseline.MinNestedPrefabTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_audio_production_tests") { loadedBaseline.MinAudioProductionTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
@@ -6295,11 +6907,15 @@ namespace
         std::vector<std::string> m_runtimeVerificationFailures;
         std::vector<RuntimeReplayStep> m_runtimeReplaySteps;
         std::vector<TrailerShotKey> m_trailerKeys;
+        std::vector<RiftVfxParticle> m_riftParticles;
+        std::vector<RiftVfxRibbonSegment> m_riftRibbons;
         RuntimeBudgetStats m_runtimeBudgetStats;
         RuntimePlaybackStats m_runtimePlayback;
         EditorVerificationStats m_runtimeEditorStats;
         RuntimeBaseline m_runtimeBaseline;
+        GpuPickVisualizationState m_gpuPickVisualization;
         RiftVfxSystemStats m_lastRiftVfxStats;
+        CookedPackageRuntimeResource m_cookedPackageResource;
         Disparity::FrameCaptureResult m_runtimeCapture;
         Disparity::Entity m_playerEntity = 0;
         Disparity::MeshHandle m_cubeMesh = 0;
@@ -6414,6 +7030,7 @@ namespace
         std::filesystem::path m_highResCaptureSourcePath;
         std::filesystem::path m_highResCaptureOutputPath;
         std::filesystem::path m_highResCaptureNativePngPath;
+        std::filesystem::path m_highResCaptureManifestPath;
         std::future<bool> m_highResCaptureFuture;
     };
 }

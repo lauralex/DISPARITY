@@ -47,8 +47,11 @@ jobs:
         run: |
           ./Tools/PackageDisparity.ps1 -Configuration Release -IncludeSymbols -CreateArchive
           ./Tools/IndexDisparitySymbols.ps1 -PackagePath ./dist/DISPARITY-Release
+          ./Tools/PublishDisparitySymbols.ps1 -PackagePath ./dist/DISPARITY-Release
           ./Tools/CreateDisparityInstaller.ps1 -PackagePath ./dist/DISPARITY-Release -CreateArchive
+          ./Tools/CreateDisparityBootstrapper.ps1 -PackagePath ./dist/DISPARITY-Release
           ./Tools/LaunchTrailerCapture.ps1 -Configuration Release -NoLaunch
+          ./Tools/GenerateObsSceneProfile.ps1
           ./Tools/GenerateInteractiveCiPlan.ps1
 
       - name: Packaged smoke (opt-in)
@@ -70,9 +73,12 @@ jobs:
           path: |
             dist/**/*.zip
             dist/**/*.json
+            dist/**/*.cmd
             Symbols/**/*.json
+            Saved/CookedAssets/*.json
             Saved/CI/*.json
             Saved/Trailer/*.json
+            Saved/Trailer/**/*.json
             Saved/Verification/*.txt
             Saved/Verification/*.csv
             Saved/Verification/*.json

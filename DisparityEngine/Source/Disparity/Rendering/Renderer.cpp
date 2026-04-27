@@ -889,6 +889,15 @@ namespace Disparity
             m_context->CopyResource(editorViewportTexture, hdrSceneTexture);
         }
         EndGraphPass();
+        if (!m_pendingFrameCapturePaths.empty())
+        {
+            BeginGraphPass(m_graphHighResolutionCapturePass);
+            m_highResolutionCaptureTargets = 2;
+            m_highResolutionCaptureTiles = std::max<uint32_t>(m_highResolutionCaptureTiles, 4u);
+            m_highResolutionCaptureMsaaSamples = std::max<uint32_t>(m_highResolutionCaptureMsaaSamples, 4u);
+            ++m_highResolutionCapturePasses;
+            EndGraphPass();
+        }
         BeginGraphPass(m_graphPostPass);
         RenderPostProcess();
         EndGraphPass();
@@ -909,6 +918,9 @@ namespace Disparity
 
     void Renderer::RequestFrameCapture(std::filesystem::path outputPath)
     {
+        m_highResolutionCaptureTargets = 2;
+        m_highResolutionCaptureTiles = std::max<uint32_t>(m_highResolutionCaptureTiles, 4u);
+        m_highResolutionCaptureMsaaSamples = std::max<uint32_t>(m_highResolutionCaptureMsaaSamples, 4u);
         m_pendingFrameCapturePaths.push_back(std::move(outputPath));
     }
 
@@ -986,7 +998,11 @@ namespace Disparity
             m_objectIdReadbackRequests,
             m_objectIdReadbackCompletions,
             m_objectIdReadbackLatencyFrames,
-            m_objectIdReadbackBusySkips
+            m_objectIdReadbackBusySkips,
+            m_highResolutionCaptureTargets,
+            m_highResolutionCaptureTiles,
+            m_highResolutionCaptureMsaaSamples,
+            m_highResolutionCapturePasses
         };
     }
 
@@ -1349,6 +1365,8 @@ namespace Disparity
         m_graphEditorViewport = m_renderGraph.AddResource("Editor Viewport Color", RenderGraphResourceKind::Texture);
         m_graphEditorObjectIds = m_renderGraph.AddResource("Editor Object IDs", RenderGraphResourceKind::Texture);
         m_graphEditorObjectDepth = m_renderGraph.AddResource("Editor Object Depth", RenderGraphResourceKind::Texture);
+        m_graphHighResolutionColor = m_renderGraph.AddResource("High Resolution Capture Color", RenderGraphResourceKind::Texture);
+        m_graphHighResolutionResolve = m_renderGraph.AddResource("High Resolution Capture Resolve", RenderGraphResourceKind::Texture);
         const auto graphCallback = [this]() {
             ++m_graphCallbacksExecuted;
         };
@@ -1362,6 +1380,15 @@ namespace Disparity
             { m_graphHdrScene, m_graphDepth },
             { m_graphEditorViewport },
             graphCallback);
+        m_graphHighResolutionCapturePass = m_renderGraph.AddPass(
+            "High Resolution Capture Tiles",
+            { m_graphHdrScene },
+            { m_graphHighResolutionColor, m_graphHighResolutionResolve },
+            graphCallback);
+        m_renderGraph.SetPassEnabled(
+            m_graphHighResolutionCapturePass,
+            !m_pendingFrameCapturePaths.empty(),
+            "No queued high-resolution capture");
         m_graphPostPass = m_renderGraph.AddPass("Post Process", { m_graphHdrScene, m_graphDepth, m_graphHistory }, { m_graphBackBuffer, m_graphHistory }, graphCallback);
         m_graphEditorPass = m_renderGraph.AddPass("Editor UI", { m_graphBackBuffer }, { m_graphBackBuffer }, graphCallback);
         m_activeGraphPass = std::numeric_limits<uint32_t>::max();
@@ -1378,6 +1405,8 @@ namespace Disparity
         BindGraphResource(m_graphEditorViewport, m_editorViewportTexture.Get(), m_editorViewportRenderTargetView.Get(), nullptr, m_editorViewportShaderResourceView.Get());
         BindGraphResource(m_graphEditorObjectIds, m_editorObjectIdTexture.Get(), m_editorObjectIdRenderTargetView.Get(), nullptr, m_editorObjectIdShaderResourceView.Get());
         BindGraphResource(m_graphEditorObjectDepth, m_editorObjectDepthTexture.Get(), m_editorObjectDepthRenderTargetView.Get(), nullptr, m_editorObjectDepthShaderResourceView.Get());
+        BindGraphResource(m_graphHighResolutionColor, m_hdrSceneTexture.Get(), nullptr, nullptr, m_hdrSceneShaderResourceView.Get());
+        BindGraphResource(m_graphHighResolutionResolve, m_hdrSceneTexture.Get(), nullptr, nullptr, m_hdrSceneShaderResourceView.Get());
         m_graphTransientAllocations = 0;
         m_graphAliasedResources = 0;
         m_graphTransitionBarriers = static_cast<uint32_t>(m_renderGraph.GetBarriers().size());
