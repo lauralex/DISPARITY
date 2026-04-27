@@ -3398,7 +3398,7 @@ namespace
         void DrawProfilerPanel()
         {
             ImGui::SetNextWindowPos(ImVec2(1008.0f, 32.0f), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(300.0f, 280.0f), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(430.0f, 360.0f), ImGuiCond_FirstUseEver);
             if (!ImGui::Begin("Profiler"))
             {
                 ImGui::End();
@@ -3426,9 +3426,48 @@ namespace
                 }
             }
             ImGui::Separator();
-            for (const Disparity::ProfileRecord& record : snapshot.Records)
+            ImGui::TextDisabled("CPU Scopes");
+            if (!snapshot.Records.empty())
             {
-                ImGui::Text("%s: %.3f ms", record.Name.c_str(), record.Milliseconds);
+                const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+                const float tableHeight = std::clamp(lineHeight * 7.0f, lineHeight * 4.0f, 150.0f);
+                if (ImGui::BeginTable(
+                    "ProfilerScopes##Profiler",
+                    2,
+                    ImGuiTableFlags_BordersInnerV |
+                        ImGuiTableFlags_RowBg |
+                        ImGuiTableFlags_ScrollY |
+                        ImGuiTableFlags_SizingStretchProp,
+                    ImVec2(0.0f, tableHeight)))
+                {
+                    ImGui::TableSetupColumn("Scope", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+                    ImGui::TableSetupColumn("CPU ms", ImGuiTableColumnFlags_WidthFixed, 86.0f);
+                    ImGui::TableHeadersRow();
+
+                    ImGuiListClipper clipper;
+                    clipper.Begin(static_cast<int>(snapshot.Records.size()));
+                    while (clipper.Step())
+                    {
+                        for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+                        {
+                            const Disparity::ProfileRecord& record = snapshot.Records[static_cast<size_t>(row)];
+                            ImGui::TableNextRow(ImGuiTableRowFlags_None, lineHeight);
+                            ImGui::TableSetColumnIndex(0);
+                            ImGui::TextUnformatted(record.Name.c_str());
+                            if (ImGui::IsItemHovered())
+                            {
+                                ImGui::SetTooltip("%s", record.Name.c_str());
+                            }
+                            ImGui::TableSetColumnIndex(1);
+                            ImGui::Text("%.3f", record.Milliseconds);
+                        }
+                    }
+                    ImGui::EndTable();
+                }
+            }
+            else
+            {
+                ImGui::TextDisabled("No CPU scopes recorded yet.");
             }
 
             if (m_renderer && ImGui::TreeNode("Render Graph"))
@@ -3448,42 +3487,42 @@ namespace
                 const Disparity::RendererFrameGraphDiagnostics diagnostics = m_renderer->GetFrameGraphDiagnostics();
                 ImGui::Text("Resources: %zu", graph.GetResources().size());
                 ImGui::Text("Scheduled passes: %zu", graph.GetExecutionOrder().size());
-            ImGui::Text("Callbacks: %u/%u  Barriers: %u  Handles: %u",
-                diagnostics.GraphCallbacksExecuted,
-                diagnostics.GraphCallbacksBound,
-                diagnostics.TransitionBarriers,
-                diagnostics.ResourceHandles);
-            ImGui::Text("Graph binds: %u  Hits: %u  Misses: %u",
-                diagnostics.GraphResourceBindings,
-                diagnostics.GraphHandleBindHits,
-                diagnostics.GraphHandleBindMisses);
-            ImGui::Text("Object-ID readbacks: %u queued, %u done, %u pending, latency %u frames",
-                diagnostics.ObjectIdReadbackRequests,
-                diagnostics.ObjectIdReadbackCompletions,
-                diagnostics.ObjectIdReadbackPending,
-                diagnostics.ObjectIdReadbackLatencyFrames);
-            ImGui::Text("GPU hover cache: id %u depth %.3f at %u,%u  hits %u misses %u",
-                m_gpuPickVisualization.LastObjectId,
-                m_gpuPickVisualization.LastDepth,
-                m_gpuPickVisualization.LastX,
-                m_gpuPickVisualization.LastY,
-                m_gpuPickVisualization.CacheHits,
-                m_gpuPickVisualization.CacheMisses);
-            const float latencySamples = static_cast<float>(std::max(1u, GpuPickLatencySampleCount()));
-            for (size_t bucket = 0; bucket < m_gpuPickVisualization.LatencyBuckets.size(); ++bucket)
-            {
-                const float fraction = static_cast<float>(m_gpuPickVisualization.LatencyBuckets[bucket]) / latencySamples;
-                const std::string label = bucket + 1u == m_gpuPickVisualization.LatencyBuckets.size()
-                    ? "7+"
-                    : std::to_string(bucket);
-                ImGui::ProgressBar(fraction, ImVec2(-FLT_MIN, 0.0f), label.c_str());
-            }
-            ImGui::Text("High-res graph: targets %u  tiles %u  MSAA %u  passes %u",
-                diagnostics.HighResolutionCaptureTargets,
-                diagnostics.HighResolutionCaptureTiles,
-                diagnostics.HighResolutionCaptureMsaaSamples,
-                diagnostics.HighResolutionCapturePasses);
-            ImGui::Text("Pending captures: %u", diagnostics.PendingCaptureRequests);
+                ImGui::TextWrapped("Callbacks: %u/%u  Barriers: %u  Handles: %u",
+                    diagnostics.GraphCallbacksExecuted,
+                    diagnostics.GraphCallbacksBound,
+                    diagnostics.TransitionBarriers,
+                    diagnostics.ResourceHandles);
+                ImGui::TextWrapped("Graph binds: %u  Hits: %u  Misses: %u",
+                    diagnostics.GraphResourceBindings,
+                    diagnostics.GraphHandleBindHits,
+                    diagnostics.GraphHandleBindMisses);
+                ImGui::TextWrapped("Object-ID readbacks: %u queued, %u done, %u pending, latency %u frames",
+                    diagnostics.ObjectIdReadbackRequests,
+                    diagnostics.ObjectIdReadbackCompletions,
+                    diagnostics.ObjectIdReadbackPending,
+                    diagnostics.ObjectIdReadbackLatencyFrames);
+                ImGui::TextWrapped("GPU hover cache: id %u depth %.3f at %u,%u  hits %u misses %u",
+                    m_gpuPickVisualization.LastObjectId,
+                    m_gpuPickVisualization.LastDepth,
+                    m_gpuPickVisualization.LastX,
+                    m_gpuPickVisualization.LastY,
+                    m_gpuPickVisualization.CacheHits,
+                    m_gpuPickVisualization.CacheMisses);
+                const float latencySamples = static_cast<float>(std::max(1u, GpuPickLatencySampleCount()));
+                for (size_t bucket = 0; bucket < m_gpuPickVisualization.LatencyBuckets.size(); ++bucket)
+                {
+                    const float fraction = static_cast<float>(m_gpuPickVisualization.LatencyBuckets[bucket]) / latencySamples;
+                    const std::string label = bucket + 1u == m_gpuPickVisualization.LatencyBuckets.size()
+                        ? "7+"
+                        : std::to_string(bucket);
+                    ImGui::ProgressBar(fraction, ImVec2(-FLT_MIN, 0.0f), label.c_str());
+                }
+                ImGui::TextWrapped("High-res graph: targets %u  tiles %u  MSAA %u  passes %u",
+                    diagnostics.HighResolutionCaptureTargets,
+                    diagnostics.HighResolutionCaptureTiles,
+                    diagnostics.HighResolutionCaptureMsaaSamples,
+                    diagnostics.HighResolutionCapturePasses);
+                ImGui::Text("Pending captures: %u", diagnostics.PendingCaptureRequests);
                 for (const uint32_t passId : graph.GetExecutionOrder())
                 {
                     if (passId >= graph.GetPasses().size())
