@@ -27,6 +27,7 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - Trailer mode interpolates position, target, focus, depth-of-field strength, lens dirt, and letterbox values so the same vertical-slice camera move is repeatable for recording and verification.
 - Press `F9` or click `High-Res Capture` in the viewport panel to capture the presented frame, then write `Saved/Captures/DISPARITY_photo_source.ppm` and a 2x upscaled `Saved/Captures/DISPARITY_photo_2x.ppm`.
 - The renderer panel exposes depth of field, lens dirt, vignette, film grain, letterbox, title-safe guides, and presentation pulse controls for public demo capture.
+- Automatic generated cue tones are off by default for clean capture with the current WinMM prototype backend. Enable `Audio Mixer > Cinematic cue tones` only when you want to test the temporary generated cues.
 
 ## Assets And Prefabs
 
@@ -65,6 +66,7 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - `F2` plays the UI notification tone.
 - The mixer shows the active backend, per-bus send values, simple peak meters, and active generated voice counts.
 - The mixer detects XAudio2 runtime availability and exposes a preference switch while v16 keeps WinMM as the actual playback path.
+- `Cinematic cue tones` is opt-in; showcase/trailer visual beat pulses still run when this is off, but repeated generated WinMM tones are suppressed to avoid glitches.
 - Use `Store Snapshot` and `Recall` to test mixer snapshot capture/restore without playing content.
 - `AudioSystem::StreamMusic` and `PlayWaveFileAsync` provide WinMM-backed async/looped wave playback hooks for future content, while the public surface now has listener orientation and production-style snapshot/meter APIs for the future XAudio2 backend.
 

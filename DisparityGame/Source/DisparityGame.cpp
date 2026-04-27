@@ -1419,7 +1419,7 @@ namespace
                 }
                 m_showcaseMode = true;
                 UpdateShowcaseCamera(0.0f);
-                Disparity::AudioSystem::PlaySpatialTone("SFX", 660.0f, 0.22f, 0.9f, m_riftPosition);
+                PlayCinematicCue("SFX", 660.0f, 0.22f, 0.9f);
                 SetStatus("Showcase mode enabled");
                 return;
             }
@@ -1431,7 +1431,7 @@ namespace
                 m_renderer->SetSettings(*m_showcaseSavedRendererSettings);
             }
             m_showcaseSavedRendererSettings.reset();
-            Disparity::AudioSystem::PlaySpatialTone("UI", 440.0f, 0.16f, 0.65f, m_riftPosition);
+            PlayCinematicCue("UI", 440.0f, 0.16f, 0.65f);
             SetStatus("Showcase mode disabled");
         }
 
@@ -1459,7 +1459,7 @@ namespace
                 }
                 UpdateTrailerCamera(0.0f);
                 ApplyPresentationRendererSettings();
-                Disparity::AudioSystem::PlaySpatialTone("SFX", 784.0f, 0.24f, 0.95f, m_riftPosition);
+                PlayCinematicCue("SFX", 784.0f, 0.24f, 0.95f);
                 SetStatus("Trailer/photo mode enabled");
                 return;
             }
@@ -1471,7 +1471,7 @@ namespace
                 m_renderer->SetSettings(*m_trailerSavedRendererSettings);
             }
             m_trailerSavedRendererSettings.reset();
-            Disparity::AudioSystem::PlaySpatialTone("UI", 392.0f, 0.16f, 0.65f, m_riftPosition);
+            PlayCinematicCue("UI", 392.0f, 0.16f, 0.65f);
             SetStatus("Trailer/photo mode disabled");
         }
 
@@ -1523,12 +1523,22 @@ namespace
             {
                 m_lastRiftBeatIndex = beatIndex;
                 const float frequency = 520.0f + static_cast<float>((beatIndex % 5 + 5) % 5) * 58.0f;
-                Disparity::AudioSystem::PlaySpatialTone("SFX", frequency, 0.11f, 0.52f, m_riftPosition);
+                PlayCinematicCue("SFX", frequency, 0.08f, 0.28f);
                 if (m_runtimeVerification.Enabled)
                 {
                     ++m_runtimeEditorStats.AudioBeatPulses;
                 }
             }
+        }
+
+        void PlayCinematicCue(const std::string& busName, float frequencyHz, float durationSeconds, float volume)
+        {
+            if (!m_cinematicAudioCues)
+            {
+                return;
+            }
+
+            Disparity::AudioSystem::PlaySpatialTone(busName, frequencyHz, durationSeconds, volume, m_riftPosition);
         }
 
         bool ParseShotFloat3(const std::string& text, DirectX::XMFLOAT3& value) const
@@ -2610,6 +2620,7 @@ namespace
             {
                 Disparity::AudioSystem::PreferXAudio2(preferXAudio2);
             }
+            ImGui::Checkbox("Cinematic cue tones", &m_cinematicAudioCues);
 
             if (ImGui::Button("Low Tone"))
             {
@@ -5433,6 +5444,7 @@ namespace
         bool m_trailerSavedEditorVisible = true;
         bool m_showcaseMode = false;
         bool m_trailerMode = false;
+        bool m_cinematicAudioCues = false;
         bool m_editorCameraEnabled = false;
         bool m_hotReloadEnabled = true;
         bool m_gltfAnimationPlayback = true;

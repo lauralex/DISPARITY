@@ -163,10 +163,13 @@ namespace Disparity
             const float rightGain = std::sqrt(0.5f * (1.0f + clampedPan));
 
             std::vector<short> samples(sampleCount * 2u);
+            const double toneDuration = static_cast<double>(sampleCount) / static_cast<double>(SampleRate);
             for (size_t index = 0; index < sampleCount; ++index)
             {
                 const double t = static_cast<double>(index) / static_cast<double>(SampleRate);
-                const double envelope = 1.0 - (static_cast<double>(index) / static_cast<double>(sampleCount));
+                const double attack = std::min(1.0, t / 0.006);
+                const double release = std::min(1.0, std::max(0.0, toneDuration - t) / 0.018);
+                const double envelope = attack * release;
                 const float sample = static_cast<float>(std::sin(t * static_cast<double>(frequency) * 2.0 * Pi) * envelope * 14000.0 * gain);
                 samples[index * 2u] = static_cast<short>(sample * leftGain);
                 samples[index * 2u + 1u] = static_cast<short>(sample * rightGain);

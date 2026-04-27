@@ -55,7 +55,7 @@ Editor UI:
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw draggable, camera-scaled 3D axis/ring/plane gizmo handles in the viewport.
 - `Assets`: reload scene/script, toggle hot reload, inspect the asset database, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
-- `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, inspect bus sends/meters, and store/recall a mixer snapshot.
+- `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters, and store/recall a mixer snapshot.
 
 ## Engine v0 Features
 
@@ -227,6 +227,11 @@ Editor UI:
 - Materials now carry emissive color/intensity data through `.dmat`, renderer constants, and the scene shader, so the rift can glow without relying only on bright albedo.
 - The rift now has a real presentational VFX layer: billboard particles, hot particles, ribbon trails, lightning beams, fog cards, lens dirt, film grain, stronger depth-of-field, title-safe guides, and beat-synced audio-reactive pulses.
 - Runtime verification now exercises trailer/photo mode, high-resolution capture, all seven post debug views, rift VFX draw coverage, and beat-pulse coverage across all six suites, with refreshed baselines and golden thumbnails.
+
+## Engine v18.1 Audio Fix
+
+- Showcase and trailer modes no longer trigger generated WinMM cue tones by default, preventing glitchy repeated prototype audio during public capture.
+- The Audio Mixer has an opt-in `Cinematic cue tones` toggle for testing those cues, and generated test tones now use a short attack/release envelope to reduce clicks.
 
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
