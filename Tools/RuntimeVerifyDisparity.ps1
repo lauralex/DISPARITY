@@ -477,6 +477,47 @@ function Assert-RuntimeReportSchema {
     if ($Metrics.ContainsKey("production_pipeline_readiness_items") -and [int]$Metrics["production_pipeline_readiness_items"] -lt 6) {
         throw "Runtime verification report recorded too few production pipeline readiness items."
     }
+    if ($Metrics.ContainsKey("v35_engine_architecture_points") -and [int]$Metrics["v35_engine_architecture_points"] -lt 50) {
+        throw "Runtime verification report did not verify all fifty v35 engine architecture points."
+    }
+    foreach ($metric in ($Metrics.Keys | Where-Object { $_ -like "v35_point_*" })) {
+        if ([int]$Metrics[$metric] -lt 1) {
+            throw "Runtime verification report did not mark v35 readiness metric '$metric' ready."
+        }
+    }
+    foreach ($metric in @(
+        "engine_event_bus_deliveries",
+        "engine_scheduler_tasks",
+        "engine_scene_query_hits",
+        "engine_streaming_scheduled_requests",
+        "engine_render_graph_budget_checks",
+        "engine_module_smoke_tests"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 1) {
+            throw "Runtime verification report did not record required v35 engine coverage for '$metric'."
+        }
+    }
+    if ($Metrics.ContainsKey("engine_event_bus_deliveries") -and [int]$Metrics["engine_event_bus_deliveries"] -lt 3) {
+        throw "Runtime verification report recorded too few engine event bus deliveries."
+    }
+    if ($Metrics.ContainsKey("engine_scheduler_tasks") -and [int]$Metrics["engine_scheduler_tasks"] -lt 7) {
+        throw "Runtime verification report recorded too few engine scheduler tasks."
+    }
+    if ($Metrics.ContainsKey("engine_scheduler_phases") -and [int]$Metrics["engine_scheduler_phases"] -lt 7) {
+        throw "Runtime verification report did not exercise all engine scheduler phases."
+    }
+    if ($Metrics.ContainsKey("engine_scene_query_hits") -and [int]$Metrics["engine_scene_query_hits"] -lt 3) {
+        throw "Runtime verification report recorded too few engine scene query hits."
+    }
+    if ($Metrics.ContainsKey("engine_streaming_scheduled_requests") -and [int]$Metrics["engine_streaming_scheduled_requests"] -lt 2) {
+        throw "Runtime verification report recorded too few engine streaming scheduled requests."
+    }
+    if ($Metrics.ContainsKey("engine_module_smoke_tests") -and [int]$Metrics["engine_module_smoke_tests"] -lt 5) {
+        throw "Runtime verification report recorded too few engine module smoke tests."
+    }
+    if ($Metrics.ContainsKey("engine_render_graph_budget_within_limits") -and $Metrics["engine_render_graph_budget_within_limits"] -ne "true") {
+        throw "Runtime verification report marked the engine render graph budget as outside limits."
+    }
     if ($Metrics.ContainsKey("public_demo_blend_tree_clips") -and [int]$Metrics["public_demo_blend_tree_clips"] -lt 4) {
         throw "Runtime verification report recorded too few public demo blend-tree clips."
     }
@@ -606,7 +647,7 @@ if (!$DisablePerfHistory) {
         New-Item -ItemType Directory -Force -Path $historyParent | Out-Null
     }
 
-    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance,playback_net_distance,editor_pick_tests,editor_pick_failures,gizmo_pick_tests,gizmo_pick_failures,gizmo_drag_tests,gizmo_drag_failures,scene_reload_tests,scene_save_tests,post_debug_view_tests,showcase_frames,trailer_frames,high_res_capture_tests,rift_vfx_draws,rift_vfx_gpu_simulation_batches,rift_vfx_motion_vector_candidates,rift_vfx_temporal_reprojection_samples,rift_vfx_depth_fade_particles,audio_beat_pulses,audio_snapshot_tests,async_io_tests,material_texture_slot_tests,prefab_variant_tests,shot_director_tests,shot_spline_tests,shot_timeline_track_tests,shot_thumbnail_tests,shot_preview_scrub_tests,audio_analysis_tests,xaudio2_backend_tests,vfx_system_tests,gpu_vfx_simulation_tests,animation_skinning_tests,gpu_pick_hover_cache_tests,gpu_pick_latency_histogram_tests,graph_high_res_capture_tests,cooked_package_tests,asset_invalidation_tests,nested_prefab_tests,audio_production_tests,viewport_overlay_tests,high_res_resolve_tests,viewport_hud_control_tests,transform_precision_tests,command_history_filter_tests,runtime_schema_manifest_tests,shot_sequencer_tests,vfx_renderer_profile_tests,cooked_gpu_resource_tests,dependency_invalidation_tests,audio_meter_calibration_tests,release_readiness_tests,v25_production_points,editor_preference_persistence_tests,viewport_toolbar_tests,viewport_toolbar_interactions,editor_preference_profile_tests,capture_preset_tests,vfx_emitter_profile_tests,cooked_dependency_preview_tests,v28_diversified_points,editor_workflow_tests,asset_pipeline_promotion_tests,rendering_advanced_tests,runtime_sequencer_feature_tests,audio_production_feature_tests,production_publishing_tests,editor_profile_diff_fields,asset_streaming_priority_levels,rendering_motion_vector_targets,runtime_keyboard_preview_bindings,audio_content_pulse_inputs,production_obs_websocket_commands,rift_vfx_emitter_count,rift_vfx_gpu_buffer_bytes,cooked_package_dependency_preview_count,render_graph_allocations,render_graph_aliased_resources,render_graph_barriers,render_graph_resource_bindings,render_graph_bind_hits,render_graph_bind_misses,render_graph_callbacks_bound,render_graph_callbacks_executed,render_graph_dispatch_valid,object_id_readback_ring_size,object_id_readback_pending,object_id_readback_requests,object_id_readback_completions,object_id_readback_latency_frames,object_id_readback_busy_skips,gpu_pick_cache_hits,gpu_pick_latency_samples,gpu_pick_stale_frames,graph_high_res_capture_targets,graph_high_res_capture_tiles,graph_high_res_capture_msaa_samples,graph_high_res_capture_passes,high_res_capture_preset,high_res_resolve_filter,high_res_resolve_samples,editor_viewport_ready,editor_viewport_presented_in_imgui,editor_object_id_ready,editor_object_depth_ready,audio_xaudio2_available,audio_xaudio2_initialized,audio_analysis_peak,audio_analysis_beat_envelope,audio_mixer_voices_created,audio_spatial_emitters,audio_analysis_content_pulses,v29_public_demo_points,public_demo_tests,public_demo_shard_pickups,public_demo_completions,public_demo_hud_frames,public_demo_beacon_draws,public_demo_sentinel_ticks,public_demo_stability,public_demo_focus,v30_vertical_slice_points,public_demo_objective_stages,public_demo_anchor_activations,public_demo_retries,public_demo_checkpoints,public_demo_director_frames,public_demo_anchors_activated,public_demo_event_count,public_demo_objective_distance,v31_diversified_points,public_demo_resonance_gates,public_demo_pressure_hits,public_demo_footstep_events,public_demo_resonance_gates_tuned,public_demo_gameplay_event_routes,v32_roadmap_points,public_demo_phase_relays,public_demo_relay_overcharge_windows,public_demo_combo_steps,public_demo_phase_relays_stabilized,public_demo_relay_bridge_draws,public_demo_combo_chain_steps,v33_playable_demo_points,public_demo_collision_solves,public_demo_traversal_actions,public_demo_enemy_chases,public_demo_enemy_evades,public_demo_gamepad_frames,public_demo_menu_transitions,public_demo_failure_presentations,public_demo_content_audio_cues,public_demo_animation_state_changes,v34_aaa_foundation_points,public_demo_enemy_archetypes,public_demo_enemy_los_checks,public_demo_enemy_telegraphs,public_demo_enemy_hit_reactions,public_demo_controller_grounded_frames,public_demo_controller_slope_samples,public_demo_controller_material_samples,public_demo_controller_moving_platform_frames,public_demo_controller_camera_collision_frames,public_demo_animation_clip_events,public_demo_animation_blend_samples,public_demo_accessibility_toggles,rendering_pipeline_readiness_items,production_pipeline_readiness_items"
+    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance,playback_net_distance,editor_pick_tests,editor_pick_failures,gizmo_pick_tests,gizmo_pick_failures,gizmo_drag_tests,gizmo_drag_failures,scene_reload_tests,scene_save_tests,post_debug_view_tests,showcase_frames,trailer_frames,high_res_capture_tests,rift_vfx_draws,rift_vfx_gpu_simulation_batches,rift_vfx_motion_vector_candidates,rift_vfx_temporal_reprojection_samples,rift_vfx_depth_fade_particles,audio_beat_pulses,audio_snapshot_tests,async_io_tests,material_texture_slot_tests,prefab_variant_tests,shot_director_tests,shot_spline_tests,shot_timeline_track_tests,shot_thumbnail_tests,shot_preview_scrub_tests,audio_analysis_tests,xaudio2_backend_tests,vfx_system_tests,gpu_vfx_simulation_tests,animation_skinning_tests,gpu_pick_hover_cache_tests,gpu_pick_latency_histogram_tests,graph_high_res_capture_tests,cooked_package_tests,asset_invalidation_tests,nested_prefab_tests,audio_production_tests,viewport_overlay_tests,high_res_resolve_tests,viewport_hud_control_tests,transform_precision_tests,command_history_filter_tests,runtime_schema_manifest_tests,shot_sequencer_tests,vfx_renderer_profile_tests,cooked_gpu_resource_tests,dependency_invalidation_tests,audio_meter_calibration_tests,release_readiness_tests,v25_production_points,editor_preference_persistence_tests,viewport_toolbar_tests,viewport_toolbar_interactions,editor_preference_profile_tests,capture_preset_tests,vfx_emitter_profile_tests,cooked_dependency_preview_tests,v28_diversified_points,editor_workflow_tests,asset_pipeline_promotion_tests,rendering_advanced_tests,runtime_sequencer_feature_tests,audio_production_feature_tests,production_publishing_tests,editor_profile_diff_fields,asset_streaming_priority_levels,rendering_motion_vector_targets,runtime_keyboard_preview_bindings,audio_content_pulse_inputs,production_obs_websocket_commands,rift_vfx_emitter_count,rift_vfx_gpu_buffer_bytes,cooked_package_dependency_preview_count,render_graph_allocations,render_graph_aliased_resources,render_graph_barriers,render_graph_resource_bindings,render_graph_bind_hits,render_graph_bind_misses,render_graph_callbacks_bound,render_graph_callbacks_executed,render_graph_dispatch_valid,object_id_readback_ring_size,object_id_readback_pending,object_id_readback_requests,object_id_readback_completions,object_id_readback_latency_frames,object_id_readback_busy_skips,gpu_pick_cache_hits,gpu_pick_latency_samples,gpu_pick_stale_frames,graph_high_res_capture_targets,graph_high_res_capture_tiles,graph_high_res_capture_msaa_samples,graph_high_res_capture_passes,high_res_capture_preset,high_res_resolve_filter,high_res_resolve_samples,editor_viewport_ready,editor_viewport_presented_in_imgui,editor_object_id_ready,editor_object_depth_ready,audio_xaudio2_available,audio_xaudio2_initialized,audio_analysis_peak,audio_analysis_beat_envelope,audio_mixer_voices_created,audio_spatial_emitters,audio_analysis_content_pulses,v29_public_demo_points,public_demo_tests,public_demo_shard_pickups,public_demo_completions,public_demo_hud_frames,public_demo_beacon_draws,public_demo_sentinel_ticks,public_demo_stability,public_demo_focus,v30_vertical_slice_points,public_demo_objective_stages,public_demo_anchor_activations,public_demo_retries,public_demo_checkpoints,public_demo_director_frames,public_demo_anchors_activated,public_demo_event_count,public_demo_objective_distance,v31_diversified_points,public_demo_resonance_gates,public_demo_pressure_hits,public_demo_footstep_events,public_demo_resonance_gates_tuned,public_demo_gameplay_event_routes,v32_roadmap_points,public_demo_phase_relays,public_demo_relay_overcharge_windows,public_demo_combo_steps,public_demo_phase_relays_stabilized,public_demo_relay_bridge_draws,public_demo_combo_chain_steps,v33_playable_demo_points,public_demo_collision_solves,public_demo_traversal_actions,public_demo_enemy_chases,public_demo_enemy_evades,public_demo_gamepad_frames,public_demo_menu_transitions,public_demo_failure_presentations,public_demo_content_audio_cues,public_demo_animation_state_changes,v34_aaa_foundation_points,public_demo_enemy_archetypes,public_demo_enemy_los_checks,public_demo_enemy_telegraphs,public_demo_enemy_hit_reactions,public_demo_controller_grounded_frames,public_demo_controller_slope_samples,public_demo_controller_material_samples,public_demo_controller_moving_platform_frames,public_demo_controller_camera_collision_frames,public_demo_animation_clip_events,public_demo_animation_blend_samples,public_demo_accessibility_toggles,rendering_pipeline_readiness_items,production_pipeline_readiness_items,v35_engine_architecture_points,engine_event_bus_deliveries,engine_scheduler_tasks,engine_scheduler_phases,engine_scene_query_hits,engine_streaming_scheduled_requests,engine_render_graph_budget_checks,engine_module_smoke_tests,engine_render_graph_budget_passes,engine_render_graph_budget_resources,engine_render_graph_budget_barriers"
     if (Test-Path -LiteralPath $HistoryPath) {
         $currentHeader = Get-Content -LiteralPath $HistoryPath -First 1
         if ($currentHeader -ne $historyHeader) {
@@ -805,7 +846,18 @@ if (!$DisablePerfHistory) {
         $metrics["public_demo_animation_blend_samples"],
         $metrics["public_demo_accessibility_toggles"],
         $metrics["rendering_pipeline_readiness_items"],
-        $metrics["production_pipeline_readiness_items"]
+        $metrics["production_pipeline_readiness_items"],
+        $metrics["v35_engine_architecture_points"],
+        $metrics["engine_event_bus_deliveries"],
+        $metrics["engine_scheduler_tasks"],
+        $metrics["engine_scheduler_phases"],
+        $metrics["engine_scene_query_hits"],
+        $metrics["engine_streaming_scheduled_requests"],
+        $metrics["engine_render_graph_budget_checks"],
+        $metrics["engine_module_smoke_tests"],
+        $metrics["engine_render_graph_budget_passes"],
+        $metrics["engine_render_graph_budget_resources"],
+        $metrics["engine_render_graph_budget_barriers"]
     ) | ForEach-Object {
         '"' + ([string]$_ -replace '"', '""') + '"'
     }

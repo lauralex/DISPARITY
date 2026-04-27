@@ -11,6 +11,7 @@ param(
     [string]$V32RoadmapBatchPath = "Assets/Verification/V32RoadmapBatch.dfollowups",
     [string]$V33PlayableDemoBatchPath = "Assets/Verification/V33PlayableDemoBatch.dfollowups",
     [string]$V34AAAFoundationBatchPath = "Assets/Verification/V34AAAFoundationBatch.dfollowups",
+    [string]$V35EngineArchitectureBatchPath = "Assets/Verification/V35EngineArchitectureBatch.dfollowups",
     [string]$OutputPath = "Saved/Release/release_readiness_manifest.json"
 )
 
@@ -37,6 +38,7 @@ $V31DiversifiedBatchPath = Resolve-RepoPath -Path $V31DiversifiedBatchPath
 $V32RoadmapBatchPath = Resolve-RepoPath -Path $V32RoadmapBatchPath
 $V33PlayableDemoBatchPath = Resolve-RepoPath -Path $V33PlayableDemoBatchPath
 $V34AAAFoundationBatchPath = Resolve-RepoPath -Path $V34AAAFoundationBatchPath
+$V35EngineArchitectureBatchPath = Resolve-RepoPath -Path $V35EngineArchitectureBatchPath
 $OutputPath = Resolve-RepoPath -Path $OutputPath
 
 $packageManifestPath = Join-Path $PackagePath "package_manifest.json"
@@ -58,7 +60,8 @@ $checks = @(
     [pscustomobject]@{ name = "v31_diversified_batch_manifest"; path = $V31DiversifiedBatchPath; exists = Test-Path -LiteralPath $V31DiversifiedBatchPath },
     [pscustomobject]@{ name = "v32_roadmap_batch_manifest"; path = $V32RoadmapBatchPath; exists = Test-Path -LiteralPath $V32RoadmapBatchPath },
     [pscustomobject]@{ name = "v33_playable_demo_batch_manifest"; path = $V33PlayableDemoBatchPath; exists = Test-Path -LiteralPath $V33PlayableDemoBatchPath },
-    [pscustomobject]@{ name = "v34_aaa_foundation_batch_manifest"; path = $V34AAAFoundationBatchPath; exists = Test-Path -LiteralPath $V34AAAFoundationBatchPath }
+    [pscustomobject]@{ name = "v34_aaa_foundation_batch_manifest"; path = $V34AAAFoundationBatchPath; exists = Test-Path -LiteralPath $V34AAAFoundationBatchPath },
+    [pscustomobject]@{ name = "v35_engine_architecture_batch_manifest"; path = $V35EngineArchitectureBatchPath; exists = Test-Path -LiteralPath $V35EngineArchitectureBatchPath }
 )
 
 foreach ($check in $checks) {
@@ -81,8 +84,8 @@ $schemaMetrics = @(Get-Content -LiteralPath $RuntimeReportSchemaPath | Where-Obj
     $trimmed = $_.Trim()
     ![string]::IsNullOrWhiteSpace($trimmed) -and !$trimmed.StartsWith("#")
 })
-if ($schemaMetrics.Count -lt 445 -or !($schemaMetrics -contains "v25_production_points") -or !($schemaMetrics -contains "v28_diversified_points") -or !($schemaMetrics -contains "v29_public_demo_points") -or !($schemaMetrics -contains "v30_vertical_slice_points") -or !($schemaMetrics -contains "v31_diversified_points") -or !($schemaMetrics -contains "v32_roadmap_points") -or !($schemaMetrics -contains "v33_playable_demo_points") -or !($schemaMetrics -contains "v34_aaa_foundation_points")) {
-    throw "Runtime report schema does not include the v25/v28/v29/v30/v31/v32/v33/v34 production metrics."
+if ($schemaMetrics.Count -lt 528 -or !($schemaMetrics -contains "v25_production_points") -or !($schemaMetrics -contains "v28_diversified_points") -or !($schemaMetrics -contains "v29_public_demo_points") -or !($schemaMetrics -contains "v30_vertical_slice_points") -or !($schemaMetrics -contains "v31_diversified_points") -or !($schemaMetrics -contains "v32_roadmap_points") -or !($schemaMetrics -contains "v33_playable_demo_points") -or !($schemaMetrics -contains "v34_aaa_foundation_points") -or !($schemaMetrics -contains "v35_engine_architecture_points")) {
+    throw "Runtime report schema does not include the v25/v28/v29/v30/v31/v32/v33/v34/v35 production metrics."
 }
 
 $productionPoints = @(Get-Content -LiteralPath $ProductionBatchPath | Where-Object {
@@ -141,6 +144,13 @@ if ($v34AAAFoundationPoints.Count -ne 60) {
     throw "v34 AAA foundation batch manifest does not define sixty points."
 }
 
+$v35EngineArchitecturePoints = @(Get-Content -LiteralPath $V35EngineArchitectureBatchPath | Where-Object {
+    $_.Trim().StartsWith("point ")
+})
+if ($v35EngineArchitecturePoints.Count -ne 50) {
+    throw "v35 engine architecture batch manifest does not define fifty points."
+}
+
 $parent = Split-Path -Parent $OutputPath
 if (![string]::IsNullOrWhiteSpace($parent)) {
     New-Item -ItemType Directory -Force -Path $parent | Out-Null
@@ -160,6 +170,7 @@ if (![string]::IsNullOrWhiteSpace($parent)) {
     v32_roadmap_batch_point_count = $v32RoadmapPoints.Count
     v33_playable_demo_batch_point_count = $v33PlayableDemoPoints.Count
     v34_aaa_foundation_batch_point_count = $v34AAAFoundationPoints.Count
+    v35_engine_architecture_batch_point_count = $v35EngineArchitecturePoints.Count
     checks = $checks
 } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $OutputPath
 

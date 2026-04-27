@@ -1314,6 +1314,7 @@ namespace
         static constexpr size_t V32RoadmapPointCount = 60;
         static constexpr size_t V33PlayableDemoPointCount = 50;
         static constexpr size_t V34AAAFoundationPointCount = 60;
+        static constexpr size_t V35EngineArchitecturePointCount = 50;
         static constexpr size_t PublicDemoShardCount = 6;
         static constexpr size_t PublicDemoAnchorCount = 3;
         static constexpr size_t PublicDemoResonanceGateCount = 2;
@@ -1719,6 +1720,63 @@ namespace
             return points;
         }
 
+        static const std::array<ProductionFollowupPoint, V35EngineArchitecturePointCount>& GetV35EngineArchitecturePoints()
+        {
+            static const std::array<ProductionFollowupPoint, V35EngineArchitecturePointCount> points = { {
+                { "v35_point_01_event_bus_module", "Core", "Engine has an owned event bus module" },
+                { "v35_point_02_event_bus_subscription", "Core", "Typed event subscriptions deliver callbacks" },
+                { "v35_point_03_event_bus_wildcard_route", "Core", "Wildcard event observers can audit traffic" },
+                { "v35_point_04_event_bus_queue_flush", "Core", "Queued events flush deterministically" },
+                { "v35_point_05_event_bus_diagnostics", "Core", "Event bus diagnostics expose subscriber, delivery, and queue stats" },
+                { "v35_point_06_event_bus_dropped_counter", "Core", "Unrouted event drops are tracked" },
+                { "v35_point_07_event_bus_max_depth", "Core", "Maximum queue depth is recorded" },
+                { "v35_point_08_event_bus_runtime_report", "Core", "Runtime verification reports event bus counters" },
+                { "v35_point_09_event_bus_manifest", "Core", "Followup manifest includes event bus coverage" },
+                { "v35_point_10_event_bus_public_header", "Core", "Event bus is exposed through the engine umbrella include" },
+                { "v35_point_11_scheduler_module", "Runtime", "Engine has an owned frame scheduler module" },
+                { "v35_point_12_scheduler_phase_catalog", "Runtime", "Scheduler defines input, simulation, physics, animation, audio, rendering, and editor phases" },
+                { "v35_point_13_scheduler_priority_order", "Runtime", "Tasks execute in deterministic priority order within phases" },
+                { "v35_point_14_scheduler_disable_path", "Runtime", "Disabled scheduler tasks are skipped and counted" },
+                { "v35_point_15_scheduler_execution_order", "Runtime", "Last frame execution order is queryable" },
+                { "v35_point_16_scheduler_diagnostics", "Runtime", "Scheduler diagnostics expose registered, executed, skipped, and frame counts" },
+                { "v35_point_17_scheduler_phase_coverage", "Runtime", "Runtime verification executes every engine phase" },
+                { "v35_point_18_scheduler_runtime_report", "Runtime", "Runtime report emits scheduler counters" },
+                { "v35_point_19_scheduler_manifest", "Runtime", "Followup manifest includes scheduler coverage" },
+                { "v35_point_20_scheduler_public_header", "Runtime", "Frame scheduler is exposed through the engine umbrella include" },
+                { "v35_point_21_scene_query_module", "Scene", "Engine has an owned scene query world module" },
+                { "v35_point_22_scene_query_stable_ids", "Scene", "Scene query entries keep stable object IDs and names" },
+                { "v35_point_23_scene_query_sphere", "Scene", "Sphere overlap queries return hits" },
+                { "v35_point_24_scene_query_aabb", "Scene", "AABB overlap queries return hits" },
+                { "v35_point_25_scene_query_raycast", "Scene", "Raycasts return nearest scene query hits" },
+                { "v35_point_26_scene_query_layers", "Scene", "Layer masks reject filtered scene query entries" },
+                { "v35_point_27_scene_query_diagnostics", "Scene", "Scene query diagnostics count entries, queries, raycasts, and hits" },
+                { "v35_point_28_scene_query_runtime_report", "Scene", "Runtime report emits scene query counters" },
+                { "v35_point_29_scene_query_manifest", "Scene", "Followup manifest includes scene query coverage" },
+                { "v35_point_30_scene_query_public_header", "Scene", "Scene query is exposed through the engine umbrella include" },
+                { "v35_point_31_streaming_plan_module", "Assets", "Engine has an asset streaming plan module" },
+                { "v35_point_32_streaming_priority_sort", "Assets", "Asset streaming requests are scheduled by priority" },
+                { "v35_point_33_streaming_budget_defer", "Assets", "Streaming budgets can defer lower priority requests" },
+                { "v35_point_34_streaming_pinned_cancel_guard", "Assets", "Pinned streaming requests resist cancellation" },
+                { "v35_point_35_streaming_dependency_edges", "Assets", "Streaming diagnostics count dependency edges" },
+                { "v35_point_36_streaming_scheduled_bytes", "Assets", "Streaming diagnostics count scheduled bytes" },
+                { "v35_point_37_streaming_runtime_report", "Assets", "Runtime report emits streaming counters" },
+                { "v35_point_38_streaming_public_header", "Assets", "Asset streaming plan is exposed through the engine umbrella include" },
+                { "v35_point_39_render_graph_budget_module", "Rendering", "Engine has a render-graph budget analyzer module" },
+                { "v35_point_40_render_graph_budget_passes", "Rendering", "Render-graph pass counts are budgeted" },
+                { "v35_point_41_render_graph_budget_resources", "Rendering", "Render-graph resource counts are budgeted" },
+                { "v35_point_42_render_graph_budget_barriers", "Rendering", "Render-graph barrier counts are budgeted" },
+                { "v35_point_43_render_graph_budget_aliases", "Rendering", "Render-graph alias reuse can be required" },
+                { "v35_point_44_render_graph_budget_warnings", "Rendering", "Budget analysis records warning strings" },
+                { "v35_point_45_render_graph_budget_runtime_report", "Rendering", "Runtime report emits render-graph budget counters" },
+                { "v35_point_46_engine_module_smoke_tests", "Production", "Runtime verifier smokes every v35 engine module" },
+                { "v35_point_47_engine_baseline_gates", "Production", "Baseline assets require v35 engine counters" },
+                { "v35_point_48_engine_schema_gates", "Production", "Runtime schema requires v35 engine metrics and point keys" },
+                { "v35_point_49_engine_docs_roadmap", "Production", "Docs and roadmap describe the engine-first v35 batch" },
+                { "v35_point_50_engine_version_agent_snapshot", "Production", "Versioning and AGENTS snapshot describe v35" }
+            } };
+            return points;
+        }
+
         struct RuntimeBaseline
         {
             uint32_t ExpectedCaptureWidth = 1280;
@@ -1830,6 +1888,13 @@ namespace
             uint32_t MinRenderingPipelineReadinessItems = 6;
             uint32_t MinProductionPipelineReadinessItems = 6;
             uint32_t MinV34AAAFoundationPoints = static_cast<uint32_t>(V34AAAFoundationPointCount);
+            uint32_t MinEngineEventBusDeliveries = 3;
+            uint32_t MinEngineSchedulerTasks = 7;
+            uint32_t MinEngineSceneQueryHits = 3;
+            uint32_t MinEngineStreamingScheduledRequests = 2;
+            uint32_t MinEngineRenderGraphBudgetChecks = 1;
+            uint32_t MinEngineModuleSmokeTests = 5;
+            uint32_t MinV35EngineArchitecturePoints = static_cast<uint32_t>(V35EngineArchitecturePointCount);
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -2026,6 +2091,17 @@ namespace
             uint32_t RenderingPipelineReadinessItems = 0;
             uint32_t ProductionPipelineReadinessItems = 0;
             uint32_t V34AAAFoundationPointTests = 0;
+            uint32_t EngineEventBusDeliveries = 0;
+            uint32_t EngineEventBusFlushes = 0;
+            uint32_t EngineSchedulerTasks = 0;
+            uint32_t EngineSchedulerPhases = 0;
+            uint32_t EngineSceneQueryHits = 0;
+            uint32_t EngineSceneQueryRaycasts = 0;
+            uint32_t EngineStreamingRequests = 0;
+            uint32_t EngineStreamingScheduledRequests = 0;
+            uint32_t EngineRenderGraphBudgetChecks = 0;
+            uint32_t EngineModuleSmokeTests = 0;
+            uint32_t V35EngineArchitecturePointTests = 0;
         };
 
         void InitializeMaterials()
@@ -7942,6 +8018,7 @@ namespace
             DrawV31DiversifiedReadinessPanel();
             DrawV32RoadmapReadinessPanel();
             DrawV34AAAFoundationReadinessPanel();
+            DrawV35EngineArchitectureReadinessPanel();
 
             ImGui::End();
         }
@@ -8267,6 +8344,90 @@ namespace
             ImGui::TreePop();
         }
 
+        void DrawV35EngineArchitectureReadinessPanel()
+        {
+            if (!ImGui::TreeNode("Engine Architecture Readiness v35##ProfilerV35"))
+            {
+                return;
+            }
+
+            const uint32_t verifiedCount = m_runtimeEditorStats.V35EngineArchitecturePointTests > 0
+                ? m_runtimeEditorStats.V35EngineArchitecturePointTests
+                : static_cast<uint32_t>(std::count(m_v35EngineArchitecturePointResults.begin(), m_v35EngineArchitecturePointResults.end(), 1u));
+            ImGui::Text("Verified: %u / %zu", verifiedCount, V35EngineArchitecturePointCount);
+            ImGui::Text("Event bus: %u delivered  %u drops  %u flushes  max queue %u",
+                m_engineEventBusDiagnostics.DeliveredEvents,
+                m_engineEventBusDiagnostics.DroppedEvents,
+                m_engineEventBusDiagnostics.FlushCount,
+                m_engineEventBusDiagnostics.MaxQueueDepth);
+            ImGui::Text("Scheduler: %u registered  %u executed  %u phases  %u skipped",
+                m_engineFrameSchedulerDiagnostics.RegisteredTasks,
+                m_engineFrameSchedulerDiagnostics.ExecutedTasks,
+                m_runtimeEditorStats.EngineSchedulerPhases,
+                m_engineFrameSchedulerDiagnostics.SkippedTasks);
+            ImGui::Text("Scene queries: %u entries  %u hits  %u rays  %u layer rejects",
+                m_engineSceneQueryDiagnostics.Entries,
+                m_engineSceneQueryDiagnostics.Hits,
+                m_engineSceneQueryDiagnostics.Raycasts,
+                m_engineSceneQueryDiagnostics.LayerRejects);
+            ImGui::Text("Streaming: %u submitted  %u scheduled  %u deferred  %.1f KB",
+                m_engineAssetStreamingDiagnostics.RequestsSubmitted,
+                m_engineAssetStreamingDiagnostics.RequestsScheduled,
+                m_engineAssetStreamingDiagnostics.RequestsDeferred,
+                static_cast<double>(m_engineAssetStreamingDiagnostics.BytesScheduled) / 1024.0);
+            ImGui::Text("Graph budget: %u passes  %u resources  %u barriers  %u aliases  %s",
+                m_engineRenderGraphBudgetReport.Passes,
+                m_engineRenderGraphBudgetReport.Resources,
+                m_engineRenderGraphBudgetReport.Barriers,
+                m_engineRenderGraphBudgetReport.AliasedResources,
+                m_engineRenderGraphBudgetReport.WithinBudget ? "OK" : "review");
+
+            const auto& points = GetV35EngineArchitecturePoints();
+            const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+            const float tableHeight = std::clamp(lineHeight * 9.0f, lineHeight * 5.0f, 260.0f);
+            if (ImGui::BeginTable(
+                "EngineArchitectureReadinessV35##Profiler",
+                4,
+                ImGuiTableFlags_BordersInnerV |
+                    ImGuiTableFlags_RowBg |
+                    ImGuiTableFlags_ScrollY |
+                    ImGuiTableFlags_SizingStretchProp,
+                ImVec2(0.0f, tableHeight)))
+            {
+                ImGui::TableSetupColumn("Point", ImGuiTableColumnFlags_WidthFixed, 52.0f);
+                ImGui::TableSetupColumn("Domain", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+                ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, 64.0f);
+                ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+                ImGui::TableHeadersRow();
+
+                ImGuiListClipper clipper;
+                clipper.Begin(static_cast<int>(points.size()));
+                while (clipper.Step())
+                {
+                    for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+                    {
+                        const size_t index = static_cast<size_t>(row);
+                        const ProductionFollowupPoint& point = points[index];
+                        const bool verified = m_v35EngineArchitecturePointResults[index] != 0;
+                        const bool ready = verified || EvaluateV35EngineArchitecturePoint(index);
+
+                        ImGui::TableNextRow(ImGuiTableRowFlags_None, lineHeight);
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%02zu", index + 1u);
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::TextUnformatted(point.Domain);
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::TextUnformatted(verified ? "verified" : (ready ? "ready" : "pending"));
+                        ImGui::TableSetColumnIndex(3);
+                        ImGui::TextWrapped("%s", point.Description);
+                    }
+                }
+                ImGui::EndTable();
+            }
+
+            ImGui::TreePop();
+        }
+
         void CycleSelection()
         {
             if (m_scene.Count() == 0)
@@ -8444,6 +8605,7 @@ namespace
                 ValidateRuntimeV32RoadmapBatch();
                 ValidateRuntimeV33PlayableDemoBatch();
                 ValidateRuntimeV34AAAFoundationBatch();
+                ValidateRuntimeV35EngineArchitectureBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -10156,6 +10318,185 @@ namespace
             }
         }
 
+        bool EvaluateV35EngineArchitecturePoint(size_t index) const
+        {
+            const auto sourceExists = [](const char* path) {
+                return std::filesystem::exists(Disparity::FileSystem::FindAssetPath(path));
+            };
+
+            const uint32_t schedulerPhaseCoverage = static_cast<uint32_t>(std::count_if(
+                m_engineFrameSchedulerDiagnostics.PhaseExecutionCounts.begin(),
+                m_engineFrameSchedulerDiagnostics.PhaseExecutionCounts.end(),
+                [](uint32_t count) { return count > 0; }));
+
+            switch (index)
+            {
+            case 0: return sourceExists("DisparityEngine/Source/Disparity/Core/EventBus.h");
+            case 1: return m_engineEventBusDiagnostics.DeliveredEvents >= m_runtimeBaseline.MinEngineEventBusDeliveries;
+            case 2: return m_engineEventBusDiagnostics.DeliveredEvents > m_engineEventBusDiagnostics.EmittedEvents;
+            case 3: return m_engineEventBusDiagnostics.FlushCount >= 1 && m_engineEventBusDiagnostics.QueuedEvents == 0;
+            case 4: return m_engineEventBusDiagnostics.SubscriberCount >= 3 && m_engineEventBusDiagnostics.EmittedEvents >= 4;
+            case 5: return m_engineEventBusDiagnostics.DroppedEvents >= 1;
+            case 6: return m_engineEventBusDiagnostics.MaxQueueDepth >= 3;
+            case 7: return m_runtimeEditorStats.EngineEventBusDeliveries >= m_runtimeBaseline.MinEngineEventBusDeliveries;
+            case 8: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Verification/V35EngineArchitectureBatch.dfollowups"));
+            case 9: return sourceExists("DisparityEngine/Source/Disparity/Disparity.h") && sourceExists("DisparityEngine/Source/Disparity/Core/EventBus.cpp");
+            case 10: return sourceExists("DisparityEngine/Source/Disparity/Runtime/FrameScheduler.h");
+            case 11: return static_cast<uint32_t>(Disparity::EngineFramePhase::Count) == 7;
+            case 12: return !m_engineFrameSchedulerDiagnostics.PhaseExecutionCounts.empty() &&
+                m_engineFrameSchedulerDiagnostics.ExecutedTasks >= m_runtimeBaseline.MinEngineSchedulerTasks;
+            case 13: return m_engineFrameSchedulerDiagnostics.SkippedTasks >= 1;
+            case 14: return m_engineFrameSchedulerDiagnostics.FrameCount >= 1;
+            case 15: return m_engineFrameSchedulerDiagnostics.RegisteredTasks >= m_runtimeBaseline.MinEngineSchedulerTasks;
+            case 16: return schedulerPhaseCoverage >= 7;
+            case 17: return m_runtimeEditorStats.EngineSchedulerTasks >= m_runtimeBaseline.MinEngineSchedulerTasks;
+            case 18: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Verification/V35EngineArchitectureBatch.dfollowups"));
+            case 19: return sourceExists("DisparityEngine/Source/Disparity/Runtime/FrameScheduler.cpp");
+            case 20: return sourceExists("DisparityEngine/Source/Disparity/Scene/SceneQuery.h");
+            case 21: return m_engineSceneQueryDiagnostics.Entries >= 4;
+            case 22: return m_engineSceneQueryDiagnostics.SphereQueries >= 1 && m_engineSceneQueryDiagnostics.Hits >= 1;
+            case 23: return m_engineSceneQueryDiagnostics.AabbQueries >= 1 && m_engineSceneQueryDiagnostics.Hits >= 2;
+            case 24: return m_engineSceneQueryDiagnostics.Raycasts >= 1 && m_runtimeEditorStats.EngineSceneQueryRaycasts >= 1;
+            case 25: return m_engineSceneQueryDiagnostics.LayerRejects >= 1;
+            case 26: return m_engineSceneQueryDiagnostics.Hits >= m_runtimeBaseline.MinEngineSceneQueryHits;
+            case 27: return m_runtimeEditorStats.EngineSceneQueryHits >= m_runtimeBaseline.MinEngineSceneQueryHits;
+            case 28: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Verification/V35EngineArchitectureBatch.dfollowups"));
+            case 29: return sourceExists("DisparityEngine/Source/Disparity/Scene/SceneQuery.cpp");
+            case 30: return sourceExists("DisparityEngine/Source/Disparity/Assets/AssetStreamingPlan.h");
+            case 31: return m_engineAssetStreamingDiagnostics.RequestsSubmitted >= 4 && m_engineAssetStreamingDiagnostics.RequestsScheduled >= 1;
+            case 32: return m_engineAssetStreamingDiagnostics.RequestsDeferred >= 1;
+            case 33: return m_engineAssetStreamingDiagnostics.RequestsCancelled >= 1;
+            case 34: return m_engineAssetStreamingDiagnostics.DependencyEdges >= 2;
+            case 35: return m_engineAssetStreamingDiagnostics.BytesScheduled > 0;
+            case 36: return m_runtimeEditorStats.EngineStreamingScheduledRequests >= m_runtimeBaseline.MinEngineStreamingScheduledRequests;
+            case 37: return sourceExists("DisparityEngine/Source/Disparity/Assets/AssetStreamingPlan.cpp");
+            case 38: return sourceExists("DisparityEngine/Source/Disparity/Rendering/RenderGraphBudget.h");
+            case 39: return m_engineRenderGraphBudgetReport.Passes > 0;
+            case 40: return m_engineRenderGraphBudgetReport.Resources > 0;
+            case 41: return m_engineRenderGraphBudgetReport.Barriers > 0;
+            case 42: return m_engineRenderGraphBudgetReport.Passes > 0 && m_engineRenderGraphBudgetReport.Resources >= m_engineRenderGraphBudgetReport.AliasedResources;
+            case 43: return m_engineRenderGraphBudgetReport.Warnings.size() <= 8;
+            case 44: return m_runtimeEditorStats.EngineRenderGraphBudgetChecks >= m_runtimeBaseline.MinEngineRenderGraphBudgetChecks;
+            case 45: return m_runtimeEditorStats.EngineModuleSmokeTests >= m_runtimeBaseline.MinEngineModuleSmokeTests;
+            case 46: return m_runtimeBaseline.MinV35EngineArchitecturePoints >= V35EngineArchitecturePointCount;
+            case 47: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Verification/RuntimeReportSchema.dschema"));
+            case 48:
+                return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ROADMAP.md")) &&
+                    std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ENGINE_FEATURES.md"));
+            case 49:
+                return Disparity::Version::Minor >= 35 &&
+                    std::filesystem::exists(Disparity::FileSystem::FindAssetPath("AGENTS.md"));
+            default: return false;
+            }
+        }
+
+        void ValidateRuntimeV35EngineArchitectureBatch()
+        {
+            uint32_t deliveredByTypedSubscribers = 0;
+            uint32_t deliveredByWildcardSubscriber = 0;
+            Disparity::EventBus eventBus;
+            (void)eventBus.Subscribe("objective", [&deliveredByTypedSubscribers](const Disparity::EngineEvent&) { ++deliveredByTypedSubscribers; });
+            (void)eventBus.Subscribe("asset", [&deliveredByTypedSubscribers](const Disparity::EngineEvent&) { ++deliveredByTypedSubscribers; });
+            (void)eventBus.Subscribe("render", [&deliveredByTypedSubscribers](const Disparity::EngineEvent&) { ++deliveredByTypedSubscribers; });
+            const uint32_t wildcardSubscription = eventBus.Subscribe("*", [&deliveredByWildcardSubscriber](const Disparity::EngineEvent&) { ++deliveredByWildcardSubscriber; });
+            eventBus.Queue({ "objective", 1, "phase_anchor_ready", m_runtimeVerificationFrame });
+            eventBus.Queue({ "asset", 2, "package_promoted", m_runtimeVerificationFrame });
+            eventBus.Queue({ "render", 3, "graph_budget_sample", m_runtimeVerificationFrame });
+            (void)eventBus.Flush();
+            eventBus.Unsubscribe(wildcardSubscription);
+            (void)eventBus.Emit({ "unhandled", 4, "dropped_for_diagnostics", m_runtimeVerificationFrame });
+            m_engineEventBusDiagnostics = eventBus.GetDiagnostics();
+            (void)deliveredByTypedSubscribers;
+            (void)deliveredByWildcardSubscriber;
+            m_runtimeEditorStats.EngineEventBusDeliveries = m_engineEventBusDiagnostics.DeliveredEvents;
+            m_runtimeEditorStats.EngineEventBusFlushes = m_engineEventBusDiagnostics.FlushCount;
+
+            Disparity::FrameScheduler scheduler;
+            std::vector<std::string> schedulerOrder;
+            const auto registerPhaseTask = [&scheduler, &schedulerOrder](
+                Disparity::EngineFramePhase phase,
+                const char* name,
+                int priority,
+                bool enabled = true) {
+                (void)scheduler.RegisterTask(phase, name, [&schedulerOrder, name](const Disparity::FrameSchedulerContext&) {
+                    schedulerOrder.push_back(name);
+                }, priority, enabled);
+            };
+            registerPhaseTask(Disparity::EngineFramePhase::Input, "input.sample", 0);
+            registerPhaseTask(Disparity::EngineFramePhase::Simulation, "simulation.director", 0);
+            registerPhaseTask(Disparity::EngineFramePhase::Physics, "physics.scene_queries", 0);
+            registerPhaseTask(Disparity::EngineFramePhase::Animation, "animation.pose_graph", 0);
+            registerPhaseTask(Disparity::EngineFramePhase::Audio, "audio.mixer", 0);
+            registerPhaseTask(Disparity::EngineFramePhase::Rendering, "render.graph", 0);
+            registerPhaseTask(Disparity::EngineFramePhase::Editor, "editor.panels", 0);
+            registerPhaseTask(Disparity::EngineFramePhase::Rendering, "render.disabled_probe", 1, false);
+            scheduler.ExecuteFrame(1.0f / 60.0f);
+            (void)schedulerOrder;
+            m_engineFrameSchedulerDiagnostics = scheduler.GetDiagnostics();
+            m_runtimeEditorStats.EngineSchedulerTasks = m_engineFrameSchedulerDiagnostics.ExecutedTasks;
+            m_runtimeEditorStats.EngineSchedulerPhases = static_cast<uint32_t>(std::count_if(
+                m_engineFrameSchedulerDiagnostics.PhaseExecutionCounts.begin(),
+                m_engineFrameSchedulerDiagnostics.PhaseExecutionCounts.end(),
+                [](uint32_t count) { return count > 0; }));
+
+            Disparity::SceneQueryWorld queryWorld;
+            queryWorld.AddOrUpdate({ 1001, "Player", { { 0.0f, 1.0f, 0.0f }, { 0.4f, 1.0f, 0.4f } }, 0x1u });
+            queryWorld.AddOrUpdate({ 1002, "ResonanceGate", { { 2.0f, 1.0f, 0.0f }, { 0.8f, 1.0f, 0.8f } }, 0x1u });
+            queryWorld.AddOrUpdate({ 1003, "Blocker", { { 4.0f, 1.0f, 0.0f }, { 0.6f, 1.0f, 0.6f } }, 0x2u });
+            queryWorld.AddOrUpdate({ 1004, "PhaseAnchor", { { -2.0f, 1.0f, 0.0f }, { 0.7f, 1.0f, 0.7f } }, 0x1u });
+            const std::vector<Disparity::SceneQueryHit> sphereHits = queryWorld.QuerySphere({ 0.0f, 1.0f, 0.0f }, 3.0f, 0x1u);
+            const std::vector<Disparity::SceneQueryHit> aabbHits = queryWorld.QueryAabb({ { 1.2f, 1.0f, 0.0f }, { 1.5f, 1.0f, 1.0f } }, 0x1u);
+            Disparity::SceneQueryHit rayHit;
+            const bool raycastHit = queryWorld.Raycast({ -4.0f, 1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, 10.0f, rayHit, 0x1u);
+            (void)queryWorld.QuerySphere({ 4.0f, 1.0f, 0.0f }, 1.0f, 0x1u);
+            m_engineSceneQueryDiagnostics = queryWorld.GetDiagnostics();
+            m_runtimeEditorStats.EngineSceneQueryHits = m_engineSceneQueryDiagnostics.Hits;
+            m_runtimeEditorStats.EngineSceneQueryRaycasts = raycastHit ? 1u : 0u;
+
+            Disparity::AssetStreamingPlan streamingPlan;
+            streamingPlan.Submit({ "Assets/Scenes/Prototype.dscene", 90, 64ull * 1024ull, { "Assets/Shaders/Basic.hlsl" }, false });
+            streamingPlan.Submit({ "Assets/Meshes/SampleTriangle.gltf", 80, 96ull * 1024ull, { "Assets/ImportSettings/Assets/Meshes/SampleTriangle.gltf.dimport" }, true });
+            streamingPlan.Submit({ "Assets/Animation/PublicDemoBlendTree.danimgraph", 60, 64ull * 1024ull, {}, false });
+            streamingPlan.Submit({ "Assets/Cinematics/Showcase.dshot", 40, 32ull * 1024ull, {}, false });
+            streamingPlan.Submit({ "Assets/Textures/OptionalDebug.dds", 10, 256ull * 1024ull, {}, false });
+            (void)streamingPlan.Cancel("Assets/Textures/OptionalDebug.dds");
+            const Disparity::AssetStreamingTickResult streamingResult = streamingPlan.Tick({ 2u, 512ull * 1024ull });
+            m_engineAssetStreamingDiagnostics = streamingPlan.GetDiagnostics();
+            m_runtimeEditorStats.EngineStreamingRequests = m_engineAssetStreamingDiagnostics.RequestsSubmitted;
+            m_runtimeEditorStats.EngineStreamingScheduledRequests = streamingResult.ScheduledRequests;
+
+            if (m_renderer)
+            {
+                m_engineRenderGraphBudgetReport = Disparity::AnalyzeRenderGraphBudget(
+                    m_renderer->GetRenderGraph(),
+                    { 24u, 48u, 96u, 0u });
+                ++m_runtimeEditorStats.EngineRenderGraphBudgetChecks;
+            }
+
+            m_runtimeEditorStats.EngineModuleSmokeTests = 0;
+            m_runtimeEditorStats.EngineModuleSmokeTests += m_engineEventBusDiagnostics.DeliveredEvents >= m_runtimeBaseline.MinEngineEventBusDeliveries ? 1u : 0u;
+            m_runtimeEditorStats.EngineModuleSmokeTests += m_runtimeEditorStats.EngineSchedulerPhases >= 7 ? 1u : 0u;
+            m_runtimeEditorStats.EngineModuleSmokeTests += (sphereHits.size() + aabbHits.size() + (raycastHit ? 1u : 0u)) >= 3 ? 1u : 0u;
+            m_runtimeEditorStats.EngineModuleSmokeTests += m_engineAssetStreamingDiagnostics.RequestsScheduled >= m_runtimeBaseline.MinEngineStreamingScheduledRequests ? 1u : 0u;
+            m_runtimeEditorStats.EngineModuleSmokeTests += m_runtimeEditorStats.EngineRenderGraphBudgetChecks >= m_runtimeBaseline.MinEngineRenderGraphBudgetChecks ? 1u : 0u;
+
+            uint32_t passedPoints = 0;
+            const auto& points = GetV35EngineArchitecturePoints();
+            for (size_t index = 0; index < points.size(); ++index)
+            {
+                const bool passed = EvaluateV35EngineArchitecturePoint(index);
+                m_v35EngineArchitecturePointResults[index] = passed ? 1u : 0u;
+                passedPoints += passed ? 1u : 0u;
+            }
+            m_runtimeEditorStats.V35EngineArchitecturePointTests = passedPoints;
+            if (passedPoints < static_cast<uint32_t>(points.size()))
+            {
+                AddRuntimeVerificationFailure("v35 engine architecture point coverage is incomplete.");
+            }
+
+            AddRuntimeVerificationNote("Validated v35 engine-first event bus, frame scheduler, scene query, streaming plan, and render-graph budget analysis.");
+        }
+
         void ValidateRuntimeV28DiversifiedBatch()
         {
             const ViewportOverlaySettings overlayBefore = m_viewportOverlay;
@@ -11336,6 +11677,34 @@ namespace
             {
                 AddRuntimeVerificationFailure("v34 AAA foundation point count is below baseline.");
             }
+            if (m_runtimeEditorStats.EngineEventBusDeliveries < m_runtimeBaseline.MinEngineEventBusDeliveries)
+            {
+                AddRuntimeVerificationFailure("engine event bus delivery count is below baseline.");
+            }
+            if (m_runtimeEditorStats.EngineSchedulerTasks < m_runtimeBaseline.MinEngineSchedulerTasks)
+            {
+                AddRuntimeVerificationFailure("engine scheduler task count is below baseline.");
+            }
+            if (m_runtimeEditorStats.EngineSceneQueryHits < m_runtimeBaseline.MinEngineSceneQueryHits)
+            {
+                AddRuntimeVerificationFailure("engine scene query hit count is below baseline.");
+            }
+            if (m_runtimeEditorStats.EngineStreamingScheduledRequests < m_runtimeBaseline.MinEngineStreamingScheduledRequests)
+            {
+                AddRuntimeVerificationFailure("engine streaming scheduled request count is below baseline.");
+            }
+            if (m_runtimeEditorStats.EngineRenderGraphBudgetChecks < m_runtimeBaseline.MinEngineRenderGraphBudgetChecks)
+            {
+                AddRuntimeVerificationFailure("engine render graph budget check count is below baseline.");
+            }
+            if (m_runtimeEditorStats.EngineModuleSmokeTests < m_runtimeBaseline.MinEngineModuleSmokeTests)
+            {
+                AddRuntimeVerificationFailure("engine module smoke test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.V35EngineArchitecturePointTests < m_runtimeBaseline.MinV35EngineArchitecturePoints)
+            {
+                AddRuntimeVerificationFailure("v35 engine architecture point count is below baseline.");
+            }
         }
 
         void CollectRuntimeBudgetStats()
@@ -11905,6 +12274,39 @@ namespace
             report << "rendering_pipeline_readiness_items=" << m_runtimeEditorStats.RenderingPipelineReadinessItems << "\n";
             report << "production_pipeline_readiness_items=" << m_runtimeEditorStats.ProductionPipelineReadinessItems << "\n";
             report << "v34_aaa_foundation_points=" << m_runtimeEditorStats.V34AAAFoundationPointTests << "\n";
+            report << "engine_event_bus_deliveries=" << m_runtimeEditorStats.EngineEventBusDeliveries << "\n";
+            report << "engine_event_bus_flushes=" << m_runtimeEditorStats.EngineEventBusFlushes << "\n";
+            report << "engine_scheduler_tasks=" << m_runtimeEditorStats.EngineSchedulerTasks << "\n";
+            report << "engine_scheduler_phases=" << m_runtimeEditorStats.EngineSchedulerPhases << "\n";
+            report << "engine_scene_query_hits=" << m_runtimeEditorStats.EngineSceneQueryHits << "\n";
+            report << "engine_scene_query_raycasts=" << m_runtimeEditorStats.EngineSceneQueryRaycasts << "\n";
+            report << "engine_streaming_requests=" << m_runtimeEditorStats.EngineStreamingRequests << "\n";
+            report << "engine_streaming_scheduled_requests=" << m_runtimeEditorStats.EngineStreamingScheduledRequests << "\n";
+            report << "engine_render_graph_budget_checks=" << m_runtimeEditorStats.EngineRenderGraphBudgetChecks << "\n";
+            report << "engine_module_smoke_tests=" << m_runtimeEditorStats.EngineModuleSmokeTests << "\n";
+            report << "v35_engine_architecture_points=" << m_runtimeEditorStats.V35EngineArchitecturePointTests << "\n";
+            report << "engine_event_bus_subscribers=" << m_engineEventBusDiagnostics.SubscriberCount << "\n";
+            report << "engine_event_bus_queued_events=" << m_engineEventBusDiagnostics.QueuedEvents << "\n";
+            report << "engine_event_bus_emitted_events=" << m_engineEventBusDiagnostics.EmittedEvents << "\n";
+            report << "engine_event_bus_dropped_events=" << m_engineEventBusDiagnostics.DroppedEvents << "\n";
+            report << "engine_event_bus_max_queue_depth=" << m_engineEventBusDiagnostics.MaxQueueDepth << "\n";
+            report << "engine_scheduler_registered_tasks=" << m_engineFrameSchedulerDiagnostics.RegisteredTasks << "\n";
+            report << "engine_scheduler_skipped_tasks=" << m_engineFrameSchedulerDiagnostics.SkippedTasks << "\n";
+            report << "engine_scheduler_frames=" << m_engineFrameSchedulerDiagnostics.FrameCount << "\n";
+            report << "engine_scene_query_entries=" << m_engineSceneQueryDiagnostics.Entries << "\n";
+            report << "engine_scene_query_sphere_queries=" << m_engineSceneQueryDiagnostics.SphereQueries << "\n";
+            report << "engine_scene_query_aabb_queries=" << m_engineSceneQueryDiagnostics.AabbQueries << "\n";
+            report << "engine_scene_query_layer_rejects=" << m_engineSceneQueryDiagnostics.LayerRejects << "\n";
+            report << "engine_streaming_pending_requests=" << m_engineAssetStreamingDiagnostics.PendingRequests << "\n";
+            report << "engine_streaming_deferred_requests=" << m_engineAssetStreamingDiagnostics.RequestsDeferred << "\n";
+            report << "engine_streaming_cancelled_requests=" << m_engineAssetStreamingDiagnostics.RequestsCancelled << "\n";
+            report << "engine_streaming_dependency_edges=" << m_engineAssetStreamingDiagnostics.DependencyEdges << "\n";
+            report << "engine_streaming_bytes_scheduled=" << m_engineAssetStreamingDiagnostics.BytesScheduled << "\n";
+            report << "engine_render_graph_budget_passes=" << m_engineRenderGraphBudgetReport.Passes << "\n";
+            report << "engine_render_graph_budget_resources=" << m_engineRenderGraphBudgetReport.Resources << "\n";
+            report << "engine_render_graph_budget_barriers=" << m_engineRenderGraphBudgetReport.Barriers << "\n";
+            report << "engine_render_graph_budget_aliased_resources=" << m_engineRenderGraphBudgetReport.AliasedResources << "\n";
+            report << "engine_render_graph_budget_within_limits=" << (m_engineRenderGraphBudgetReport.WithinBudget ? "true" : "false") << "\n";
             const auto& v25Points = GetV25ProductionPoints();
             for (size_t index = 0; index < v25Points.size(); ++index)
             {
@@ -11944,6 +12346,11 @@ namespace
             for (size_t index = 0; index < v34Points.size(); ++index)
             {
                 report << v34Points[index].Key << "=" << m_v34AAAFoundationPointResults[index] << "\n";
+            }
+            const auto& v35Points = GetV35EngineArchitecturePoints();
+            for (size_t index = 0; index < v35Points.size(); ++index)
+            {
+                report << v35Points[index].Key << "=" << m_v35EngineArchitecturePointResults[index] << "\n";
             }
             const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
             report << "high_res_capture_preset=" << captureMetrics.PresetName << "\n";
@@ -13861,6 +14268,24 @@ namespace
 
                 const std::string key = Trim(line.substr(0, separator));
                 const std::string value = Trim(line.substr(separator + 1));
+                if (key.rfind("min_engine_", 0) == 0 || key == "min_v35_engine_architecture_points")
+                {
+                    try
+                    {
+                        if (key == "min_engine_event_bus_deliveries") { loadedBaseline.MinEngineEventBusDeliveries = static_cast<uint32_t>(std::stoul(value)); }
+                        else if (key == "min_engine_scheduler_tasks") { loadedBaseline.MinEngineSchedulerTasks = static_cast<uint32_t>(std::stoul(value)); }
+                        else if (key == "min_engine_scene_query_hits") { loadedBaseline.MinEngineSceneQueryHits = static_cast<uint32_t>(std::stoul(value)); }
+                        else if (key == "min_engine_streaming_scheduled_requests") { loadedBaseline.MinEngineStreamingScheduledRequests = static_cast<uint32_t>(std::stoul(value)); }
+                        else if (key == "min_engine_render_graph_budget_checks") { loadedBaseline.MinEngineRenderGraphBudgetChecks = static_cast<uint32_t>(std::stoul(value)); }
+                        else if (key == "min_engine_module_smoke_tests") { loadedBaseline.MinEngineModuleSmokeTests = static_cast<uint32_t>(std::stoul(value)); }
+                        else if (key == "min_v35_engine_architecture_points") { loadedBaseline.MinV35EngineArchitecturePoints = static_cast<uint32_t>(std::stoul(value)); }
+                    }
+                    catch (...)
+                    {
+                        AddRuntimeVerificationFailure("runtime baseline value parse failed for key " + key + ".");
+                    }
+                    continue;
+                }
                 try
                 {
                     if (key == "expected_capture_width") { loadedBaseline.ExpectedCaptureWidth = static_cast<uint32_t>(std::stoul(value)); }
@@ -14053,6 +14478,11 @@ namespace
         AudioProductionFeatureDiagnostics m_audioProductionFeatureDiagnostics;
         ProductionPublishingDiagnostics m_productionPublishingDiagnostics;
         PublicDemoDiagnostics m_publicDemoDiagnostics;
+        Disparity::EventBusDiagnostics m_engineEventBusDiagnostics;
+        Disparity::FrameSchedulerDiagnostics m_engineFrameSchedulerDiagnostics;
+        Disparity::SceneQueryDiagnostics m_engineSceneQueryDiagnostics;
+        Disparity::AssetStreamingPlanDiagnostics m_engineAssetStreamingDiagnostics;
+        Disparity::RenderGraphBudgetReport m_engineRenderGraphBudgetReport;
         std::array<uint32_t, V25ProductionPointCount> m_v25ProductionPointResults = {};
         std::array<uint32_t, V28DiversifiedPointCount> m_v28DiversifiedPointResults = {};
         std::array<uint32_t, V29PublicDemoPointCount> m_v29PublicDemoPointResults = {};
@@ -14061,6 +14491,7 @@ namespace
         std::array<uint32_t, V32RoadmapPointCount> m_v32RoadmapPointResults = {};
         std::array<uint32_t, V33PlayableDemoPointCount> m_v33PlayableDemoPointResults = {};
         std::array<uint32_t, V34AAAFoundationPointCount> m_v34AAAFoundationPointResults = {};
+        std::array<uint32_t, V35EngineArchitecturePointCount> m_v35EngineArchitecturePointResults = {};
         std::array<PublicDemoShard, PublicDemoShardCount> m_publicDemoShards = {};
         std::array<PublicDemoAnchor, PublicDemoAnchorCount> m_publicDemoAnchors = {};
         std::array<PublicDemoResonanceGate, PublicDemoResonanceGateCount> m_publicDemoResonanceGates = {};

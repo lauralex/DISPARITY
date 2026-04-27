@@ -1,0 +1,50 @@
+point v35_point_01_event_bus_module|Core|Engine has an owned event bus module.
+point v35_point_02_event_bus_subscription|Core|Typed event subscriptions deliver callbacks.
+point v35_point_03_event_bus_wildcard_route|Core|Wildcard event observers can audit traffic.
+point v35_point_04_event_bus_queue_flush|Core|Queued events flush deterministically.
+point v35_point_05_event_bus_diagnostics|Core|Event bus diagnostics expose subscriber, delivery, and queue stats.
+point v35_point_06_event_bus_dropped_counter|Core|Unrouted event drops are tracked.
+point v35_point_07_event_bus_max_depth|Core|Maximum queue depth is recorded.
+point v35_point_08_event_bus_runtime_report|Core|Runtime verification reports event bus counters.
+point v35_point_09_event_bus_manifest|Core|Followup manifest includes event bus coverage.
+point v35_point_10_event_bus_public_header|Core|Event bus is exposed through the engine umbrella include.
+point v35_point_11_scheduler_module|Runtime|Engine has an owned frame scheduler module.
+point v35_point_12_scheduler_phase_catalog|Runtime|Scheduler defines input, simulation, physics, animation, audio, rendering, and editor phases.
+point v35_point_13_scheduler_priority_order|Runtime|Tasks execute in deterministic priority order within phases.
+point v35_point_14_scheduler_disable_path|Runtime|Disabled scheduler tasks are skipped and counted.
+point v35_point_15_scheduler_execution_order|Runtime|Last frame execution order is queryable.
+point v35_point_16_scheduler_diagnostics|Runtime|Scheduler diagnostics expose registered, executed, skipped, and frame counts.
+point v35_point_17_scheduler_phase_coverage|Runtime|Runtime verification executes every engine phase.
+point v35_point_18_scheduler_runtime_report|Runtime|Runtime report emits scheduler counters.
+point v35_point_19_scheduler_manifest|Runtime|Followup manifest includes scheduler coverage.
+point v35_point_20_scheduler_public_header|Runtime|Frame scheduler is exposed through the engine umbrella include.
+point v35_point_21_scene_query_module|Scene|Engine has an owned scene query world module.
+point v35_point_22_scene_query_stable_ids|Scene|Scene query entries keep stable object IDs and names.
+point v35_point_23_scene_query_sphere|Scene|Sphere overlap queries return hits.
+point v35_point_24_scene_query_aabb|Scene|AABB overlap queries return hits.
+point v35_point_25_scene_query_raycast|Scene|Raycasts return nearest scene query hits.
+point v35_point_26_scene_query_layers|Scene|Layer masks reject filtered scene query entries.
+point v35_point_27_scene_query_diagnostics|Scene|Scene query diagnostics count entries, queries, raycasts, and hits.
+point v35_point_28_scene_query_runtime_report|Scene|Runtime report emits scene query counters.
+point v35_point_29_scene_query_manifest|Scene|Followup manifest includes scene query coverage.
+point v35_point_30_scene_query_public_header|Scene|Scene query is exposed through the engine umbrella include.
+point v35_point_31_streaming_plan_module|Assets|Engine has an asset streaming plan module.
+point v35_point_32_streaming_priority_sort|Assets|Asset streaming requests are scheduled by priority.
+point v35_point_33_streaming_budget_defer|Assets|Streaming budgets can defer lower priority requests.
+point v35_point_34_streaming_pinned_cancel_guard|Assets|Pinned streaming requests resist cancellation.
+point v35_point_35_streaming_dependency_edges|Assets|Streaming diagnostics count dependency edges.
+point v35_point_36_streaming_scheduled_bytes|Assets|Streaming diagnostics count scheduled bytes.
+point v35_point_37_streaming_runtime_report|Assets|Runtime report emits streaming counters.
+point v35_point_38_streaming_public_header|Assets|Asset streaming plan is exposed through the engine umbrella include.
+point v35_point_39_render_graph_budget_module|Rendering|Engine has a render-graph budget analyzer module.
+point v35_point_40_render_graph_budget_passes|Rendering|Render-graph pass counts are budgeted.
+point v35_point_41_render_graph_budget_resources|Rendering|Render-graph resource counts are budgeted.
+point v35_point_42_render_graph_budget_barriers|Rendering|Render-graph barrier counts are budgeted.
+point v35_point_43_render_graph_budget_aliases|Rendering|Render-graph alias reuse can be required.
+point v35_point_44_render_graph_budget_warnings|Rendering|Budget analysis records warning strings.
+point v35_point_45_render_graph_budget_runtime_report|Rendering|Runtime report emits render-graph budget counters.
+point v35_point_46_engine_module_smoke_tests|Production|Runtime verifier smokes every v35 engine module.
+point v35_point_47_engine_baseline_gates|Production|Baseline assets require v35 engine counters.
+point v35_point_48_engine_schema_gates|Production|Runtime schema requires v35 engine metrics and point keys.
+point v35_point_49_engine_docs_roadmap|Production|Docs and roadmap describe the engine-first v35 batch.
+point v35_point_50_engine_version_agent_snapshot|Production|Versioning and AGENTS snapshot describe v35.

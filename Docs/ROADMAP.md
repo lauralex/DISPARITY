@@ -1,6 +1,14 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v34 versions of many requested followups, including a more game-like public vertical slice with collision traversal, enemy archetypes, controller-polish telemetry, blend-tree manifests, gamepad/menu flow, failure presentation, and content-backed cue/animation hooks. The next milestones should keep rotating through gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+The current engine now has functional v35 versions of many requested followups, including engine-owned event routing, frame-phase scheduling, scene queries, streaming-budget planning, render-graph budget analysis, and the existing public vertical slice with collision traversal, enemy archetypes, controller-polish telemetry, blend-tree manifests, gamepad/menu flow, failure presentation, and content-backed cue/animation hooks. The next milestones should keep rotating through core engine architecture, gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+
+## v35 Completed Engine Architecture Batch
+
+- Added `Assets/Verification/V35EngineArchitectureBatch.dfollowups`, a fifty-point engine-first batch with ten points each for Core/EventBus, Runtime/Scheduler, Scene/Queries, Assets/Streaming, and Rendering/Production.
+- Added engine-owned modules for typed event dispatch, frame-phase scheduling, stable-ID scene overlap/raycast queries, priority/pinned asset streaming plans, and render-graph budget analysis.
+- Runtime verification now smokes all five new engine modules deterministically and reports event delivery/drop/queue diagnostics, scheduler task/phase diagnostics, scene query hit/layer-reject diagnostics, streaming scheduled/deferred/dependency/byte diagnostics, and render-graph budget counters.
+- The Profiler includes an `Engine Architecture Readiness v35` table, while runtime reports, baselines, schema checks, release-readiness review, production-batch review, baseline review, and performance-history summaries all require the new v35 counters and point metrics.
+- The batch deliberately shifts the next work back toward reusable engine infrastructure after several visible gameplay/showcase batches.
 
 ## v34 Completed AAA Foundation Batch
 
@@ -201,6 +209,8 @@ The current engine now has functional v34 versions of many requested followups, 
 
 ## Editor
 
+- Add an engine-event inspector panel that records `EventBus` traffic, filters by channel/type/entity, can replay a captured event trace, and links events back to selected scene objects.
+- Add a scheduler graph panel that shows `FrameScheduler` phases, task order, skipped tasks, per-task budgets, and hot path warnings.
 - Promote v28 profile import/export/diff and workspace presets into a versioned per-project preference system with dock-layout files, conflict-safe migration, team defaults, and toolbar customization.
 - Upgrade the viewport toolbar from text buttons to an icon/hotkey-hint surface with command search, per-workspace layout presets, and reviewable toolbar customization.
 - Expand the current mesh/ring/plane gizmo handles with depth-aware hover occlusion, constraint previews, numerical transform entry, richer pivot/orientation editing, and richer object-ID handle metadata.
@@ -210,6 +220,8 @@ The current engine now has functional v34 versions of many requested followups, 
 
 ## Asset Pipeline
 
+- Replace the v35 `AssetStreamingPlan` smoke test with real async streaming requests backed by the job system, cancellation tokens, dependency-aware priority lanes, and GPU upload handoff.
+- Add streaming-budget overlays in the editor for pending bytes, deferred assets, pinned requests, and rollback state.
 - Replace the v28 package-promotion diagnostics with real optimized GPU mesh/material/animation resource uploads from structured `.dglbpack` packages.
 - Promote exported texture-slot counts into real normal, metallic-roughness, emissive, and occlusion texture binding in the renderer.
 - Expand the skinning/retargeting diagnostics into skeleton assets, animation clips, state machines, retargeting profiles, and GPU skinning constant/structured-buffer uploads.
@@ -217,6 +229,7 @@ The current engine now has functional v34 versions of many requested followups, 
 
 ## Rendering
 
+- Turn v35 render-graph budget analysis into enforceable budget classes for editor, runtime, trailer capture, and packaged builds, with per-pass memory estimates and trend gates.
 - Turn v28 render-graph advanced diagnostics into real DX11 bind/unbind barriers and resource alias lifetime validation around physical allocation slots.
 - Replace GPU culling and Forward+ diagnostic counters with actual compute/CPU fallback culling and clustered light-bin buffers.
 - Replace shadow coverage diagnostics with true cascaded shadow maps and per-cascade stabilization controls.
@@ -228,6 +241,8 @@ The current engine now has functional v34 versions of many requested followups, 
 
 ## Runtime
 
+- Replace the v35 `SceneQueryWorld` linear storage with a broad-phase acceleration structure and route editor picking, triggers, character collision, audio occlusion, and AI perception through it.
+- Move the main update loop onto the v35 `FrameScheduler` so gameplay, animation, audio, editor, and rendering phases have one inspectable task order.
 - Turn the v34 enemy archetype proof into data-driven AI with behavior trees/state machines, navigation volumes, perception memory, squad roles, difficulty budgets, and encounter prefab authoring.
 - Promote v34 controller telemetry into a swept capsule character controller with ledges, step-up/step-down, slope limits, material friction, moving-platform parenting, camera obstruction solving, and deterministic feel presets.
 - Replace the v34 blend-tree manifest with authored clips, animation event tracks, editor transition previews, root-motion extraction, additive poses, state-machine debugging, and GPU skinning playback.
@@ -244,6 +259,8 @@ The current engine now has functional v34 versions of many requested followups, 
 
 ## Production
 
+- Add unit-style command-line smoke executables for EventBus, FrameScheduler, SceneQueryWorld, AssetStreamingPlan, and RenderGraphBudget so these engine services can be verified without launching the full renderer.
+- Add CI trend gates for v35 engine counters, including event drops, scheduler skipped tasks, query hit counts, streaming deferrals, and render-graph budget drift.
 - Add more committed per-GPU/driver golden tolerance profiles from real verification machines and tighter local overrides.
 - Promote signed baseline update approvals and the v28 diff-package diagnostics into a review command that updates goldens/performance thresholds with explicit approver intent and stores an auditable diff package.
 - Promote the runtime report schema manifest into a versioned schema validation system with compatibility checks and explicit review diffs.

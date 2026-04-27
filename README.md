@@ -372,10 +372,22 @@ Editor UI:
 - Animation has a new `Assets/Animation/PublicDemoBlendTree.danimgraph` manifest with clips, transitions, animation events, and root-motion preview entries. Runtime verification exercises blend samples and event routing.
 - Runtime reports, schema checks, baselines, release readiness, performance history, and production manifest review now require v34 enemy/controller/animation/accessibility/rendering/production readiness plus all `v34_point_*` metrics.
 
+## Engine v35 Architecture Batch Implemented
+
+- `Assets/Verification/V35EngineArchitectureBatch.dfollowups` tracks fifty engine-first points across Core, Runtime, Scene, Assets, Rendering, and Production.
+- `DisparityEngine` now owns small production-facing service modules for typed event dispatch, frame-phase scheduling, scene overlap/raycast queries, asset streaming budgets, and render-graph budget analysis.
+- Runtime verification smokes every new module and reports `engine_event_bus_*`, `engine_scheduler_*`, `engine_scene_query_*`, `engine_streaming_*`, `engine_render_graph_budget_*`, `engine_module_smoke_tests`, and all `v35_point_*` metrics.
+- The Profiler now includes an `Engine Architecture Readiness v35` table, making engine service health inspectable separately from the public-demo gameplay layer.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
+- Promote the v35 event bus into a replayable engine event stream with scoped channels, payload schemas, editor event inspection, trace capture, and deterministic save/load playback.
+- Turn the v35 frame scheduler into the main engine tick orchestrator with dependency-aware jobs, phase budgets, task graph visualization, and per-system throttling.
+- Expand the v35 scene query world into a broad-phase acceleration structure used by picking, character collision, trigger volumes, audio occlusion, and AI perception.
+- Replace the v35 asset streaming plan with real async IO, priority lanes, cancellation tokens, dependency-aware GPU uploads, rollback journals, and editor-visible streaming pressure.
+- Enforce v35 render-graph budgets in the renderer with budget classes, per-pass memory estimates, alias lifetime validation, and CI trend gates.
 - Turn the v34 enemy archetype proof into a data-driven encounter system with behavior trees/state machines, navigation volumes, squad roles, perception memory, difficulty budgets, and designer-authored encounter prefabs.
 - Promote the controller telemetry into a real swept capsule character controller with ledge checks, step-up/step-down, slope limits, material friction, moving-platform parenting, camera obstruction solving, and replay-tested feel presets.
 - Replace the v34 blend-tree manifest with authored clip assets, editor transition previews, animation event tracks, root-motion extraction, additive poses, state-machine debugging, and GPU skinning playback.

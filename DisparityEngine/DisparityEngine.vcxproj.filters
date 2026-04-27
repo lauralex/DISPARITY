@@ -45,6 +45,7 @@
     <ClInclude Include="Source\Disparity\Animation\Animation.h"><Filter>Source\Animation</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Assets\AssetDatabase.h"><Filter>Source\Assets</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Assets\AssetHotReloader.h"><Filter>Source\Assets</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Assets\AssetStreamingPlan.h"><Filter>Source\Assets</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Assets\GltfLoader.h"><Filter>Source\Assets</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Assets\MaterialAsset.h"><Filter>Source\Assets</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Assets\Prefab.h"><Filter>Source\Assets</Filter></ClInclude>
@@ -53,6 +54,7 @@
     <ClInclude Include="Source\Disparity\Disparity.h"><Filter>Source</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Core\Application.h"><Filter>Source\Core</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Core\CrashHandler.h"><Filter>Source\Core</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Core\EventBus.h"><Filter>Source\Core</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Core\FileSystem.h"><Filter>Source\Core</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Core\Input.h"><Filter>Source\Core</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Core\Layer.h"><Filter>Source\Core</Filter></ClInclude>
@@ -65,7 +67,9 @@
     <ClInclude Include="Source\Disparity\Editor\EditorOverlay.h"><Filter>Source\Editor</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Math\Transform.h"><Filter>Source\Math</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Rendering\RenderGraph.h"><Filter>Source\Rendering</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Rendering\RenderGraphBudget.h"><Filter>Source\Rendering</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Rendering\Renderer.h"><Filter>Source\Rendering</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Runtime\FrameScheduler.h"><Filter>Source\Runtime</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Runtime\JobSystem.h"><Filter>Source\Runtime</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Scripting\ScriptRunner.h"><Filter>Source\Scripting</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Scene\Camera.h"><Filter>Source\Scene</Filter></ClInclude>
@@ -74,11 +78,13 @@
     <ClInclude Include="Source\Disparity\Scene\PrimitiveFactory.h"><Filter>Source\Scene</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Scene\Scene.h"><Filter>Source\Scene</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Scene\SceneObject.h"><Filter>Source\Scene</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Scene\SceneQuery.h"><Filter>Source\Scene</Filter></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Disparity\Animation\Animation.cpp"><Filter>Source\Animation</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Assets\AssetDatabase.cpp"><Filter>Source\Assets</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Assets\AssetHotReloader.cpp"><Filter>Source\Assets</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Assets\AssetStreamingPlan.cpp"><Filter>Source\Assets</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Assets\GltfLoader.cpp"><Filter>Source\Assets</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Assets\MaterialAsset.cpp"><Filter>Source\Assets</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Assets\Prefab.cpp"><Filter>Source\Assets</Filter></ClCompile>
@@ -86,6 +92,7 @@
     <ClCompile Include="Source\Disparity\Audio\AudioSystem.cpp"><Filter>Source\Audio</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Core\Application.cpp"><Filter>Source\Core</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Core\CrashHandler.cpp"><Filter>Source\Core</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Core\EventBus.cpp"><Filter>Source\Core</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Core\FileSystem.cpp"><Filter>Source\Core</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Core\Input.cpp"><Filter>Source\Core</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Core\Log.cpp"><Filter>Source\Core</Filter></ClCompile>
@@ -95,12 +102,15 @@
     <ClCompile Include="Source\Disparity\Editor\EditorGui.cpp"><Filter>Source\Editor</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Editor\EditorOverlay.cpp"><Filter>Source\Editor</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Rendering\RenderGraph.cpp"><Filter>Source\Rendering</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Rendering\RenderGraphBudget.cpp"><Filter>Source\Rendering</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Rendering\Renderer.cpp"><Filter>Source\Rendering</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Runtime\FrameScheduler.cpp"><Filter>Source\Runtime</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Runtime\JobSystem.cpp"><Filter>Source\Runtime</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Scripting\ScriptRunner.cpp"><Filter>Source\Scripting</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Scene\Camera.cpp"><Filter>Source\Scene</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Scene\PrimitiveFactory.cpp"><Filter>Source\Scene</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Scene\Scene.cpp"><Filter>Source\Scene</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Scene\SceneQuery.cpp"><Filter>Source\Scene</Filter></ClCompile>
     <ClCompile Include="..\ThirdParty\imgui\imgui.cpp"><Filter>Source\Editor</Filter></ClCompile>
     <ClCompile Include="..\ThirdParty\imgui\imgui_draw.cpp"><Filter>Source\Editor</Filter></ClCompile>
     <ClCompile Include="..\ThirdParty\imgui\imgui_tables.cpp"><Filter>Source\Editor</Filter></ClCompile>
