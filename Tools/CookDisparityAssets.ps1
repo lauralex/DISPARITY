@@ -64,6 +64,92 @@ function Get-AssetKind {
     }
 }
 
+function Add-Dependency {
+    param(
+        [string[]]$Dependencies,
+        [string]$Dependency
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Dependency)) {
+        return $Dependencies
+    }
+    if ($Dependency.StartsWith("data:", [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $Dependencies
+    }
+    if ($Dependencies -contains $Dependency) {
+        return $Dependencies
+    }
+    return @($Dependencies + $Dependency)
+}
+
+function Resolve-DeclaredDependency {
+    param(
+        [System.IO.FileInfo]$Owner,
+        [string]$Dependency
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Dependency) -or $Dependency.StartsWith("data:", [System.StringComparison]::OrdinalIgnoreCase)) {
+        return ""
+    }
+
+    $resolved = $Dependency
+    if (![System.IO.Path]::IsPathRooted($resolved)) {
+        $resolved = Join-Path $Owner.DirectoryName $resolved
+    }
+    if (!(Test-Path -LiteralPath $resolved)) {
+        return (Get-RelativePath -BasePath $root -Path $resolved).Replace("\", "/")
+    }
+    return (Get-RelativePath -BasePath $root -Path (Resolve-Path -LiteralPath $resolved).Path).Replace("\", "/")
+}
+
+function Get-DeclaredDependencies {
+    param(
+        [System.IO.FileInfo]$File,
+        [string]$Kind
+    )
+
+    $dependencies = @()
+    if ($Kind -eq "gltf_scene") {
+        try {
+            $json = Get-Content -LiteralPath $File.FullName -Raw | ConvertFrom-Json
+            foreach ($buffer in @($json.buffers)) {
+                if ($buffer.uri) {
+                    $dependencies = Add-Dependency -Dependencies $dependencies -Dependency (Resolve-DeclaredDependency -Owner $File -Dependency $buffer.uri)
+                }
+            }
+            foreach ($image in @($json.images)) {
+                if ($image.uri) {
+                    $dependencies = Add-Dependency -Dependencies $dependencies -Dependency (Resolve-DeclaredDependency -Owner $File -Dependency $image.uri)
+                }
+            }
+        }
+        catch {
+            Write-Warning "Failed to inspect glTF dependencies for $($File.FullName): $($_.Exception.Message)"
+        }
+    }
+    elseif ($Kind -eq "material") {
+        foreach ($line in Get-Content -LiteralPath $File.FullName) {
+            if ($line -match "^texture=(.+)$") {
+                $dependencies = Add-Dependency -Dependencies $dependencies -Dependency (Resolve-DeclaredDependency -Owner $File -Dependency $Matches[1].Trim())
+            }
+        }
+    }
+    elseif ($Kind -eq "script") {
+        foreach ($line in Get-Content -LiteralPath $File.FullName) {
+            $trimmed = $line.Trim()
+            if ($trimmed.StartsWith("#") -or $trimmed.Length -eq 0) {
+                continue
+            }
+            $parts = $trimmed -split "\s+"
+            if ($parts.Count -ge 2 -and $parts[0] -eq "prefab") {
+                $dependencies = Add-Dependency -Dependencies $dependencies -Dependency (Resolve-DeclaredDependency -Owner $File -Dependency $parts[1])
+            }
+        }
+    }
+
+    return $dependencies
+}
+
 $records = @()
 foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
     $relativePath = (Get-RelativePath -BasePath $root -Path $file.FullName).Replace("\", "/")
@@ -77,7 +163,18 @@ foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
     $importSettings = Join-Path $root ("Assets/ImportSettings/" + $relativePath + ".dimport")
     $dependencies = @()
     if (Test-Path -LiteralPath $importSettings) {
-        $dependencies += (Get-RelativePath -BasePath $root -Path $importSettings).Replace("\", "/")
+        $dependencies = Add-Dependency -Dependencies $dependencies -Dependency ((Get-RelativePath -BasePath $root -Path $importSettings).Replace("\", "/"))
+    }
+    foreach ($dependency in Get-DeclaredDependencies -File $file -Kind $kind) {
+        $dependencies = Add-Dependency -Dependencies $dependencies -Dependency $dependency
+    }
+
+    $cookPayload = "metadata_only"
+    if ($kind -eq "glb_scene") {
+        $cookPayload = "optimized_glb_package_placeholder"
+    }
+    elseif ($BinaryPackages) {
+        $cookPayload = "source_bundle"
     }
 
     $metadata = [pscustomobject]@{
@@ -88,6 +185,8 @@ foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
         source_bytes = $file.Length
         cooked_utc = (Get-Date).ToUniversalTime().ToString("o")
         dependencies = $dependencies
+        dependency_count = $dependencies.Count
+        cook_payload = $cookPayload
     }
     $metadata | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $metadataPath
 

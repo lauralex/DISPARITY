@@ -5,8 +5,10 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdio>
 #include <d3dcompiler.h>
+#include <deque>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -41,6 +43,7 @@ namespace Disparity
             DirectX::XMFLOAT4 AlbedoRoughness = {};
             DirectX::XMFLOAT4 Surface = {};
             DirectX::XMFLOAT4 Emissive = {};
+            DirectX::XMUINT4 ObjectInfo = {};
         };
 
         struct PostConstants
@@ -163,6 +166,119 @@ namespace Disparity
             }
 
             return true;
+        }
+
+        bool WritePngFromRgbaRows(
+            const std::filesystem::path& outputPath,
+            uint32_t width,
+            uint32_t height,
+            const unsigned char* pixels,
+            uint32_t rowPitch,
+            std::string& error)
+        {
+            Microsoft::WRL::ComPtr<IWICImagingFactory> factory;
+            HRESULT hr = CoCreateInstance(
+                CLSID_WICImagingFactory,
+                nullptr,
+                CLSCTX_INPROC_SERVER,
+                IID_PPV_ARGS(factory.GetAddressOf()));
+            if (FAILED(hr) || !factory)
+            {
+                error = "WIC factory creation failed with HRESULT " + HrToString(hr);
+                return false;
+            }
+
+            Microsoft::WRL::ComPtr<IWICStream> stream;
+            hr = factory->CreateStream(stream.GetAddressOf());
+            if (FAILED(hr) || !stream)
+            {
+                error = "WIC stream creation failed with HRESULT " + HrToString(hr);
+                return false;
+            }
+
+            hr = stream->InitializeFromFilename(outputPath.c_str(), GENERIC_WRITE);
+            if (FAILED(hr))
+            {
+                error = "WIC stream file open failed with HRESULT " + HrToString(hr);
+                return false;
+            }
+
+            Microsoft::WRL::ComPtr<IWICBitmapEncoder> encoder;
+            hr = factory->CreateEncoder(GUID_ContainerFormatPng, nullptr, encoder.GetAddressOf());
+            if (FAILED(hr) || !encoder)
+            {
+                error = "WIC PNG encoder creation failed with HRESULT " + HrToString(hr);
+                return false;
+            }
+
+            hr = encoder->Initialize(stream.Get(), WICBitmapEncoderNoCache);
+            if (FAILED(hr))
+            {
+                error = "WIC PNG encoder initialization failed with HRESULT " + HrToString(hr);
+                return false;
+            }
+
+            Microsoft::WRL::ComPtr<IWICBitmapFrameEncode> frame;
+            hr = encoder->CreateNewFrame(frame.GetAddressOf(), nullptr);
+            if (FAILED(hr) || !frame)
+            {
+                error = "WIC PNG frame creation failed with HRESULT " + HrToString(hr);
+                return false;
+            }
+
+            hr = frame->Initialize(nullptr);
+            if (FAILED(hr))
+            {
+                error = "WIC PNG frame initialization failed with HRESULT " + HrToString(hr);
+                return false;
+            }
+
+            hr = frame->SetSize(width, height);
+            if (FAILED(hr))
+            {
+                error = "WIC PNG size setup failed with HRESULT " + HrToString(hr);
+                return false;
+            }
+
+            WICPixelFormatGUID pixelFormat = GUID_WICPixelFormat32bppRGBA;
+            hr = frame->SetPixelFormat(&pixelFormat);
+            if (FAILED(hr) || !IsEqualGUID(pixelFormat, GUID_WICPixelFormat32bppRGBA))
+            {
+                error = "WIC PNG pixel format setup failed with HRESULT " + HrToString(hr);
+                return false;
+            }
+
+            hr = frame->WritePixels(height, rowPitch, rowPitch * height, const_cast<unsigned char*>(pixels));
+            if (FAILED(hr))
+            {
+                error = "WIC PNG pixel write failed with HRESULT " + HrToString(hr);
+                return false;
+            }
+
+            hr = frame->Commit();
+            if (FAILED(hr))
+            {
+                error = "WIC PNG frame commit failed with HRESULT " + HrToString(hr);
+                return false;
+            }
+
+            hr = encoder->Commit();
+            if (FAILED(hr))
+            {
+                error = "WIC PNG encoder commit failed with HRESULT " + HrToString(hr);
+                return false;
+            }
+
+            return true;
+        }
+
+        std::string LowerExtension(const std::filesystem::path& path)
+        {
+            std::string extension = path.extension().string();
+            std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char value) {
+                return static_cast<char>(std::tolower(value));
+            });
+            return extension;
         }
     }
 
@@ -509,6 +625,13 @@ namespace Disparity
         m_context->OMSetRenderTargets(1, m_hdrSceneRenderTargetView.GetAddressOf(), m_depthStencilView.Get());
         m_context->ClearRenderTargetView(m_hdrSceneRenderTargetView.Get(), clearColor);
         m_context->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+        if (m_editorObjectIdRenderTargetView && m_editorObjectDepthRenderTargetView)
+        {
+            const float noObjectId[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            const float farDepth[4] = { 1.0f, 0.0f, 0.0f, 0.0f };
+            m_context->ClearRenderTargetView(m_editorObjectIdRenderTargetView.Get(), noObjectId);
+            m_context->ClearRenderTargetView(m_editorObjectDepthRenderTargetView.Get(), farDepth);
+        }
         EndGraphPass();
 
         ApplyScenePipeline();
@@ -579,6 +702,11 @@ namespace Disparity
 
     void Renderer::DrawMesh(MeshHandle mesh, const Transform& transform, const Material& material)
     {
+        DrawMeshWithId(mesh, transform, material, 0);
+    }
+
+    void Renderer::DrawMeshWithId(MeshHandle mesh, const Transform& transform, const Material& material, uint32_t editorObjectId)
+    {
         if (!m_frameBegun)
         {
             return;
@@ -610,6 +738,7 @@ namespace Disparity
             std::max(0.0f, material.Emissive.z),
             0.0f
         };
+        objectConstants.ObjectInfo = { editorObjectId, 0u, 0u, 0u };
 
         ID3D11ShaderResourceView* textureView = nullptr;
         if (material.BaseColorTexture != 0)
@@ -647,6 +776,19 @@ namespace Disparity
         }
 
         m_context->PSSetShaderResources(0, 1, &textureView);
+        if (editorObjectId != 0 && m_editorObjectIdRenderTargetView && m_editorObjectDepthRenderTargetView)
+        {
+            ID3D11RenderTargetView* targets[3] = {
+                m_hdrSceneRenderTargetView.Get(),
+                m_editorObjectIdRenderTargetView.Get(),
+                m_editorObjectDepthRenderTargetView.Get()
+            };
+            m_context->OMSetRenderTargets(3, targets, m_depthStencilView.Get());
+        }
+        else
+        {
+            m_context->OMSetRenderTargets(1, m_hdrSceneRenderTargetView.GetAddressOf(), m_depthStencilView.Get());
+        }
 
         if (objectConstants.Surface.y < 0.999f)
         {
@@ -680,14 +822,10 @@ namespace Disparity
 
         EndGraphPass();
         BeginGraphPass(m_graphEditorViewportPass);
-        if (m_editorViewportRenderTargetView && m_editorObjectIdRenderTargetView && m_editorObjectDepthRenderTargetView)
+        if (m_editorViewportRenderTargetView)
         {
             const float transparentBlack[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-            const float noObjectId[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-            const float farDepth[4] = { 1.0f, 0.0f, 0.0f, 0.0f };
             m_context->ClearRenderTargetView(m_editorViewportRenderTargetView.Get(), transparentBlack);
-            m_context->ClearRenderTargetView(m_editorObjectIdRenderTargetView.Get(), noObjectId);
-            m_context->ClearRenderTargetView(m_editorObjectDepthRenderTargetView.Get(), farDepth);
         }
         EndGraphPass();
         BeginGraphPass(m_graphPostPass);
@@ -696,11 +834,12 @@ namespace Disparity
         BeginGraphPass(m_graphEditorPass);
         EditorGui::Render();
         EndGraphPass();
-        if (!m_pendingFrameCapturePath.empty())
+        if (!m_pendingFrameCapturePaths.empty())
         {
-            m_lastFrameCapture = CaptureBackBuffer(m_pendingFrameCapturePath);
+            const std::filesystem::path capturePath = std::move(m_pendingFrameCapturePaths.front());
+            m_pendingFrameCapturePaths.pop_front();
+            m_lastFrameCapture = CaptureBackBuffer(capturePath);
             m_hasLastFrameCapture = true;
-            m_pendingFrameCapturePath.clear();
         }
         EndGpuFrameProfile();
         m_swapChain->Present(m_settings.VSync ? 1u : 0u, 0);
@@ -709,7 +848,7 @@ namespace Disparity
 
     void Renderer::RequestFrameCapture(std::filesystem::path outputPath)
     {
-        m_pendingFrameCapturePath = std::move(outputPath);
+        m_pendingFrameCapturePaths.push_back(std::move(outputPath));
     }
 
     uint32_t Renderer::GetWidth() const
@@ -776,6 +915,91 @@ namespace Disparity
             m_width,
             m_height
         };
+    }
+
+    EditorObjectIdReadback Renderer::ReadEditorObjectId(uint32_t x, uint32_t y) const
+    {
+        EditorObjectIdReadback result;
+        result.X = x;
+        result.Y = y;
+
+        if (!m_device || !m_context || !m_editorObjectIdTexture || !m_editorObjectDepthTexture)
+        {
+            result.Error = "Editor pick targets are not ready.";
+            return result;
+        }
+        if (x >= m_width || y >= m_height)
+        {
+            result.Error = "Editor pick readback is outside the viewport.";
+            return result;
+        }
+
+        D3D11_TEXTURE2D_DESC idDesc = {};
+        m_editorObjectIdTexture->GetDesc(&idDesc);
+        idDesc.Width = 1;
+        idDesc.Height = 1;
+        idDesc.BindFlags = 0;
+        idDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        idDesc.MiscFlags = 0;
+        idDesc.Usage = D3D11_USAGE_STAGING;
+
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> idStaging;
+        HRESULT hr = m_device->CreateTexture2D(&idDesc, nullptr, idStaging.GetAddressOf());
+        if (FAILED(hr) || !idStaging)
+        {
+            result.Error = "Object-ID staging texture creation failed with HRESULT " + HrToString(hr);
+            return result;
+        }
+
+        D3D11_TEXTURE2D_DESC depthDesc = {};
+        m_editorObjectDepthTexture->GetDesc(&depthDesc);
+        depthDesc.Width = 1;
+        depthDesc.Height = 1;
+        depthDesc.BindFlags = 0;
+        depthDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        depthDesc.MiscFlags = 0;
+        depthDesc.Usage = D3D11_USAGE_STAGING;
+
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> depthStaging;
+        hr = m_device->CreateTexture2D(&depthDesc, nullptr, depthStaging.GetAddressOf());
+        if (FAILED(hr) || !depthStaging)
+        {
+            result.Error = "Object-depth staging texture creation failed with HRESULT " + HrToString(hr);
+            return result;
+        }
+
+        D3D11_BOX sourceBox = {};
+        sourceBox.left = x;
+        sourceBox.right = x + 1u;
+        sourceBox.top = y;
+        sourceBox.bottom = y + 1u;
+        sourceBox.front = 0;
+        sourceBox.back = 1;
+        m_context->CopySubresourceRegion(idStaging.Get(), 0, 0, 0, 0, m_editorObjectIdTexture.Get(), 0, &sourceBox);
+        m_context->CopySubresourceRegion(depthStaging.Get(), 0, 0, 0, 0, m_editorObjectDepthTexture.Get(), 0, &sourceBox);
+
+        D3D11_MAPPED_SUBRESOURCE idMapped = {};
+        hr = m_context->Map(idStaging.Get(), 0, D3D11_MAP_READ, 0, &idMapped);
+        if (FAILED(hr))
+        {
+            result.Error = "Object-ID staging map failed with HRESULT " + HrToString(hr);
+            return result;
+        }
+        result.ObjectId = *static_cast<const uint32_t*>(idMapped.pData);
+        m_context->Unmap(idStaging.Get(), 0);
+
+        D3D11_MAPPED_SUBRESOURCE depthMapped = {};
+        hr = m_context->Map(depthStaging.Get(), 0, D3D11_MAP_READ, 0, &depthMapped);
+        if (FAILED(hr))
+        {
+            result.Error = "Object-depth staging map failed with HRESULT " + HrToString(hr);
+            return result;
+        }
+        result.Depth = *static_cast<const float*>(depthMapped.pData);
+        m_context->Unmap(depthStaging.Get(), 0);
+
+        result.Valid = result.ObjectId != 0;
+        return result;
     }
 
     double Renderer::GetGpuFrameMilliseconds() const
@@ -854,19 +1078,29 @@ namespace Disparity
             std::filesystem::create_directories(outputPath.parent_path());
         }
 
-        std::ofstream image(outputPath, std::ios::binary | std::ios::trunc);
-        if (!image)
-        {
-            m_context->Unmap(stagingTexture.Get(), 0);
-            result.Error = "Capture image file could not be opened.";
-            return result;
-        }
-
         result.Width = desc.Width;
         result.Height = desc.Height;
         result.RgbChecksum = 1469598103934665603ull;
 
-        image << "P6\n" << result.Width << " " << result.Height << "\n255\n";
+        std::vector<unsigned char> rgbaPixels;
+        const bool writePng = LowerExtension(outputPath) == ".png";
+        if (writePng)
+        {
+            rgbaPixels.resize(static_cast<size_t>(result.Width) * static_cast<size_t>(result.Height) * 4u);
+        }
+        std::ofstream image;
+        if (!writePng)
+        {
+            image.open(outputPath, std::ios::binary | std::ios::trunc);
+            if (!image)
+            {
+                m_context->Unmap(stagingTexture.Get(), 0);
+                result.Error = "Capture image file could not be opened.";
+                return result;
+            }
+            image << "P6\n" << result.Width << " " << result.Height << "\n255\n";
+        }
+
         for (uint32_t y = 0; y < desc.Height; ++y)
         {
             const auto* row = static_cast<const unsigned char*>(mapped.pData) + static_cast<size_t>(mapped.RowPitch) * y;
@@ -874,7 +1108,18 @@ namespace Disparity
             {
                 const unsigned char* pixel = row + static_cast<size_t>(x) * 4u;
                 const unsigned char rgb[3] = { pixel[0], pixel[1], pixel[2] };
-                image.write(reinterpret_cast<const char*>(rgb), sizeof(rgb));
+                if (writePng)
+                {
+                    const size_t outputIndex = (static_cast<size_t>(y) * result.Width + x) * 4u;
+                    rgbaPixels[outputIndex + 0u] = pixel[0];
+                    rgbaPixels[outputIndex + 1u] = pixel[1];
+                    rgbaPixels[outputIndex + 2u] = pixel[2];
+                    rgbaPixels[outputIndex + 3u] = pixel[3];
+                }
+                else
+                {
+                    image.write(reinterpret_cast<const char*>(rgb), sizeof(rgb));
+                }
 
                 const uint32_t brightness = static_cast<uint32_t>(rgb[0]) + static_cast<uint32_t>(rgb[1]) + static_cast<uint32_t>(rgb[2]);
                 result.NonBlackPixels += brightness > 8u ? 1u : 0u;
@@ -898,10 +1143,26 @@ namespace Disparity
         {
             result.AverageLuma /= static_cast<double>(pixelCount);
         }
-        result.Success = image.good();
+        if (writePng)
+        {
+            result.Success = WritePngFromRgbaRows(
+                outputPath,
+                result.Width,
+                result.Height,
+                rgbaPixels.data(),
+                result.Width * 4u,
+                result.Error);
+        }
+        else
+        {
+            result.Success = image.good();
+        }
         if (!result.Success)
         {
-            result.Error = "Capture image write failed.";
+            if (result.Error.empty())
+            {
+                result.Error = "Capture image write failed.";
+            }
         }
         return result;
     }
@@ -917,15 +1178,15 @@ namespace Disparity
         m_graphEditorViewport = m_renderGraph.AddResource("Editor Viewport Color", RenderGraphResourceKind::Texture);
         m_graphEditorObjectIds = m_renderGraph.AddResource("Editor Object IDs", RenderGraphResourceKind::Texture);
         m_graphEditorObjectDepth = m_renderGraph.AddResource("Editor Object Depth", RenderGraphResourceKind::Texture);
-        m_graphClearPass = m_renderGraph.AddPass("Clear HDR+Depth", {}, { m_graphHdrScene, m_graphDepth });
+        m_graphClearPass = m_renderGraph.AddPass("Clear HDR+Depth+Pick Targets", {}, { m_graphHdrScene, m_graphDepth, m_graphEditorObjectIds, m_graphEditorObjectDepth });
         m_graphShadowPass = m_renderGraph.AddPass("Shadow Map", {}, { m_graphShadowMap });
         m_renderGraph.SetPassEnabled(m_graphShadowPass, m_settings.Shadows, "Shadows disabled");
         std::vector<uint32_t> sceneReads = m_settings.Shadows ? std::vector<uint32_t>{ m_graphShadowMap } : std::vector<uint32_t>{};
-        m_graphScenePass = m_renderGraph.AddPass("Scene Color", std::move(sceneReads), { m_graphHdrScene, m_graphDepth });
+        m_graphScenePass = m_renderGraph.AddPass("Scene Color + Object IDs", std::move(sceneReads), { m_graphHdrScene, m_graphDepth, m_graphEditorObjectIds, m_graphEditorObjectDepth });
         m_graphEditorViewportPass = m_renderGraph.AddPass(
             "Editor Viewport Targets",
             { m_graphHdrScene, m_graphDepth },
-            { m_graphEditorViewport, m_graphEditorObjectIds, m_graphEditorObjectDepth });
+            { m_graphEditorViewport });
         m_graphPostPass = m_renderGraph.AddPass("Post Process", { m_graphHdrScene, m_graphDepth, m_graphHistory }, { m_graphBackBuffer, m_graphHistory });
         m_graphEditorPass = m_renderGraph.AddPass("Editor UI", { m_graphBackBuffer }, { m_graphBackBuffer });
         m_activeGraphPass = std::numeric_limits<uint32_t>::max();
@@ -1593,7 +1854,10 @@ namespace Disparity
         }
 
         D3D11_BLEND_DESC opaqueBlendDesc = {};
+        opaqueBlendDesc.IndependentBlendEnable = TRUE;
         opaqueBlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+        opaqueBlendDesc.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+        opaqueBlendDesc.RenderTarget[2].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
         hr = m_device->CreateBlendState(&opaqueBlendDesc, m_opaqueBlendState.GetAddressOf());
         if (FAILED(hr))
@@ -1603,6 +1867,7 @@ namespace Disparity
         }
 
         D3D11_BLEND_DESC alphaBlendDesc = {};
+        alphaBlendDesc.IndependentBlendEnable = TRUE;
         alphaBlendDesc.RenderTarget[0].BlendEnable = TRUE;
         alphaBlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
         alphaBlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
@@ -1611,6 +1876,8 @@ namespace Disparity
         alphaBlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
         alphaBlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
         alphaBlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+        alphaBlendDesc.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+        alphaBlendDesc.RenderTarget[2].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
         hr = m_device->CreateBlendState(&alphaBlendDesc, m_alphaBlendState.GetAddressOf());
         if (FAILED(hr))

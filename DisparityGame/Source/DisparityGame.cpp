@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <iomanip>
 #include <limits>
 #include <map>
 #include <memory>
@@ -28,6 +29,10 @@ namespace
 {
     constexpr float Pi = 3.1415926535f;
     constexpr size_t InvalidIndex = std::numeric_limits<size_t>::max();
+    constexpr uint32_t EditorPickPlayerId = 1u;
+    constexpr uint32_t EditorPickSceneObjectBase = 1000u;
+    constexpr uint32_t EditorPickGizmoAxisBase = 0x10000000u;
+    constexpr uint32_t EditorPickGizmoPlaneBase = 0x20000000u;
 
     DirectX::XMFLOAT3 Add(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b)
     {
@@ -502,20 +507,22 @@ namespace
             DrawInspectorPanel();
             DrawAssetsPanel();
             DrawRendererPanel();
+            DrawShotDirectorPanel();
             DrawAudioPanel();
             DrawProfilerPanel();
         }
 
         void DrawWorld(Disparity::Renderer& renderer, bool includePresentationVfx)
         {
-            for (const Disparity::RenderableEntity& renderable : m_registry.ViewRenderables())
+            const auto& objects = m_scene.GetObjects();
+            for (size_t index = 0; index < objects.size(); ++index)
             {
-                if (renderable.Id == m_playerEntity || !renderable.TransformData || !renderable.MeshRenderer)
-                {
-                    continue;
-                }
-
-                renderer.DrawMesh(renderable.MeshRenderer->Mesh, *renderable.TransformData, renderable.MeshRenderer->MaterialData);
+                const Disparity::NamedSceneObject& object = objects[index];
+                renderer.DrawMeshWithId(
+                    object.Object.Mesh,
+                    object.Object.TransformData,
+                    object.Object.MaterialData,
+                    SceneObjectPickId(index));
             }
 
             DrawShowcaseRift(renderer);
@@ -715,6 +722,8 @@ namespace
             uint32_t ObjectPickFailures = 0;
             uint32_t GizmoPickTests = 0;
             uint32_t GizmoPickFailures = 0;
+            uint32_t GpuPickReadbacks = 0;
+            uint32_t GpuPickFallbacks = 0;
             uint32_t GizmoDragTests = 0;
             uint32_t GizmoDragFailures = 0;
             uint32_t SceneReloads = 0;
@@ -1556,6 +1565,13 @@ namespace
             return true;
         }
 
+        std::string FormatShotFloat3(const DirectX::XMFLOAT3& value) const
+        {
+            std::ostringstream stream;
+            stream << std::fixed << std::setprecision(3) << value.x << ',' << value.y << ',' << value.z;
+            return stream.str();
+        }
+
         void AddDefaultTrailerShots()
         {
             m_trailerKeys = {
@@ -1641,6 +1657,40 @@ namespace
             {
                 AddDefaultTrailerShots();
             }
+        }
+
+        bool SaveTrailerShotAsset(const std::filesystem::path& path)
+        {
+            if (path.has_parent_path())
+            {
+                std::filesystem::create_directories(path.parent_path());
+            }
+
+            std::sort(m_trailerKeys.begin(), m_trailerKeys.end(), [](const TrailerShotKey& a, const TrailerShotKey& b) {
+                return a.Time < b.Time;
+            });
+
+            std::ofstream file(path, std::ios::trunc);
+            if (!file)
+            {
+                return false;
+            }
+
+            file << "# DISPARITY cinematic shot track v2\n";
+            file << "# key time|position(x,y,z)|target(x,y,z)|focus|dof_strength|lens_dirt|letterbox\n";
+            for (const TrailerShotKey& key : m_trailerKeys)
+            {
+                file << "key "
+                    << std::fixed << std::setprecision(3) << key.Time << '|'
+                    << FormatShotFloat3(key.Position) << '|'
+                    << FormatShotFloat3(key.Target) << '|'
+                    << std::setprecision(4) << key.Focus << '|'
+                    << key.DofStrength << '|'
+                    << key.LensDirt << '|'
+                    << key.Letterbox << '\n';
+            }
+
+            return file.good();
         }
 
         Disparity::Transform BeamTransform(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end, float thickness) const
@@ -1761,13 +1811,15 @@ namespace
             std::filesystem::create_directories("Saved/Captures");
             m_highResCaptureSourcePath = "Saved/Captures/DISPARITY_photo_source.ppm";
             m_highResCaptureOutputPath = "Saved/Captures/DISPARITY_photo_2x.ppm";
+            m_highResCaptureNativePngPath = "Saved/Captures/DISPARITY_photo_source.png";
             m_highResCapturePending = true;
             if (m_runtimeVerification.Enabled)
             {
                 m_runtimeBudgetSkipFrames = std::max(m_runtimeBudgetSkipFrames, 4u);
             }
             m_renderer->RequestFrameCapture(m_highResCaptureSourcePath);
-            SetStatus("Queued 2x trailer/photo capture");
+            m_renderer->RequestFrameCapture(m_highResCaptureNativePngPath);
+            SetStatus("Queued 2x trailer/photo capture plus PNG export");
         }
 
         bool ReadPpmImage(const std::filesystem::path& path, PpmImage& image) const
@@ -1959,13 +2011,13 @@ namespace
 
         void DrawPlayer(Disparity::Renderer& renderer)
         {
-            renderer.DrawMesh(m_cubeMesh, PlayerBodyTransform(), m_playerBodyMaterial);
+            renderer.DrawMeshWithId(m_cubeMesh, PlayerBodyTransform(), m_playerBodyMaterial, EditorPickPlayerId);
 
             Disparity::Transform head;
             head.Position = Add(m_playerPosition, { 0.0f, 1.85f + m_playerBobOffset, 0.0f });
             head.Rotation = { 0.0f, m_playerYaw, 0.0f };
             head.Scale = { 0.55f, 0.45f, 0.55f };
-            renderer.DrawMesh(m_cubeMesh, head, m_playerHeadMaterial);
+            renderer.DrawMeshWithId(m_cubeMesh, head, m_playerHeadMaterial, EditorPickPlayerId);
         }
 
         void DrawSelectionOutline(Disparity::Renderer& renderer)
@@ -1980,13 +2032,13 @@ namespace
             {
                 Disparity::Transform body = PlayerBodyTransform();
                 body.Scale = Scale(body.Scale, 1.08f);
-                renderer.DrawMesh(m_cubeMesh, body, outlineMaterial);
+                renderer.DrawMeshWithId(m_cubeMesh, body, outlineMaterial, EditorPickPlayerId);
 
                 Disparity::Transform head;
                 head.Position = Add(m_playerPosition, { 0.0f, 1.85f + m_playerBobOffset, 0.0f });
                 head.Rotation = { 0.0f, m_playerYaw, 0.0f };
                 head.Scale = { 0.62f, 0.52f, 0.62f };
-                renderer.DrawMesh(m_cubeMesh, head, outlineMaterial);
+                renderer.DrawMeshWithId(m_cubeMesh, head, outlineMaterial, EditorPickPlayerId);
                 return;
             }
 
@@ -2001,7 +2053,7 @@ namespace
                 const Disparity::NamedSceneObject& selected = m_scene.GetObjects()[selectedIndex];
                 Disparity::Transform outlineTransform = selected.Object.TransformData;
                 outlineTransform.Scale = Scale(outlineTransform.Scale, 1.06f);
-                renderer.DrawMesh(selected.Object.Mesh, outlineTransform, outlineMaterial);
+                renderer.DrawMeshWithId(selected.Object.Mesh, outlineTransform, outlineMaterial, SceneObjectPickId(selectedIndex));
             }
         }
 
@@ -2060,13 +2112,13 @@ namespace
                     ring.Position = pivot;
                     ring.Rotation = GizmoRingRotation(axis);
                     ring.Scale = { handleDistance, handleDistance, handleDistance };
-                    renderer.DrawMesh(m_gizmoRingMesh, ring, drawMaterial);
+                    renderer.DrawMeshWithId(m_gizmoRingMesh, ring, drawMaterial, GizmoAxisPickId(axis));
 
                     const DirectX::XMFLOAT3 axisVector = AxisVector(axis);
                     Disparity::Transform marker;
                     marker.Position = Add(pivot, Scale(axisVector, handleDistance));
                     marker.Scale = { handleSize * 0.8f, handleSize * 0.8f, handleSize * 0.8f };
-                    renderer.DrawMesh(m_cubeMesh, marker, drawMaterial);
+                    renderer.DrawMeshWithId(m_cubeMesh, marker, drawMaterial, GizmoAxisPickId(axis));
                 }
                 return;
             }
@@ -2087,7 +2139,7 @@ namespace
                     planeHandle.Rotation = GizmoPlaneRotation(plane);
                     const float planeSize = screenScale * 0.34f;
                     planeHandle.Scale = { planeSize, planeSize, planeSize };
-                    renderer.DrawMesh(m_gizmoPlaneHandleMesh, planeHandle, drawMaterial);
+                    renderer.DrawMeshWithId(m_gizmoPlaneHandleMesh, planeHandle, drawMaterial, GizmoPlanePickId(plane));
                 }
             }
 
@@ -2099,12 +2151,12 @@ namespace
                 Disparity::Transform marker;
                 marker.Position = Add(pivot, Scale(axisVector, handleDistance));
                 marker.Scale = { handleSize, handleSize, handleSize };
-                renderer.DrawMesh(m_cubeMesh, marker, drawMaterial);
+                renderer.DrawMeshWithId(m_cubeMesh, marker, drawMaterial, GizmoAxisPickId(axis));
 
                 Disparity::Transform tick;
                 tick.Position = Add(pivot, Scale(axisVector, handleDistance * 0.55f));
                 tick.Scale = { handleSize * 0.62f, handleSize * 0.62f, handleSize * 0.62f };
-                renderer.DrawMesh(m_cubeMesh, tick, drawMaterial);
+                renderer.DrawMeshWithId(m_cubeMesh, tick, drawMaterial, GizmoAxisPickId(axis));
             }
         }
 
@@ -2205,7 +2257,7 @@ namespace
             {
                 SetTrailerMode(trailerMode);
             }
-            if (ImGui::Button("Capture 2x PPM"))
+            if (ImGui::Button("Capture PPM+PNG"))
             {
                 RequestHighResolutionCapture();
             }
@@ -2241,6 +2293,7 @@ namespace
             }
             ImGui::Text("Pick: %s", m_lastPickStatus.c_str());
             ImGui::Text("Hover: %s", DescribeEditorPick(m_hoverPick).c_str());
+            ImGui::Text("GPU pick: %s", m_lastGpuPickStatus.c_str());
             ImGui::Text("Viewport: %.0fx%.0f", m_editorViewport.Width, m_editorViewport.Height);
             ImGui::Text("Gizmo: %s", m_gizmoStatus.c_str());
             ImGui::TextDisabled("F7 showcase, F8 trailer/photo, F9 2x capture. Tab releases mouse; right-drag plus WASD/QE flies.");
@@ -2337,6 +2390,7 @@ namespace
                 changed |= ImGui::DragFloat3("Scale", &selected.Object.TransformData.Scale.x, 0.05f, 0.05f, 50.0f);
                 changed |= DrawTransformGizmo(selected.Object.TransformData);
                 changed |= DrawMaterialEditor("Material", selected.Object.MaterialData);
+                DrawPrefabOverridesPanel(selected);
                 if (changed)
                 {
                     PushUndoState(before, "Edit " + selected.Name);
@@ -2421,6 +2475,52 @@ namespace
             return true;
         }
 
+        void DrawPrefabOverridesPanel(const Disparity::NamedSceneObject& selected)
+        {
+            if (!ImGui::TreeNode("Prefab Overrides"))
+            {
+                return;
+            }
+
+            Disparity::Prefab prefab;
+            const bool loaded = Disparity::PrefabIO::Load("Assets/Prefabs/Beacon.dprefab", prefab);
+            if (!loaded)
+            {
+                ImGui::TextUnformatted("Beacon prefab not loaded");
+                ImGui::TreePop();
+                return;
+            }
+
+            const auto differs = [](float a, float b) {
+                return std::abs(a - b) > 0.001f;
+            };
+            uint32_t overrides = 0;
+            overrides += selected.MeshName != prefab.MeshName ? 1u : 0u;
+            overrides += differs(selected.Object.TransformData.Scale.x, prefab.TransformData.Scale.x) ? 1u : 0u;
+            overrides += differs(selected.Object.TransformData.Scale.y, prefab.TransformData.Scale.y) ? 1u : 0u;
+            overrides += differs(selected.Object.TransformData.Scale.z, prefab.TransformData.Scale.z) ? 1u : 0u;
+            overrides += differs(selected.Object.MaterialData.Albedo.x, prefab.MaterialData.Albedo.x) ? 1u : 0u;
+            overrides += differs(selected.Object.MaterialData.Albedo.y, prefab.MaterialData.Albedo.y) ? 1u : 0u;
+            overrides += differs(selected.Object.MaterialData.Albedo.z, prefab.MaterialData.Albedo.z) ? 1u : 0u;
+            overrides += differs(selected.Object.MaterialData.Roughness, prefab.MaterialData.Roughness) ? 1u : 0u;
+            overrides += differs(selected.Object.MaterialData.Metallic, prefab.MaterialData.Metallic) ? 1u : 0u;
+            overrides += differs(selected.Object.MaterialData.Alpha, prefab.MaterialData.Alpha) ? 1u : 0u;
+
+            ImGui::Text("Beacon overrides: %u", overrides);
+            ImGui::Text("Dependency: Assets/Prefabs/Beacon.dprefab");
+            if (ImGui::Button("Apply To Beacon Prefab##InspectorPrefab"))
+            {
+                SaveSelectedPrefab("Assets/Prefabs/Beacon.dprefab");
+                WatchAssets();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Revert From Beacon##InspectorPrefab"))
+            {
+                RevertSelectedFromPrefab("Assets/Prefabs/Beacon.dprefab");
+            }
+            ImGui::TreePop();
+        }
+
         void DrawAssetsPanel()
         {
             ImGui::SetNextWindowPos(ImVec2(656.0f, 32.0f), ImGuiCond_FirstUseEver);
@@ -2461,9 +2561,17 @@ namespace
             }
 
             ImGui::SeparatorText("Asset Database");
+            const auto dependencyGraph = m_assetDatabase.BuildDependencyGraph();
+            size_t dependencyEdges = 0;
+            for (const auto& [path, dependencies] : dependencyGraph)
+            {
+                (void)path;
+                dependencyEdges += dependencies.size();
+            }
             ImGui::Text("Assets: %zu", m_assetDatabase.GetRecords().size());
             ImGui::SameLine();
             ImGui::Text("Dirty: %zu", m_assetDatabase.DirtyCount());
+            ImGui::Text("Dependency nodes: %zu edges: %zu", dependencyGraph.size(), dependencyEdges);
             if (ImGui::Button("Cook Dirty Assets"))
             {
                 const size_t cooked = m_assetDatabase.CookDirtyAssets();
@@ -2594,6 +2702,118 @@ namespace
 
             ImGui::Text("Shadow map: %u", settings.ShadowMapSize);
             ImGui::Text("Point lights: 8");
+            ImGui::End();
+        }
+
+        void DrawShotDirectorPanel()
+        {
+            ImGui::SetNextWindowPos(ImVec2(1008.0f, 32.0f), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(380.0f, 360.0f), ImGuiCond_FirstUseEver);
+            if (!ImGui::Begin("Shot Director"))
+            {
+                ImGui::End();
+                return;
+            }
+
+            const float duration = m_trailerKeys.empty() ? 0.0f : std::max(0.1f, m_trailerKeys.back().Time);
+            float scrubTime = std::clamp(m_trailerTime, 0.0f, duration);
+            if (ImGui::SliderFloat("Scrub", &scrubTime, 0.0f, duration))
+            {
+                m_trailerTime = scrubTime;
+                UpdateTrailerCamera(0.0f);
+            }
+            ImGui::Text("Keys: %zu", m_trailerKeys.size());
+            ImGui::SameLine();
+            if (ImGui::Button("Reload##ShotDirector"))
+            {
+                LoadTrailerShotAsset();
+                SetStatus("Reloaded shot track");
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Save##ShotDirector"))
+            {
+                const bool saved = SaveTrailerShotAsset("Assets/Cinematics/Showcase.dshot");
+                WatchAssets();
+                SetStatus(saved ? "Saved shot track" : "Shot track save failed");
+            }
+
+            if (ImGui::Button("Add Key##ShotDirector"))
+            {
+                TrailerShotKey key;
+                key.Time = duration + 1.2f;
+                key.Position = GetRenderCamera().GetPosition();
+                key.Target = m_riftPosition;
+                key.Focus = m_trailerFocus;
+                key.DofStrength = m_trailerDofStrength;
+                key.LensDirt = m_trailerLensDirt;
+                key.Letterbox = m_trailerLetterbox;
+                m_trailerKeys.push_back(key);
+                SetStatus("Added shot key");
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Capture Camera##ShotDirector"))
+            {
+                TrailerShotKey key;
+                key.Time = scrubTime;
+                key.Position = GetRenderCamera().GetPosition();
+                key.Target = m_editorCameraEnabled ? m_editorCameraTarget : m_riftPosition;
+                key.Focus = m_trailerFocus;
+                key.DofStrength = m_trailerDofStrength;
+                key.LensDirt = m_trailerLensDirt;
+                key.Letterbox = m_trailerLetterbox;
+                m_trailerKeys.push_back(key);
+                SetStatus("Captured current camera as shot key");
+            }
+
+            if (ImGui::BeginTable("ShotKeyTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0.0f, 205.0f)))
+            {
+                ImGui::TableSetupColumn("Time", ImGuiTableColumnFlags_WidthFixed, 62.0f);
+                ImGui::TableSetupColumn("Position");
+                ImGui::TableSetupColumn("Target");
+                ImGui::TableSetupColumn("Lens", ImGuiTableColumnFlags_WidthFixed, 94.0f);
+                ImGui::TableHeadersRow();
+
+                for (size_t index = 0; index < m_trailerKeys.size(); ++index)
+                {
+                    TrailerShotKey& key = m_trailerKeys[index];
+                    ImGui::PushID(static_cast<int>(index));
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::DragFloat("Time", &key.Time, 0.03f, 0.0f, 120.0f, "%.2f");
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::DragFloat3("Position", &key.Position.x, 0.05f);
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::DragFloat3("Target", &key.Target.x, 0.05f);
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::DragFloat("Focus", &key.Focus, 0.001f, 0.0f, 1.0f, "%.3f");
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::DragFloat("DOF", &key.DofStrength, 0.01f, 0.0f, 1.0f, "%.2f");
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::DragFloat("Dirt", &key.LensDirt, 0.01f, 0.0f, 1.0f, "%.2f");
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::DragFloat("Bars", &key.Letterbox, 0.002f, 0.0f, 0.25f, "%.3f");
+                    ImGui::PopID();
+                }
+
+                ImGui::EndTable();
+            }
+
+            if (!m_trailerKeys.empty() && ImGui::Button("Duplicate Last##ShotDirector"))
+            {
+                TrailerShotKey key = m_trailerKeys.back();
+                key.Time += 0.8f;
+                m_trailerKeys.push_back(key);
+            }
+            ImGui::SameLine();
+            if (!m_trailerKeys.empty() && ImGui::Button("Delete Last##ShotDirector"))
+            {
+                m_trailerKeys.pop_back();
+            }
+
             ImGui::End();
         }
 
@@ -3743,6 +3963,8 @@ namespace
             report << "editor_pick_failures=" << m_runtimeEditorStats.ObjectPickFailures << "\n";
             report << "gizmo_pick_tests=" << m_runtimeEditorStats.GizmoPickTests << "\n";
             report << "gizmo_pick_failures=" << m_runtimeEditorStats.GizmoPickFailures << "\n";
+            report << "gpu_pick_readbacks=" << m_runtimeEditorStats.GpuPickReadbacks << "\n";
+            report << "gpu_pick_fallbacks=" << m_runtimeEditorStats.GpuPickFallbacks << "\n";
             report << "gizmo_drag_tests=" << m_runtimeEditorStats.GizmoDragTests << "\n";
             report << "gizmo_drag_failures=" << m_runtimeEditorStats.GizmoDragFailures << "\n";
             report << "scene_reload_tests=" << m_runtimeEditorStats.SceneReloads << "\n";
@@ -3754,6 +3976,7 @@ namespace
             report << "rift_vfx_draws=" << m_runtimeEditorStats.RiftVfxDraws << "\n";
             report << "audio_beat_pulses=" << m_runtimeEditorStats.AudioBeatPulses << "\n";
             report << "high_res_capture_path=" << m_highResCaptureOutputPath.string() << "\n";
+            report << "native_png_capture_path=" << m_highResCaptureNativePngPath.string() << "\n";
             report << "audio_snapshot_tests=" << m_runtimeEditorStats.AudioSnapshotTests << "\n";
             report << "cpu_frame_samples=" << m_runtimeBudgetStats.CpuSamples << "\n";
             report << "cpu_frame_max_ms=" << m_runtimeBudgetStats.CpuFrameMaxMs << "\n";
@@ -3949,6 +4172,114 @@ namespace
 
             const uint64_t stableId = m_scene.GetObjects()[index].StableId;
             return stableId != 0 ? stableId : 100000000ull + static_cast<uint64_t>(index);
+        }
+
+        uint32_t SceneObjectPickId(size_t index) const
+        {
+            if (index > static_cast<size_t>(std::numeric_limits<uint32_t>::max() - EditorPickSceneObjectBase))
+            {
+                return 0;
+            }
+            return EditorPickSceneObjectBase + static_cast<uint32_t>(index);
+        }
+
+        uint32_t GizmoAxisPickId(GizmoAxis axis) const
+        {
+            return axis == GizmoAxis::None ? 0u : EditorPickGizmoAxisBase + static_cast<uint32_t>(axis);
+        }
+
+        uint32_t GizmoPlanePickId(GizmoPlane plane) const
+        {
+            return plane == GizmoPlane::None ? 0u : EditorPickGizmoPlaneBase + static_cast<uint32_t>(plane);
+        }
+
+        bool DecodeEditorObjectId(uint32_t objectId, float depth, EditorPickResult& outPick) const
+        {
+            outPick = {};
+            outPick.Distance = depth;
+            if (objectId == EditorPickPlayerId)
+            {
+                outPick.Kind = EditorPickKind::Player;
+                outPick.StableId = EditorPickPlayerId;
+                outPick.Name = "Player";
+                return true;
+            }
+
+            if (objectId >= EditorPickSceneObjectBase && objectId < EditorPickGizmoAxisBase)
+            {
+                const size_t sceneIndex = static_cast<size_t>(objectId - EditorPickSceneObjectBase);
+                if (sceneIndex >= m_scene.Count())
+                {
+                    return false;
+                }
+
+                outPick.Kind = EditorPickKind::SceneObject;
+                outPick.SceneIndex = sceneIndex;
+                outPick.StableId = PickStableIdForSceneObject(sceneIndex);
+                outPick.Name = m_scene.GetObjects()[sceneIndex].Name;
+                return true;
+            }
+
+            if (objectId >= EditorPickGizmoPlaneBase)
+            {
+                const GizmoPlane plane = static_cast<GizmoPlane>(objectId - EditorPickGizmoPlaneBase);
+                if (plane == GizmoPlane::XY || plane == GizmoPlane::XZ || plane == GizmoPlane::YZ)
+                {
+                    outPick.Kind = EditorPickKind::GizmoPlane;
+                    outPick.Plane = plane;
+                    outPick.Name = DescribeEditorPick(outPick);
+                    return true;
+                }
+                return false;
+            }
+
+            if (objectId >= EditorPickGizmoAxisBase)
+            {
+                const GizmoAxis axis = static_cast<GizmoAxis>(objectId - EditorPickGizmoAxisBase);
+                if (axis == GizmoAxis::X || axis == GizmoAxis::Y || axis == GizmoAxis::Z)
+                {
+                    outPick.Kind = EditorPickKind::GizmoAxis;
+                    outPick.Axis = axis;
+                    outPick.Name = DescribeEditorPick(outPick);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool TryReadGpuEditorPick(EditorPickResult& outPick)
+        {
+            outPick = {};
+            if (!m_renderer)
+            {
+                return false;
+            }
+
+            RefreshEditorViewportState();
+            if (!m_editorViewport.MouseInside)
+            {
+                return false;
+            }
+
+            const DirectX::XMFLOAT2 mouse = Disparity::Input::GetMousePosition();
+            const float localX = std::clamp(mouse.x - m_editorViewport.X, 0.0f, std::max(0.0f, m_editorViewport.Width - 1.0f));
+            const float localY = std::clamp(mouse.y - m_editorViewport.Y, 0.0f, std::max(0.0f, m_editorViewport.Height - 1.0f));
+            const Disparity::EditorObjectIdReadback readback = m_renderer->ReadEditorObjectId(
+                static_cast<uint32_t>(localX),
+                static_cast<uint32_t>(localY));
+            ++m_runtimeEditorStats.GpuPickReadbacks;
+            m_lastGpuPickStatus = readback.Error.empty()
+                ? ("GPU id=" + std::to_string(readback.ObjectId) + " depth=" + std::to_string(readback.Depth))
+                : ("GPU pick fallback: " + readback.Error);
+
+            if (readback.Valid && DecodeEditorObjectId(readback.ObjectId, readback.Depth, outPick))
+            {
+                return true;
+            }
+
+            ++m_runtimeEditorStats.GpuPickFallbacks;
+            return false;
         }
 
         void RefreshEditorViewportState()
@@ -4554,8 +4885,25 @@ namespace
             return picked;
         }
 
-        bool TryPickGizmoAxis(GizmoAxis& outAxis, GizmoPlane& outPlane) const
+        bool TryPickGizmoAxis(GizmoAxis& outAxis, GizmoPlane& outPlane)
         {
+            EditorPickResult gpuPick;
+            if (TryReadGpuEditorPick(gpuPick))
+            {
+                if (gpuPick.Kind == EditorPickKind::GizmoAxis)
+                {
+                    outAxis = gpuPick.Axis;
+                    outPlane = GizmoPlane::None;
+                    return true;
+                }
+                if (gpuPick.Kind == EditorPickKind::GizmoPlane)
+                {
+                    outAxis = GizmoAxis::None;
+                    outPlane = gpuPick.Plane;
+                    return true;
+                }
+            }
+
             MouseRay ray;
             if (!BuildMouseRay(ray))
             {
@@ -4831,6 +5179,11 @@ namespace
                 return;
             }
 
+            if (TryReadGpuEditorPick(m_hoverPick))
+            {
+                return;
+            }
+
             MouseRay ray;
             if (!BuildMouseRay(ray))
             {
@@ -4855,6 +5208,13 @@ namespace
 
         void PickSceneObjectAtMouse()
         {
+            EditorPickResult gpuPick;
+            if (TryReadGpuEditorPick(gpuPick))
+            {
+                ApplyEditorPick(gpuPick, Disparity::Input::IsKeyDown(VK_CONTROL));
+                return;
+            }
+
             MouseRay ray;
             if (!BuildMouseRay(ray))
             {
@@ -5084,6 +5444,34 @@ namespace
 
             const Disparity::Prefab prefab = Disparity::PrefabIO::FromSceneObject(m_scene.GetObjects()[m_selectedIndex]);
             SetStatus(Disparity::PrefabIO::Save(path, prefab) ? "Saved prefab " + path.string() : "Prefab save failed");
+        }
+
+        void RevertSelectedFromPrefab(const std::filesystem::path& path)
+        {
+            if (m_selectedPlayer || m_selectedIndex >= m_scene.Count())
+            {
+                SetStatus("Select a scene object before reverting prefab overrides");
+                return;
+            }
+
+            Disparity::Prefab prefab;
+            if (!Disparity::PrefabIO::Load(path, prefab))
+            {
+                SetStatus("Prefab revert failed: " + path.string());
+                return;
+            }
+
+            const EditState before = CaptureEditState();
+            Disparity::NamedSceneObject& selected = m_scene.GetObjects()[m_selectedIndex];
+            const std::string instanceName = selected.Name;
+            const uint64_t stableId = selected.StableId;
+            const DirectX::XMFLOAT3 worldPosition = selected.Object.TransformData.Position;
+            selected = Disparity::PrefabIO::Instantiate(prefab, instanceName, worldPosition, m_meshes);
+            selected.StableId = stableId;
+            PushUndoState(before, "Revert " + instanceName + " From Prefab");
+            SyncSceneObjectToRegistry(m_selectedIndex);
+            WatchAssets();
+            SetStatus("Reverted " + instanceName + " from " + path.string());
         }
 
         void BuildRuntimeRegistry()
@@ -5474,9 +5862,11 @@ namespace
         GizmoSpace m_gizmoDragSpace = GizmoSpace::World;
         std::string m_statusMessage;
         std::string m_lastPickStatus = "None";
+        std::string m_lastGpuPickStatus = "Not sampled";
         std::string m_gizmoStatus = "Idle";
         std::filesystem::path m_highResCaptureSourcePath;
         std::filesystem::path m_highResCaptureOutputPath;
+        std::filesystem::path m_highResCaptureNativePngPath;
     };
 }
 

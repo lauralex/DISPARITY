@@ -1,6 +1,15 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v18 versions of many requested followups. The next milestones should turn the showcase/trailer prototypes into durable production systems while continuing toward a modern content pipeline and renderer architecture.
+The current engine now has functional v19 versions of many requested followups. The next milestones should turn the new GPU picking, shot editing, capture, and dependency scaffolds into durable production systems while continuing toward a modern content pipeline and renderer architecture.
+
+## v19 Completed Production Batch
+
+- The scene shader now writes HDR color, editor object IDs, and editor object depth. Scene objects, the player, gizmo axes, rotate rings, and translate-plane handles receive deterministic GPU IDs, and editor picking tries GPU readback before CPU ray/OBB fallback.
+- Frame capture requests are queued. The renderer can write WIC PNG captures in addition to the existing PPM path, and `F9` now emits a source PPM, source PNG, and 2x PPM photo.
+- The running editor now has a `Shot Director` panel for `.dshot` files: reload/save, add keys, capture the current camera, edit per-shot transform/focus/lens/letterbox values, and scrub trailer time.
+- The Inspector now shows Beacon prefab override counts and supports apply/revert workflows that preserve world position and stable IDs.
+- The asset database exposes a dependency graph, and the cook script records glTF URI, material texture, script prefab, and import-setting dependencies plus cook payload metadata.
+- `Tools/LaunchTrailerCapture.ps1` creates repeatable trailer launch presets and can launch Debug, Release, or packaged builds for public recording.
 
 ## v18 Completed Public Showcase Batch
 
@@ -42,18 +51,18 @@ The current engine now has functional v18 versions of many requested followups. 
 
 ## Editor
 
-- Populate the dedicated editor object-ID/depth targets with scene-object IDs, player IDs, and gizmo handle IDs, then move viewport picking from CPU OBB tests to GPU readback.
+- Move GPU object-ID/depth picking to an async readback ring with hover latency diagnostics and last-frame/object cache visualization.
 - Make editor viewport compositing use the dedicated viewport texture as the visible ImGui image instead of the swap-chain back buffer.
-- Expand the current mesh/ring/plane gizmo handles with depth-aware hover occlusion, constraint previews, numerical transform entry, pivot/orientation controls, and true object-ID handle picking.
+- Expand the current mesh/ring/plane gizmo handles with depth-aware hover occlusion, constraint previews, numerical transform entry, pivot/orientation controls, and richer object-ID handle metadata.
 - Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command filters, and a filterable command history panel.
-- Add prefab override visualization, nested prefabs, prefab variants, and dependency-aware apply/revert.
+- Add nested prefabs, prefab variants, multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
 
 ## Asset Pipeline
 
-- Replace `.dassetbin` source bundles with optimized cooked `.glb` mesh/material/animation payloads and dependency graph invalidation.
+- Replace `.dassetbin` source bundles with optimized cooked `.glb` mesh/material/animation payloads and runtime dependency graph invalidation.
 - Expand glTF-to-material export with texture slots for base color, normal, metallic-roughness, emissive, and occlusion.
 - Add animation clips, skeleton assets, animation blending, retargeting, and GPU skinning palette upload.
-- Add hot-reload dependency graphs so reloading one source asset updates all dependent runtime resources, not only the current prototype scene/script/material set.
+- Use the dependency graph for hot-reload invalidation so reloading one source asset updates all dependent runtime resources, not only the current prototype scene/script/material set.
 
 ## Rendering
 
@@ -62,7 +71,7 @@ The current engine now has functional v18 versions of many requested followups. 
 - Add GPU frustum/occlusion culling and real clustered or Forward+ light binning.
 - Replace the single shadow-map coverage mode with true cascaded shadow maps.
 - Add normal/depth pre-pass options, SSR/SSGI experiments, motion vectors, and a more correct temporal AA resolve beyond the current FXAA-style resolve plus history blend.
-- Replace the current CPU 2x PPM photo path with offscreen high-resolution render targets, multi-sample resolves, WIC/PNG export, tiled supersampling, and an async capture queue.
+- Replace the remaining CPU 2x PPM photo path with graph-owned offscreen high-resolution render targets, multi-sample resolves, tiled supersampling, and async capture workers.
 - Upgrade the rift VFX from mesh/billboard draw calls to a dedicated particle/ribbon renderer with soft particles, depth fade, sorting controls, and GPU simulation options.
 - Add motion vectors, temporal VFX reprojection, better TAA resolve, and exposure curves tuned for trailer captures.
 - Investigate a DX12 or Vulkan backend once the DX11 renderer has a stable render graph contract.
@@ -73,7 +82,7 @@ The current engine now has functional v18 versions of many requested followups. 
 - Add serialization versioning, save-game separation, and deterministic scene IDs.
 - Add physics, collision queries, controller movement, animation-driven character logic, and gameplay event routing.
 - Add scripting reload boundaries, script state preservation, and a safer script asset format.
-- Add a shot-director editor for `.dshot` files with camera splines, easing curves, renderer setting tracks, audio cue tracks, shot thumbnails, bookmarks, and preview scrubbing.
+- Expand the shot-director editor with camera splines, easing curves, renderer setting tracks, audio cue tracks, shot thumbnails, bookmarks, and non-modal preview scrubbing.
 
 ## Audio
 
@@ -86,4 +95,4 @@ The current engine now has functional v18 versions of many requested followups. 
 - Turn the local baseline review and performance history summary into automated commit-to-commit regression gates with explicit baseline update approvals.
 - Extend CI with packaged runtime smoke tests by default when an interactive desktop runner is available.
 - Replace the installer payload manifest with a real installer bootstrapper, add symbol-server publishing, and add authenticated crash upload with retry/backoff.
-- Add trailer automation scripts for repeatable public captures, OBS/recording metadata, watermark toggles, and packaged vertical-slice launch presets.
+- Expand trailer automation into OBS profile/scene generation, watermark toggles, capture metadata approval, and packaged vertical-slice launch presets.

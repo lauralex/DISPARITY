@@ -42,6 +42,8 @@ namespace Disparity
         [[nodiscard]] const std::vector<AssetRecord>& GetRecords() const;
         [[nodiscard]] std::map<AssetKind, size_t> CountByKind() const;
         [[nodiscard]] std::optional<AssetRecord> Find(const std::filesystem::path& path) const;
+        [[nodiscard]] std::map<std::filesystem::path, std::vector<std::filesystem::path>> BuildDependencyGraph() const;
+        [[nodiscard]] std::vector<std::filesystem::path> FindDependents(const std::filesystem::path& path) const;
         [[nodiscard]] size_t DirtyCount() const;
         [[nodiscard]] size_t CookDirtyAssets() const;
 

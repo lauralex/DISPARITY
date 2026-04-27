@@ -11,6 +11,7 @@
 #include <chrono>
 #include <cstdint>
 #include <d3d11.h>
+#include <deque>
 #include <filesystem>
 #include <limits>
 #include <string>
@@ -103,6 +104,16 @@ namespace Disparity
         uint32_t Height = 0;
     };
 
+    struct EditorObjectIdReadback
+    {
+        bool Valid = false;
+        uint32_t ObjectId = 0;
+        float Depth = 1.0f;
+        uint32_t X = 0;
+        uint32_t Y = 0;
+        std::string Error;
+    };
+
     class Renderer
     {
     public:
@@ -128,6 +139,7 @@ namespace Disparity
         void BeginShadowPass(const DirectionalLight& light, const DirectX::XMFLOAT3& focus, float radius);
         void EndShadowPass();
         void DrawMesh(MeshHandle mesh, const Transform& transform, const Material& material);
+        void DrawMeshWithId(MeshHandle mesh, const Transform& transform, const Material& material, uint32_t editorObjectId);
         void EndFrame();
         void RequestFrameCapture(std::filesystem::path outputPath);
 
@@ -142,6 +154,7 @@ namespace Disparity
         [[nodiscard]] uint32_t GetShadowDrawCalls() const;
         [[nodiscard]] RendererFrameGraphDiagnostics GetFrameGraphDiagnostics() const;
         [[nodiscard]] EditorViewportResourcesInfo GetEditorViewportResources() const;
+        [[nodiscard]] EditorObjectIdReadback ReadEditorObjectId(uint32_t x, uint32_t y) const;
         [[nodiscard]] double GetGpuFrameMilliseconds() const;
         [[nodiscard]] bool IsGpuTimingAvailable() const;
         [[nodiscard]] bool HasLastFrameCapture() const;
@@ -232,7 +245,7 @@ namespace Disparity
         RendererSettings m_settings;
         RenderGraph m_renderGraph;
         FrameCaptureResult m_lastFrameCapture;
-        std::filesystem::path m_pendingFrameCapturePath;
+        std::deque<std::filesystem::path> m_pendingFrameCapturePaths;
         DirectX::XMFLOAT4X4 m_lightViewProjection = {};
 
         Microsoft::WRL::ComPtr<ID3D11Device> m_device;

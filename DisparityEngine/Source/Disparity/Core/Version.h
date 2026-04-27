@@ -6,8 +6,8 @@
 namespace Disparity::Version
 {
     inline constexpr uint32_t Major = 0;
-    inline constexpr uint32_t Minor = 18;
-    inline constexpr uint32_t Patch = 3;
+    inline constexpr uint32_t Minor = 19;
+    inline constexpr uint32_t Patch = 0;
     inline constexpr const char* Name = "DISPARITY Engine";
 
     [[nodiscard]] inline std::string ToString()

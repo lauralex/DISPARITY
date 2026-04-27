@@ -241,6 +241,35 @@ namespace Disparity
         return *found;
     }
 
+    std::map<std::filesystem::path, std::vector<std::filesystem::path>> AssetDatabase::BuildDependencyGraph() const
+    {
+        std::map<std::filesystem::path, std::vector<std::filesystem::path>> graph;
+        for (const AssetRecord& record : m_records)
+        {
+            graph[record.Path] = record.Dependencies;
+            for (const std::filesystem::path& dependency : record.Dependencies)
+            {
+                (void)graph[dependency];
+            }
+        }
+        return graph;
+    }
+
+    std::vector<std::filesystem::path> AssetDatabase::FindDependents(const std::filesystem::path& path) const
+    {
+        const std::filesystem::path displayPath = MakeDisplayPath(path);
+        std::vector<std::filesystem::path> dependents;
+        for (const AssetRecord& record : m_records)
+        {
+            const auto found = std::find(record.Dependencies.begin(), record.Dependencies.end(), displayPath);
+            if (found != record.Dependencies.end())
+            {
+                dependents.push_back(record.Path);
+            }
+        }
+        return dependents;
+    }
+
     size_t AssetDatabase::DirtyCount() const
     {
         return static_cast<size_t>(std::count_if(m_records.begin(), m_records.end(), [](const AssetRecord& record) {

@@ -8,10 +8,11 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - Drag panels into the main dockspace, or pull them outside the main window to test multi-viewport support.
 - Use `Hierarchy` to select the player or a scene object.
 - Selected objects render with a bright outline in the main viewport.
-- Press `Tab` to release the mouse, then left-click the main viewport to pick objects. Hold `Ctrl` while picking or selecting in `Hierarchy` to multi-select. Picks use stable editor IDs and OBB tests for scene objects.
+- Press `Tab` to release the mouse, then left-click the main viewport to pick objects. Hold `Ctrl` while picking or selecting in `Hierarchy` to multi-select. Picks try GPU object-ID/depth readback for scene objects, the player, and gizmo handles, then fall back to stable-ID CPU OBB tests.
 - Use `Copy`, `Paste`, `Duplicate`, and `Delete` in the `Hierarchy` panel or `Edit` menu. Keyboard shortcuts are `Ctrl+C`, `Ctrl+V`, `Ctrl+D`, and `Delete`.
 - The `Viewport` panel enables an editor camera. Use `Frame Selection`, `Frame Player`, right-drag look, arrow/Page keys, or right-drag plus `WASD`/`Q`/`E` to inspect the scene without moving the player.
 - Use `Inspector` to edit transforms/materials. The `Transform Gizmo` section provides small move, scale, and yaw buttons without adding another third-party dependency, and the viewport draws camera-scaled 3D gizmo handles at the current selection pivot. Choose translate/rotate/scale and world/local space in `Viewport`, then left-drag an axis marker, rotate ring, or translucent translate-plane handle; hold `Shift` while dragging for snapping. Gizmo handles brighten on hover or drag.
+- Use `Inspector > Prefab Overrides` on a selected scene object to compare against `Assets/Prefabs/Beacon.dprefab`, apply the current object back to the prefab, or revert object mesh/material/scale while preserving world position and stable ID.
 - Use `Ctrl+Z` and `Ctrl+Y`, or the `DISPARITY` menu, to test undo/redo. The profiler shows recent command labels.
 
 ## Showcase Mode
@@ -25,7 +26,8 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 
 - Press `F8`, use `DISPARITY > Trailer/Photo Mode`, or click `Start Trailer` in the renderer panel to play authored camera shots from `Assets/Cinematics/Showcase.dshot`.
 - Trailer mode interpolates position, target, focus, depth-of-field strength, lens dirt, and letterbox values so the same vertical-slice camera move is repeatable for recording and verification.
-- Press `F9` or click `High-Res Capture` in the viewport panel to capture the presented frame, then write `Saved/Captures/DISPARITY_photo_source.ppm` and a 2x upscaled `Saved/Captures/DISPARITY_photo_2x.ppm`.
+- Use the `Shot Director` panel to add/edit/capture/reload/save `.dshot` keys while the game is running.
+- Press `F9` or click `Capture PPM+PNG` in the viewport panel to capture the presented frame, then write `Saved/Captures/DISPARITY_photo_source.ppm`, `Saved/Captures/DISPARITY_photo_source.png`, and a 2x upscaled `Saved/Captures/DISPARITY_photo_2x.ppm`.
 - The renderer panel exposes depth of field, lens dirt, vignette, film grain, letterbox, title-safe guides, and presentation pulse controls for public demo capture.
 - Automatic generated cue tones are off by default for clean capture with the current WinMM prototype backend. Enable `Audio Mixer > Cinematic cue tones` only when you want to test the temporary generated cues.
 
@@ -35,7 +37,7 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - Keep `Hot reload assets` enabled in the `Assets` panel and wait about half a second, or press `F5` to force scene/script reload.
 - Select a scene object, then use `Apply Selection To Beacon Prefab` to write that object shape/material back to `Assets/Prefabs/Beacon.dprefab`.
 - Select a scene object, then use `Save Selection As Runtime Prefab` to write a prefab snapshot under `Saved`.
-- Use `Rescan Database` to rebuild the in-editor asset database. It classifies assets, shows dirty cooked state, and tracks glTF buffer/image references, material texture references, and script prefab references.
+- Use `Rescan Database` to rebuild the in-editor asset database. It classifies assets, shows dirty cooked state, tracks glTF buffer/image references, material texture references, script prefab references, and reports dependency graph nodes/edges.
 - Use `Cook Dirty Assets` to write metadata cache files under `Saved/CookedAssets` through the engine job system.
 - Use `Export glTF Materials` to convert loaded glTF material metadata into `.dmat` material assets under `Assets/Materials/Imported`.
 - Import settings use `.dimport` files. `Assets/ImportSettings/Assets/Meshes/SampleTriangle.gltf.dimport` is the sample mesh import settings file.
@@ -53,7 +55,7 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - The `Renderer` panel exposes VSync, tone mapping, shadow maps, broader CSM-style shadow coverage, clustered light contribution, bloom, SSAO, anti-aliasing, temporal AA, exposure, shadow strength, bloom threshold/strength, SSAO strength, AA strength, temporal blend, saturation, contrast, depth of field, lens dirt, cinematic overlay, vignette, letterbox, title-safe guides, film grain, presentation pulse, and post debug views.
 - The scene uses a directional light, shadow map, and eight point lights, including animated rift lights.
 - Post-processing uses the HDR scene texture, temporal history texture, and depth SRV.
-- The renderer now owns dedicated editor GPU targets for viewport color, object IDs, and object depth. They are cleared and tracked in the compiled render graph as the foundation for GPU picking and editor-only overlays.
+- The renderer now owns dedicated editor GPU targets for viewport color, object IDs, and object depth. Scene objects, player meshes, and gizmo handles write IDs/depth to those targets, and the editor can read back the hovered pixel for GPU-backed picking.
 - The `Profiler` panel shows frame timings, job worker count, renderer draw-call counters, GPU frame timing once DX11 timestamp queries warm up, and compiled render-graph schedule/resource lifetime diagnostics. The render graph view also reports per-pass GPU timings, culled passes, read/write transition diagnostics, alias candidates, transient allocation slots, and alias reuse.
 - If bloom/SSAO/AA/DOF/lens differences are hard to spot in the final image, use `Renderer > Post debug`: `Bloom` isolates bright bleed, `SSAO mask` shows contact darkening, `AA edges` shows the edge detector, `Depth` visualizes the depth buffer, `DOF` shows the circle-of-confusion mask, and `Lens dirt` isolates the dirt/bloom response.
 - Bloom became more visible because the scene shader no longer clamps lighting before the HDR post pass.
@@ -78,7 +80,7 @@ Run:
 powershell -ExecutionPolicy Bypass -File .\Tools\CookDisparityAssets.ps1 -Configuration Debug -BinaryPackages
 ```
 
-The cook writes per-source metadata plus `Saved/CookedAssets/manifest.dcook`. With `-BinaryPackages`, it also writes deterministic `.dassetbin` source bundles under `Saved/CookedAssets/Binary` and records package hashes in the manifest. These packages are still source-wrapped bundles rather than optimized runtime mesh/material/animation payloads, but they establish deterministic binary cook output for the real `.glb` pipeline.
+The cook writes per-source metadata plus `Saved/CookedAssets/manifest.dcook`. With `-BinaryPackages`, it also writes deterministic `.dassetbin` source bundles under `Saved/CookedAssets/Binary` and records package hashes in the manifest. Metadata now includes declared import-setting, glTF URI, material texture, and script prefab dependencies plus a cook payload label. These packages are still source-wrapped bundles rather than optimized runtime mesh/material/animation payloads, but they establish deterministic binary cook output for the real `.glb` pipeline.
 
 ## Packaging
 
@@ -107,6 +109,14 @@ powershell -ExecutionPolicy Bypass -File .\Tools\UploadCrashReports.ps1 -DryRun
 ```
 
 The scripts scan `Saved/CrashLogs`, write `Saved/CrashUploads/crash_upload_manifest.json`, can bundle staged reports, and can dry-run the eventual transport step.
+
+Trailer launch preset generation is separate from packaging:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Tools\LaunchTrailerCapture.ps1 -Configuration Release -Packaged -NoLaunch
+```
+
+The script writes `Saved/Trailer/trailer_launch_preset.json` with executable, working directory, capture output, and recording hotkey metadata. Omit `-NoLaunch` to start the selected build.
 
 ## Verification
 

@@ -39,10 +39,10 @@ Controls:
 - `F6`: save the runtime scene snapshot to `Saved/PrototypeRuntime.dscene` and show status in the editor menu bar.
 - `F7`: toggle cinematic showcase mode, hide the editor, boost post-processing, and orbit the animated DISPARITY rift for capture-friendly footage.
 - `F8`: toggle trailer/photo mode with authored camera shots from `Assets/Cinematics/Showcase.dshot`, depth of field, lens dirt, and title-safe guide overlays.
-- `F9`: capture the current presented frame and write a 2x PPM photo to `Saved/Captures/DISPARITY_photo_2x.ppm`.
+- `F9`: capture the current presented frame and write a source PPM, source PNG, and 2x PPM photo under `Saved/Captures`.
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
-- When the mouse is released with `Tab`, left-click the viewport to pick objects. Hold `Ctrl` while clicking or selecting in the hierarchy to multi-select.
+- When the mouse is released with `Tab`, left-click the viewport to pick objects. Hold `Ctrl` while clicking or selecting in the hierarchy to multi-select. The editor tries GPU object-ID readback first and falls back to CPU ray tests.
 - In editor-camera mode, right-drag to look around. While right-dragging, use `WASD` to fly, `Q`/`E` to descend/ascend, and `Shift` for faster movement.
 - Left-drag the colored X/Y/Z handles, rotate rings, or translucent translate-plane handles at the selection pivot depending on the `Gizmo mode`; hold `Shift` while dragging to snap.
 
@@ -51,9 +51,10 @@ Editor UI:
 - `F1`: show/hide Dear ImGui editor panels.
 - Dock panels into the main viewport, or drag panels outside the main window with ImGui multi-viewport enabled.
 - `Hierarchy`: select the player or scene entities, then copy/paste/duplicate/delete scene objects.
-- `Viewport`: enable the independent editor camera, frame the player/selection, choose gizmo translate/rotate/scale and world/local space, and use right-drag plus WASD/QE to move without driving gameplay input.
+- `Viewport`: enable the independent editor camera, frame the player/selection, choose gizmo translate/rotate/scale and world/local space, inspect GPU pick readback status, and use right-drag plus WASD/QE to move without driving gameplay input.
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw draggable, camera-scaled 3D axis/ring/plane gizmo handles in the viewport.
-- `Assets`: reload scene/script, toggle hot reload, inspect the asset database, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
+- `Assets`: reload scene/script, toggle hot reload, inspect the asset database and dependency graph, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
+- `Shot Director`: edit, add, save, reload, and capture `.dshot` trailer keys without leaving the running editor.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters, and store/recall a mixer snapshot.
 
@@ -242,17 +243,26 @@ Editor UI:
 - Renderer and Inspector controls now use unique Dear ImGui labels, fixing the duplicate `Lens dirt` ID warning popup.
 - `Tools/TestImGuiIds.ps1` is now part of `Tools/VerifyDisparity.ps1`, so duplicate literal ImGui labels and empty control labels fail verification before runtime.
 
+## Engine v19 Production Followups Implemented
+
+- Scene objects, player parts, and viewport gizmo handles now write stable IDs and depth into dedicated GPU object-ID targets. Editor hover, click picking, and gizmo drag startup try GPU readback first and keep CPU ray tests as a fallback.
+- `F9` now queues captures instead of replacing the pending request, and the renderer can export PNG through WIC. The public photo flow writes `DISPARITY_photo_source.ppm`, `DISPARITY_photo_source.png`, and `DISPARITY_photo_2x.ppm`.
+- The new `Shot Director` panel edits `Assets/Cinematics/Showcase.dshot`, adds/captures keys from the current camera, scrubs trailer time, and saves/reloads without leaving the running build.
+- The Inspector shows Beacon prefab override counts and can apply or revert the selected object against `Assets/Prefabs/Beacon.dprefab` while preserving world position and stable ID.
+- The asset database exposes dependency graph totals in the Assets panel. `Tools/CookDisparityAssets.ps1` now records declared glTF buffer/image, material texture, script prefab, and import-setting dependencies plus cook payload metadata.
+- `Tools/LaunchTrailerCapture.ps1` writes `Saved/Trailer/trailer_launch_preset.json` and can launch Debug, Release, or packaged DISPARITY for repeatable recording sessions.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
 - Execute all renderer passes through graph-owned callbacks and bind resources from graph allocation handles instead of renderer member variables.
-- Populate the editor object-ID/depth targets with real scene-object and gizmo-handle IDs, then switch viewport picking to GPU readback.
+- Move GPU viewport picking to an async readback ring, expose hover latency diagnostics, and render the dedicated editor viewport texture inside ImGui.
 - Replace `.dassetbin` source bundles with true cooked mesh/material/animation payloads, dependency invalidation, and runtime streaming.
-- Add prefab variants, nested prefabs, override diffing, and dependency-aware apply/revert with undo grouping.
+- Add prefab variants, nested prefabs, multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
 - Replace the WinMM playback path with XAudio2 voices, sends, streamed music, spatial emitters, attenuation curves, and live meters.
 - Add real installer bootstrapper output, symbol-server indexing, crash upload authentication/retry, and packaged runtime smoke on interactive CI runners.
-- Replace the current 2x PPM upscaler with offscreen high-resolution render targets, multi-sample resolve options, PNG/WIC export, and a capture queue that never touches frame-budget samples.
-- Add an in-editor cinematic timeline for `.dshot` assets with shot thumbnails, renderer/audio cue tracks, easing curves, and preview scrubbing.
+- Replace the current 2x PPM upscaler with offscreen high-resolution render targets, multi-sample resolve options, tiled supersampling, and async capture workers.
+- Expand the in-editor cinematic timeline with shot thumbnails, renderer/audio cue tracks, easing curves, bookmarks, and non-modal preview scrubbing.
 - Add GPU particle simulation, soft particles, signed-distance fog volumes, motion vectors, and temporal VFX reprojection for the rift.
-- Add OBS/trailer tooling: deterministic camera bookmarks, build watermark toggles, capture metadata, and repeatable vertical-slice launch scripts.
+- Add OBS/trailer tooling: deterministic camera bookmarks, build watermark toggles, capture metadata, and OBS profile/scene automation.

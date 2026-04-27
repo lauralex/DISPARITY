@@ -29,6 +29,7 @@ cbuffer ObjectConstants : register(b1)
     float4 AlbedoRoughness;
     float4 Surface;
     float4 EmissiveColor;
+    uint4 ObjectInfo;
 };
 
 Texture2D BaseColorTexture : register(t0);
@@ -111,6 +112,13 @@ struct VSOutput
     float2 TexCoord : TEXCOORD2;
 };
 
+struct PSOutput
+{
+    float4 Color : SV_Target0;
+    uint ObjectId : SV_Target1;
+    float ObjectDepth : SV_Target2;
+};
+
 VSOutput VSMain(VSInput input)
 {
     VSOutput output;
@@ -122,7 +130,7 @@ VSOutput VSMain(VSInput input)
     return output;
 }
 
-float4 PSMain(VSOutput input) : SV_TARGET
+PSOutput PSMain(VSOutput input)
 {
     const float3 normal = normalize(input.Normal);
     const float3 lightDir = normalize(-LightDirection);
@@ -146,5 +154,9 @@ float4 PSMain(VSOutput input) : SV_TARGET
     const float3 direct = diffuseColor * (AmbientIntensity + diffuse * LightColor * LightIntensity * shadow) + specular * LightColor * shadow;
     const float3 clustered = ComputePointLights(input.WorldPosition, normal, viewDir, diffuseColor, roughness, metallic);
     const float3 lit = direct + clustered + EmissiveColor.rgb * max(emissiveIntensity, 0.0f);
-    return float4(max(lit, 0.0f.xxx), alpha);
+    PSOutput output;
+    output.Color = float4(max(lit, 0.0f.xxx), alpha);
+    output.ObjectId = ObjectInfo.x;
+    output.ObjectDepth = saturate(input.Position.z);
+    return output;
 }
