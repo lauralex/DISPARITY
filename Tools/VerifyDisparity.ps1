@@ -178,6 +178,10 @@ Invoke-Step "Git whitespace check" {
     }
 }
 
+Invoke-Step "Dear ImGui ID conflict check" {
+    & (Join-Path $PSScriptRoot "TestImGuiIds.ps1")
+}
+
 Invoke-Step "Debug build, warning-free" {
     Invoke-MSBuildChecked -Configuration Debug
 }

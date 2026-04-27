@@ -116,12 +116,13 @@ Use the full local gate before calling the repository healthy:
 powershell -ExecutionPolicy Bypass -File .\Tools\VerifyDisparity.ps1
 ```
 
-The verification script runs `git diff --check`, warning-free Debug and Release builds, MSVC static analysis, all shader entry-point compiles, asset cook manifest/binary package generation, crash upload manifest/upload dry runs, baseline review, Debug window smoke, every runtime verification suite, Release packaging with symbols/archive, symbol indexing, installer payload generation, packaged window smoke, every packaged runtime verification suite, and a performance-history summary against committed baselines.
+The verification script runs `git diff --check`, a Dear ImGui literal ID conflict check, warning-free Debug and Release builds, MSVC static analysis, all shader entry-point compiles, asset cook manifest/binary package generation, crash upload manifest/upload dry runs, baseline review, Debug window smoke, every runtime verification suite, Release packaging with symbols/archive, symbol indexing, installer payload generation, packaged window smoke, every packaged runtime verification suite, and a performance-history summary against committed baselines.
 
 Targeted checks are still useful while iterating:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Tools\SmokeTestDisparity.ps1 -Configuration Debug -ExerciseWindow
+powershell -ExecutionPolicy Bypass -File .\Tools\TestImGuiIds.ps1
 powershell -ExecutionPolicy Bypass -File .\Tools\RuntimeVerifyDisparity.ps1 -Configuration Debug -Frames 90
 .\bin\x64\Debug\DisparityGame.exe --verify-runtime --verify-frames=90
 ```

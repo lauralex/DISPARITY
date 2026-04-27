@@ -14,7 +14,7 @@ Current shape:
 - Renderer backend is DirectX 11.
 - Dependency policy now allows the vendored Dear ImGui docking branch in `ThirdParty/imgui`; otherwise prefer Win32, DirectX 11, DirectXMath, WIC/WinMM, and the Windows SDK.
 - Geometry includes procedural primitives, procedural terrain, and a glTF 2.0 scene loader path for static mesh primitives, material texture binding, node instancing, skin metadata, joint/weight attributes, and animation sampler data.
-- Editor/runtime v18.2 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, stable-ID/OBB editor picking, dedicated editor viewport/object-ID/object-depth GPU targets, gizmo hover highlighting, copy/paste/duplicate/delete scene-object workflows, an independent editor camera with right-drag WASD/QE fly controls, simple transform gizmo buttons plus camera-scaled 3D translate/rotate/scale handles, torus rotate rings, translucent XY/XZ/YZ translate-plane handles, snapping and world/local space, prefab apply/save workflows, schema v3 scene saves, an animated procedural DISPARITY rift set piece, F7 cinematic showcase mode, F8 authored trailer/photo mode, F9 2x PPM capture workflow, emissive material channels, rift particles/ribbons/lightning/fog/lens-dirt/beat-pulse VFX, depth-of-field/title-safe/film-grain presentation controls, visibly stronger post effects with seven debug views, bus-based audio controls, bus sends, simple meters, mixer snapshots, opt-in cinematic cue tones, smoothed generated tone envelopes, persistent WinMM tone output warm-up, spatial listener orientation, XAudio2 availability detection, an asset database with import settings plus deterministic cooked metadata and `.dassetbin` package manifests, a compiled render graph schedule with pass CPU/GPU timings, culled passes, transition diagnostics, alias candidates, resource lifetimes, transient allocation slots, alias reuse, renderer pass-dispatch validation, job system, version reporting, crash logs plus local crash upload manifests/dry-run transport, deterministic runtime self-verification, six-suite assetized replay/baseline/golden verification, showcase/trailer/high-res/VFX/beat coverage counters, deterministic rift timing for runtime captures, frame capture validation, adapter-aware golden profile selection, golden diff thumbnails, committed performance baselines, package manifests/symbols/zip artifacts, symbol indexing, installer payload manifests, stronger window smoke tests, and unified static/runtime verification scripts.
+- Editor/runtime v18.3 includes docking, multi-viewport panels, undo/redo with command labels, selection outlines, viewport click-picking, Ctrl multi-select, stable-ID/OBB editor picking, dedicated editor viewport/object-ID/object-depth GPU targets, gizmo hover highlighting, copy/paste/duplicate/delete scene-object workflows, an independent editor camera with right-drag WASD/QE fly controls, simple transform gizmo buttons plus camera-scaled 3D translate/rotate/scale handles, torus rotate rings, translucent XY/XZ/YZ translate-plane handles, snapping and world/local space, prefab apply/save workflows, schema v3 scene saves, an animated procedural DISPARITY rift set piece, F7 cinematic showcase mode, F8 authored trailer/photo mode, F9 2x PPM capture workflow, emissive material channels, rift particles/ribbons/lightning/fog/lens-dirt/beat-pulse VFX, depth-of-field/title-safe/film-grain presentation controls, visibly stronger post effects with seven debug views, bus-based audio controls, bus sends, simple meters, mixer snapshots, opt-in cinematic cue tones, smoothed generated tone envelopes, persistent WinMM tone output warm-up, spatial listener orientation, XAudio2 availability detection, an asset database with import settings plus deterministic cooked metadata and `.dassetbin` package manifests, a compiled render graph schedule with pass CPU/GPU timings, culled passes, transition diagnostics, alias candidates, resource lifetimes, transient allocation slots, alias reuse, renderer pass-dispatch validation, job system, version reporting, crash logs plus local crash upload manifests/dry-run transport, deterministic runtime self-verification, six-suite assetized replay/baseline/golden verification, showcase/trailer/high-res/VFX/beat coverage counters, deterministic rift timing for runtime captures, frame capture validation, adapter-aware golden profile selection, golden diff thumbnails, committed performance baselines, Dear ImGui duplicate literal ID verification, package manifests/symbols/zip artifacts, symbol indexing, installer payload manifests, stronger window smoke tests, and unified static/runtime verification scripts.
 
 ## Important Paths
 
@@ -63,6 +63,7 @@ Current shape:
 - `Tools/SmokeTestDisparity.ps1`: launch, window-detect, resize/hotkey, and close runtime smoke helper.
 - `Tools/RuntimeVerifyDisparity.ps1`: launches `DisparityGame.exe --verify-runtime`, waits for the runtime PASS/FAIL report, verifies capture output, and fails on non-zero exit.
 - `Tools/VerifyDisparity.ps1`: full local verification gate for static and runtime checks.
+- `Tools/TestImGuiIds.ps1`: static Dear ImGui literal label check that fails on duplicate widget IDs or empty labels in editor windows.
 - `Tools/CompareCaptureDisparity.ps1`: downsamples PPM captures and compares or updates golden thumbnails, including diff thumbnail output.
 - `Tools/ReviewVerificationBaselines.ps1`: checks baseline assets for required capture/render-graph/editor-target/golden fields and runs performance summaries.
 - `Tools/SummarizePerformanceHistory.ps1`: prints recent CPU/GPU and scenario trend summaries grouped by suite/executable and compares against committed performance baselines.
@@ -126,15 +127,17 @@ It writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/
 - Keep DirectX 11 implementation details inside `DisparityEngine`.
 - Use DirectXMath for math until a deliberate math-library decision is made.
 - Dear ImGui docking branch is intentionally vendored; do not add more external dependencies without user approval.
+- Keep Dear ImGui control labels unique within each visible window; use `##StableHiddenId` when two controls intentionally share visible text.
 - Use `apply_patch` for manual edits.
 
 ## Verified Baseline
 
-On 2026-04-27 after the v18 public showcase followup pass:
+On 2026-04-27 after the v18.3 ImGui ID verification pass:
 
 - `Debug|x64` built successfully with 0 warnings and 0 errors.
 - `Release|x64` built successfully with 0 warnings and 0 errors.
 - MSVC static analysis completed successfully.
+- `Tools/TestImGuiIds.ps1` completed successfully and is wired into `Tools/VerifyDisparity.ps1`.
 - `Assets/Shaders/Basic.hlsl` and `Assets/Shaders/PostProcess.hlsl` compiled successfully for `VSMain` and `PSMain` with `fxc`.
 - `Tools/SmokeTestDisparity.ps1 -Configuration Debug -ExerciseWindow` launched `DisparityGame.exe`, found the window, resized it, sent basic editor hotkeys, kept it alive for 3 seconds, and closed it cleanly.
 - `Tools/VerifyDisparity.ps1` produced PASS Debug runtime reports for the `Prototype`, `CameraSweep`, `EditorPrecision`, `PostDebug`, `AssetReload`, and `GizmoDrag` suites, wrote captures/thumbnails/diff thumbnails, compared them against `Assets/Verification/Goldens/*.ppm` through adapter/default golden profiles, validated stable-ID editor picks, gizmo picks, render-graph allocation/alias/dispatch diagnostics, dedicated editor GPU target readiness, gizmo transform constraints, scene reload/save counters, seven post-debug view counters, showcase/trailer frame counters, high-resolution capture counters, rift VFX draw counters, audio beat-pulse counters, and audio snapshot counters, loaded the replay/baseline assets, and appended `Saved/Verification/performance_history.csv`.
@@ -147,7 +150,7 @@ On 2026-04-27 after the v18 public showcase followup pass:
 - `Tools/SmokeTestDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe -ExerciseWindow` launched the packaged build, found/resized/exercised the window, and closed it cleanly.
 - `Tools/VerifyDisparity.ps1` produced PASS packaged runtime reports, captures, golden comparisons, showcase/trailer/high-res/VFX/beat coverage, and local performance history rows for all six suites against `dist/DISPARITY-Release\DisparityGame.exe`.
 - `Tools/SummarizePerformanceHistory.ps1 -BaselinePath Assets/Verification/PerformanceBaselines.dperf` completed successfully as part of `Tools/VerifyDisparity.ps1`.
-- The v18 pass was committed only after `Tools/VerifyDisparity.ps1`, `git status --short`, and signed-commit review.
+- The v18.3 pass was committed only after `Tools/VerifyDisparity.ps1`, `git status --short`, and signed-commit review.
 
 After feature work, run `powershell -ExecutionPolicy Bypass -File .\Tools\VerifyDisparity.ps1` and `git status --short` before declaring the repo healthy.
 

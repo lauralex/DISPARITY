@@ -2315,7 +2315,7 @@ namespace
                 ImGui::TextUnformatted("Player");
                 const EditState before = CaptureEditState();
                 bool changed = false;
-                changed |= ImGui::DragFloat3("Position", &m_playerPosition.x, 0.05f);
+                changed |= ImGui::DragFloat3("Player position", &m_playerPosition.x, 0.05f);
                 changed |= ImGui::DragFloat("Yaw", &m_playerYaw, 0.02f);
                 changed |= DrawPlayerGizmo();
                 changed |= DrawMaterialEditor("Body Material", m_playerBodyMaterial);
@@ -2332,7 +2332,7 @@ namespace
                 ImGui::Text("Stable ID: %llu", static_cast<unsigned long long>(selected.StableId));
                 const EditState before = CaptureEditState();
                 bool changed = false;
-                changed |= ImGui::DragFloat3("Position", &selected.Object.TransformData.Position.x, 0.05f);
+                changed |= ImGui::DragFloat3("Object position", &selected.Object.TransformData.Position.x, 0.05f);
                 changed |= ImGui::DragFloat3("Rotation", &selected.Object.TransformData.Rotation.x, 0.02f);
                 changed |= ImGui::DragFloat3("Scale", &selected.Object.TransformData.Scale.x, 0.05f, 0.05f, 50.0f);
                 changed |= DrawTransformGizmo(selected.Object.TransformData);
@@ -2548,7 +2548,7 @@ namespace
             changed |= ImGui::Checkbox("Anti-aliasing", &settings.AntiAliasing);
             changed |= ImGui::Checkbox("Temporal AA", &settings.TemporalAA);
             changed |= ImGui::Checkbox("Depth of field", &settings.DepthOfField);
-            changed |= ImGui::Checkbox("Lens dirt", &settings.LensDirt);
+            changed |= ImGui::Checkbox("Lens dirt pass", &settings.LensDirt);
             changed |= ImGui::Checkbox("Cinematic overlay", &settings.CinematicOverlay);
             changed |= ImGui::SliderFloat("Exposure", &settings.Exposure, 0.1f, 4.0f);
             changed |= ImGui::SliderFloat("Shadow strength", &settings.ShadowStrength, 0.0f, 0.95f);
@@ -2562,7 +2562,7 @@ namespace
             changed |= ImGui::SliderFloat("DOF focus", &settings.DepthOfFieldFocus, 0.0f, 1.0f);
             changed |= ImGui::SliderFloat("DOF range", &settings.DepthOfFieldRange, 0.001f, 0.25f);
             changed |= ImGui::SliderFloat("DOF strength", &settings.DepthOfFieldStrength, 0.0f, 1.0f);
-            changed |= ImGui::SliderFloat("Lens dirt", &settings.LensDirtStrength, 0.0f, 1.0f);
+            changed |= ImGui::SliderFloat("Lens dirt strength", &settings.LensDirtStrength, 0.0f, 1.0f);
             changed |= ImGui::SliderFloat("Vignette", &settings.VignetteStrength, 0.0f, 1.0f);
             changed |= ImGui::SliderFloat("Letterbox", &settings.LetterboxAmount, 0.0f, 0.25f);
             changed |= ImGui::SliderFloat("Title safe", &settings.TitleSafeOpacity, 0.0f, 1.0f);

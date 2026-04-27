@@ -237,6 +237,11 @@ Editor UI:
 
 - Generated WinMM tones now reuse a persistent output device and include a tiny silent pre-roll, so cue playback no longer depends on another app keeping the Windows audio endpoint awake.
 
+## Engine v18.3 ImGui ID Verification Fix
+
+- Renderer and Inspector controls now use unique Dear ImGui labels, fixing the duplicate `Lens dirt` ID warning popup.
+- `Tools/TestImGuiIds.ps1` is now part of `Tools/VerifyDisparity.ps1`, so duplicate literal ImGui labels and empty control labels fail verification before runtime.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
