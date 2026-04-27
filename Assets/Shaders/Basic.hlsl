@@ -26,12 +26,9 @@ cbuffer FrameConstants : register(b0)
 cbuffer ObjectConstants : register(b1)
 {
     row_major float4x4 World;
-    float3 Albedo;
-    float Roughness;
-    float Metallic;
-    float Alpha;
-    float UseTexture;
-    float ObjectPadding;
+    float4 AlbedoRoughness;
+    float4 Surface;
+    float4 EmissiveColor;
 };
 
 Texture2D BaseColorTexture : register(t0);
@@ -72,7 +69,7 @@ float ComputeShadow(float3 worldPosition)
     return visibility / 9.0f;
 }
 
-float3 ComputePointLights(float3 worldPosition, float3 normal, float3 viewDir, float3 baseColor)
+float3 ComputePointLights(float3 worldPosition, float3 normal, float3 viewDir, float3 baseColor, float roughness, float metallic)
 {
     float3 result = 0.0f.xxx;
 
@@ -91,8 +88,8 @@ float3 ComputePointLights(float3 worldPosition, float3 normal, float3 viewDir, f
         const float3 lightDir = toLight / max(distanceToLight, 0.001f);
         const float diffuse = saturate(dot(normal, lightDir));
         const float3 halfVector = normalize(lightDir + viewDir);
-        const float specPower = lerp(96.0f, 8.0f, saturate(Roughness));
-        const float specular = pow(saturate(dot(normal, halfVector)), specPower) * lerp(0.04f, 0.55f, saturate(Metallic));
+        const float specPower = lerp(96.0f, 8.0f, saturate(roughness));
+        const float specular = pow(saturate(dot(normal, halfVector)), specPower) * lerp(0.04f, 0.55f, saturate(metallic));
         result += (baseColor * diffuse + specular.xxx) * PointLights[index].Color * PointLights[index].Intensity * attenuation * attenuation;
     }
 
@@ -131,17 +128,23 @@ float4 PSMain(VSOutput input) : SV_TARGET
     const float3 lightDir = normalize(-LightDirection);
     const float3 viewDir = normalize(CameraPosition - input.WorldPosition);
     const float3 halfVector = normalize(lightDir + viewDir);
+    const float3 albedo = AlbedoRoughness.rgb;
+    const float roughness = AlbedoRoughness.a;
+    const float metallic = Surface.x;
+    const float alpha = Surface.y;
+    const float useTexture = Surface.z;
+    const float emissiveIntensity = Surface.w;
 
     const float3 textureColor = BaseColorTexture.Sample(LinearSampler, input.TexCoord).rgb;
-    const float3 baseColor = lerp(Albedo, Albedo * textureColor, saturate(UseTexture));
+    const float3 baseColor = lerp(albedo, albedo * textureColor, saturate(useTexture));
 
     const float diffuse = saturate(dot(normal, lightDir));
-    const float specPower = lerp(96.0f, 8.0f, saturate(Roughness));
-    const float specular = pow(saturate(dot(normal, halfVector)), specPower) * lerp(0.08f, 0.75f, saturate(Metallic));
-    const float3 diffuseColor = baseColor * (1.0f - saturate(Metallic) * 0.65f);
+    const float specPower = lerp(96.0f, 8.0f, saturate(roughness));
+    const float specular = pow(saturate(dot(normal, halfVector)), specPower) * lerp(0.08f, 0.75f, saturate(metallic));
+    const float3 diffuseColor = baseColor * (1.0f - saturate(metallic) * 0.65f);
     const float shadow = ComputeShadow(input.WorldPosition);
     const float3 direct = diffuseColor * (AmbientIntensity + diffuse * LightColor * LightIntensity * shadow) + specular * LightColor * shadow;
-    const float3 clustered = ComputePointLights(input.WorldPosition, normal, viewDir, diffuseColor);
-    const float3 lit = direct + clustered;
-    return float4(max(lit, 0.0f.xxx), Alpha);
+    const float3 clustered = ComputePointLights(input.WorldPosition, normal, viewDir, diffuseColor, roughness, metallic);
+    const float3 lit = direct + clustered + EmissiveColor.rgb * max(emissiveIntensity, 0.0f);
+    return float4(max(lit, 0.0f.xxx), alpha);
 }

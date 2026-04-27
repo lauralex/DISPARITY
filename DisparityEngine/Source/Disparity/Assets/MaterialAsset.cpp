@@ -72,6 +72,14 @@ namespace Disparity
             {
                 outMaterial.MaterialData.Alpha = std::stof(value);
             }
+            else if (key == "emissive")
+            {
+                outMaterial.MaterialData.Emissive = ParseFloat3(value, outMaterial.MaterialData.Emissive);
+            }
+            else if (key == "emissive_intensity")
+            {
+                outMaterial.MaterialData.EmissiveIntensity = std::stof(value);
+            }
             else if (key == "texture" && !StartsWith(value, "#"))
             {
                 outMaterial.BaseColorTexturePath = value;
@@ -90,6 +98,8 @@ namespace Disparity
         output << "roughness=" << material.MaterialData.Roughness << '\n';
         output << "metallic=" << material.MaterialData.Metallic << '\n';
         output << "alpha=" << material.MaterialData.Alpha << '\n';
+        output << "emissive=" << material.MaterialData.Emissive.x << ',' << material.MaterialData.Emissive.y << ',' << material.MaterialData.Emissive.z << '\n';
+        output << "emissive_intensity=" << material.MaterialData.EmissiveIntensity << '\n';
         output << "texture=" << material.BaseColorTexturePath.string() << '\n';
         return FileSystem::WriteTextFile(path, output.str());
     }

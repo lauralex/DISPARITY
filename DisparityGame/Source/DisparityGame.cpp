@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cctype>
+#include <cstdint>
 #include <deque>
 #include <filesystem>
 #include <fstream>
@@ -41,6 +42,21 @@ namespace
     DirectX::XMFLOAT3 Scale(const DirectX::XMFLOAT3& value, float scalar)
     {
         return { value.x * scalar, value.y * scalar, value.z * scalar };
+    }
+
+    DirectX::XMFLOAT3 Lerp(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b, float t)
+    {
+        return {
+            a.x + (b.x - a.x) * t,
+            a.y + (b.y - a.y) * t,
+            a.z + (b.z - a.z) * t
+        };
+    }
+
+    float SmoothStep01(float value)
+    {
+        const float t = std::clamp(value, 0.0f, 1.0f);
+        return t * t * (3.0f - 2.0f * t);
     }
 
     float Dot(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b)
@@ -270,13 +286,14 @@ namespace
             m_terrainMesh = m_renderer->CreateMesh(Disparity::PrimitiveFactory::CreateTerrainGrid(64, 56.0f, 0.32f));
             m_gizmoPlaneHandleMesh = m_renderer->CreateMesh(Disparity::PrimitiveFactory::CreatePlane(1.0f));
             m_gizmoRingMesh = m_renderer->CreateMesh(Disparity::PrimitiveFactory::CreateTorus(1.0f, 0.026f, 64, 8));
+            m_vfxQuadMesh = m_renderer->CreateMesh(Disparity::PrimitiveFactory::CreatePlane(1.0f));
 
             if (Disparity::GltfLoader::LoadScene("Assets/Meshes/SampleTriangle.gltf", m_gltfSceneAsset))
             {
                 LoadGltfRuntimeAssets();
             }
 
-            if (m_cubeMesh == 0 || m_planeMesh == 0 || m_terrainMesh == 0 || m_gizmoPlaneHandleMesh == 0 || m_gizmoRingMesh == 0)
+            if (m_cubeMesh == 0 || m_planeMesh == 0 || m_terrainMesh == 0 || m_gizmoPlaneHandleMesh == 0 || m_gizmoRingMesh == 0 || m_vfxQuadMesh == 0)
             {
                 return false;
             }
@@ -292,6 +309,8 @@ namespace
             m_camera.SetPerspective(DirectX::XMConvertToRadians(67.0f), aspect, 0.1f, 400.0f);
             m_editorCamera.SetPerspective(DirectX::XMConvertToRadians(67.0f), aspect, 0.1f, 400.0f);
             m_showcaseCamera.SetPerspective(DirectX::XMConvertToRadians(58.0f), aspect, 0.1f, 520.0f);
+            m_trailerCamera.SetPerspective(DirectX::XMConvertToRadians(52.0f), aspect, 0.1f, 650.0f);
+            LoadTrailerShotAsset();
 
             if (!m_scene.Load("Assets/Scenes/Prototype.dscene", m_meshes))
             {
@@ -305,6 +324,7 @@ namespace
 
             UpdateCamera();
             UpdateEditorCamera(0.0f, true, true);
+            UpdateTrailerCamera(0.0f);
             if (m_runtimeVerification.Enabled)
             {
                 m_editorVisible = false;
@@ -347,6 +367,14 @@ namespace
             if (Disparity::Input::WasKeyPressed(VK_F7))
             {
                 SetShowcaseMode(!m_showcaseMode);
+            }
+            if (Disparity::Input::WasKeyPressed(VK_F8))
+            {
+                SetTrailerMode(!m_trailerMode);
+            }
+            if (Disparity::Input::WasKeyPressed(VK_F9))
+            {
+                RequestHighResolutionCapture();
             }
             if (Disparity::Input::IsKeyDown(VK_CONTROL) && Disparity::Input::WasKeyPressed('Z'))
             {
@@ -394,17 +422,20 @@ namespace
             }
 
             const DirectX::XMFLOAT2 mouseDelta = Disparity::Input::GetMouseDelta();
-            if (Disparity::Input::IsMouseCaptured() && !editorCapturesMouse && !m_editorCameraEnabled && !m_showcaseMode)
+            if (Disparity::Input::IsMouseCaptured() && !editorCapturesMouse && !m_editorCameraEnabled && !m_showcaseMode && !m_trailerMode)
             {
                 m_cameraYaw += mouseDelta.x * 0.0025f;
                 m_cameraPitch = std::clamp(m_cameraPitch - mouseDelta.y * 0.0022f, -0.15f, 0.95f);
             }
 
             PollHotReload(dt);
-            UpdatePlayer((editorCapturesKeyboard || m_editorCameraEnabled || m_showcaseMode) ? 0.0f : dt);
+            UpdatePlayer((editorCapturesKeyboard || m_editorCameraEnabled || m_showcaseMode || m_trailerMode) ? 0.0f : dt);
             AnimateScene(dt);
             UpdateCamera();
             UpdateShowcaseCamera(dt);
+            UpdateTrailerCamera(dt);
+            UpdateRiftBeat(dt);
+            CompleteHighResolutionCaptureIfReady();
             UpdateEditorCamera(dt, editorCapturesMouse, editorCapturesKeyboard);
             UpdateEditorHover(editorCapturesMouse);
             const DirectX::XMFLOAT3 listenerPosition = GetRenderCamera().GetPosition();
@@ -423,12 +454,12 @@ namespace
             Disparity::DirectionalLight light;
             light.Direction = { -0.35f, -1.0f, 0.25f };
             light.Color = { 1.0f, 0.92f, 0.78f };
-            light.Intensity = m_showcaseMode ? 1.34f : 1.18f;
-            light.AmbientIntensity = m_showcaseMode ? 0.24f : 0.20f;
+            light.Intensity = (m_showcaseMode || m_trailerMode) ? 1.36f : 1.18f;
+            light.AmbientIntensity = (m_showcaseMode || m_trailerMode) ? 0.25f : 0.20f;
             renderer.SetLighting(light);
             const float visualTime = ShowcaseVisualTime();
-            const float riftPulse = 0.5f + 0.5f * std::sin(visualTime * 2.6f);
-            const float showcaseBoost = m_showcaseMode ? 1.8f : 1.0f;
+            const float riftPulse = std::max(0.5f + 0.5f * std::sin(visualTime * 2.6f), m_riftBeatPulse);
+            const float showcaseBoost = (m_showcaseMode || m_trailerMode) ? (1.8f + m_riftBeatPulse * 0.45f) : 1.0f;
             const DirectX::XMFLOAT3 riftLightA = Add(m_riftPosition, { std::sin(visualTime * 0.9f) * 1.8f, 0.45f, std::cos(visualTime * 0.9f) * 1.2f });
             const DirectX::XMFLOAT3 riftLightB = Add(m_riftPosition, { std::sin(visualTime * 1.17f + Pi) * 2.0f, -0.15f, std::cos(visualTime * 1.17f + Pi) * 1.7f });
             const std::array<Disparity::PointLight, 8> pointLights = {
@@ -445,13 +476,13 @@ namespace
 
             const float shadowRadius = renderer.GetSettings().CascadedShadows ? 34.0f : 20.0f;
             renderer.BeginShadowPass(light, m_playerPosition, shadowRadius);
-            DrawWorld(renderer);
+            DrawWorld(renderer, false);
             DrawPlayer(renderer);
             renderer.EndShadowPass();
 
             renderer.SetCamera(GetRenderCamera());
             renderer.SetLighting(light);
-            DrawWorld(renderer);
+            DrawWorld(renderer, true);
             DrawPlayer(renderer);
             DrawSelectionOutline(renderer);
             DrawSelectionGizmoHandles(renderer);
@@ -475,7 +506,7 @@ namespace
             DrawProfilerPanel();
         }
 
-        void DrawWorld(Disparity::Renderer& renderer)
+        void DrawWorld(Disparity::Renderer& renderer, bool includePresentationVfx)
         {
             for (const Disparity::RenderableEntity& renderable : m_registry.ViewRenderables())
             {
@@ -488,6 +519,10 @@ namespace
             }
 
             DrawShowcaseRift(renderer);
+            if (includePresentationVfx)
+            {
+                DrawRiftVfx(renderer);
+            }
         }
 
         void OnResize(unsigned int width, unsigned int height) override
@@ -501,6 +536,7 @@ namespace
             m_camera.SetPerspective(DirectX::XMConvertToRadians(67.0f), aspect, 0.1f, 400.0f);
             m_editorCamera.SetPerspective(DirectX::XMConvertToRadians(67.0f), aspect, 0.1f, 400.0f);
             m_showcaseCamera.SetPerspective(DirectX::XMConvertToRadians(58.0f), aspect, 0.1f, 520.0f);
+            m_trailerCamera.SetPerspective(DirectX::XMConvertToRadians(52.0f), aspect, 0.1f, 650.0f);
         }
 
     private:
@@ -555,6 +591,24 @@ namespace
             float CameraPitchDelta = 0.0f;
         };
 
+        struct TrailerShotKey
+        {
+            float Time = 0.0f;
+            DirectX::XMFLOAT3 Position = {};
+            DirectX::XMFLOAT3 Target = {};
+            float Focus = 0.985f;
+            float DofStrength = 0.45f;
+            float LensDirt = 0.58f;
+            float Letterbox = 0.075f;
+        };
+
+        struct PpmImage
+        {
+            uint32_t Width = 0;
+            uint32_t Height = 0;
+            std::vector<unsigned char> Pixels;
+        };
+
         struct RuntimeBaseline
         {
             uint32_t ExpectedCaptureWidth = 1280;
@@ -566,6 +620,10 @@ namespace
             uint32_t MinSceneSaves = 0;
             uint32_t MinPostDebugViews = 0;
             uint32_t MinShowcaseFrames = 0;
+            uint32_t MinTrailerFrames = 0;
+            uint32_t MinHighResCaptures = 0;
+            uint32_t MinRiftVfxDraws = 0;
+            uint32_t MinAudioBeatPulses = 0;
             uint32_t MinAudioSnapshotTests = 0;
             uint32_t MinRenderGraphAllocations = 4;
             uint32_t MinRenderGraphAliasedResources = 1;
@@ -663,6 +721,10 @@ namespace
             uint32_t SceneSaves = 0;
             uint32_t PostDebugViews = 0;
             uint32_t ShowcaseFrames = 0;
+            uint32_t TrailerFrames = 0;
+            uint32_t HighResCaptures = 0;
+            uint32_t RiftVfxDraws = 0;
+            uint32_t AudioBeatPulses = 0;
             uint32_t AudioSnapshotTests = 0;
         };
 
@@ -703,22 +765,60 @@ namespace
             m_riftCoreMaterial.Albedo = { 3.4f, 0.56f, 4.6f };
             m_riftCoreMaterial.Roughness = 0.08f;
             m_riftCoreMaterial.Metallic = 0.18f;
+            m_riftCoreMaterial.Emissive = { 1.0f, 0.18f, 1.45f };
+            m_riftCoreMaterial.EmissiveIntensity = 2.8f;
 
             m_riftCyanMaterial.Albedo = { 0.16f, 2.65f, 4.4f };
             m_riftCyanMaterial.Roughness = 0.16f;
             m_riftCyanMaterial.Metallic = 0.06f;
+            m_riftCyanMaterial.Emissive = { 0.06f, 0.75f, 1.0f };
+            m_riftCyanMaterial.EmissiveIntensity = 1.7f;
 
             m_riftMagentaMaterial.Albedo = { 4.3f, 0.18f, 2.95f };
             m_riftMagentaMaterial.Roughness = 0.18f;
             m_riftMagentaMaterial.Metallic = 0.08f;
+            m_riftMagentaMaterial.Emissive = { 1.0f, 0.08f, 0.68f };
+            m_riftMagentaMaterial.EmissiveIntensity = 1.8f;
 
             m_riftVioletMaterial.Albedo = { 1.05f, 0.38f, 4.8f };
             m_riftVioletMaterial.Roughness = 0.14f;
             m_riftVioletMaterial.Metallic = 0.12f;
+            m_riftVioletMaterial.Emissive = { 0.48f, 0.14f, 1.0f };
+            m_riftVioletMaterial.EmissiveIntensity = 1.55f;
 
             m_riftObsidianMaterial.Albedo = { 0.035f, 0.04f, 0.075f };
             m_riftObsidianMaterial.Roughness = 0.28f;
             m_riftObsidianMaterial.Metallic = 0.72f;
+
+            m_vfxParticleMaterial.Albedo = { 0.18f, 1.45f, 2.6f };
+            m_vfxParticleMaterial.Alpha = 0.42f;
+            m_vfxParticleMaterial.Roughness = 0.08f;
+            m_vfxParticleMaterial.Emissive = { 0.10f, 0.85f, 1.0f };
+            m_vfxParticleMaterial.EmissiveIntensity = 2.25f;
+
+            m_vfxHotParticleMaterial.Albedo = { 4.2f, 0.32f, 2.8f };
+            m_vfxHotParticleMaterial.Alpha = 0.52f;
+            m_vfxHotParticleMaterial.Roughness = 0.06f;
+            m_vfxHotParticleMaterial.Emissive = { 1.0f, 0.12f, 0.72f };
+            m_vfxHotParticleMaterial.EmissiveIntensity = 2.7f;
+
+            m_vfxRibbonMaterial.Albedo = { 0.28f, 1.85f, 3.0f };
+            m_vfxRibbonMaterial.Alpha = 0.34f;
+            m_vfxRibbonMaterial.Roughness = 0.10f;
+            m_vfxRibbonMaterial.Emissive = { 0.16f, 0.92f, 1.0f };
+            m_vfxRibbonMaterial.EmissiveIntensity = 2.2f;
+
+            m_vfxLightningMaterial.Albedo = { 3.6f, 4.5f, 5.2f };
+            m_vfxLightningMaterial.Alpha = 0.72f;
+            m_vfxLightningMaterial.Roughness = 0.04f;
+            m_vfxLightningMaterial.Emissive = { 0.72f, 0.96f, 1.0f };
+            m_vfxLightningMaterial.EmissiveIntensity = 4.0f;
+
+            m_vfxFogMaterial.Albedo = { 0.18f, 0.55f, 1.0f };
+            m_vfxFogMaterial.Alpha = 0.22f;
+            m_vfxFogMaterial.Roughness = 0.5f;
+            m_vfxFogMaterial.Emissive = { 0.05f, 0.22f, 0.46f };
+            m_vfxFogMaterial.EmissiveIntensity = 0.9f;
         }
 
         void ReloadGltfAssets()
@@ -1192,8 +1292,65 @@ namespace
             m_showcaseCamera.LookAt(position, target, { 0.0f, 1.0f, 0.0f });
         }
 
+        void UpdateTrailerCamera(float dt)
+        {
+            if (!m_trailerMode && !m_trailerKeys.empty())
+            {
+                const TrailerShotKey& key = m_trailerKeys.front();
+                m_trailerCamera.LookAt(key.Position, key.Target, { 0.0f, 1.0f, 0.0f });
+                return;
+            }
+
+            if (!m_trailerMode || m_trailerKeys.empty())
+            {
+                return;
+            }
+
+            m_trailerTime += dt;
+            const float duration = std::max(0.001f, m_trailerKeys.back().Time);
+            float playbackTime = std::fmod(std::max(0.0f, m_trailerTime), duration);
+            if (m_runtimeVerification.Enabled && m_runtimeVerificationStartedTrailer)
+            {
+                const uint32_t elapsedFrames = m_runtimeVerificationFrame > m_runtimeVerificationTrailerStartFrame
+                    ? m_runtimeVerificationFrame - m_runtimeVerificationTrailerStartFrame
+                    : 0u;
+                playbackTime = std::fmod(static_cast<float>(elapsedFrames) * (1.0f / 60.0f), duration);
+            }
+
+            TrailerShotKey a = m_trailerKeys.front();
+            TrailerShotKey b = m_trailerKeys.back();
+            for (size_t index = 1; index < m_trailerKeys.size(); ++index)
+            {
+                if (playbackTime <= m_trailerKeys[index].Time)
+                {
+                    a = m_trailerKeys[index - 1];
+                    b = m_trailerKeys[index];
+                    break;
+                }
+            }
+
+            const float segmentDuration = std::max(0.001f, b.Time - a.Time);
+            const float t = SmoothStep01((playbackTime - a.Time) / segmentDuration);
+            m_trailerCamera.LookAt(Lerp(a.Position, b.Position, t), Lerp(a.Target, b.Target, t), { 0.0f, 1.0f, 0.0f });
+            m_trailerFocus = a.Focus + (b.Focus - a.Focus) * t;
+            m_trailerDofStrength = a.DofStrength + (b.DofStrength - a.DofStrength) * t;
+            m_trailerLensDirt = a.LensDirt + (b.LensDirt - a.LensDirt) * t;
+            m_trailerLetterbox = a.Letterbox + (b.Letterbox - a.Letterbox) * t;
+            ApplyPresentationRendererSettings();
+
+            if (m_runtimeVerification.Enabled)
+            {
+                ++m_runtimeEditorStats.TrailerFrames;
+            }
+        }
+
         const Disparity::Camera& GetRenderCamera() const
         {
+            if (m_trailerMode)
+            {
+                return m_trailerCamera;
+            }
+
             if (m_showcaseMode)
             {
                 return m_showcaseCamera;
@@ -1221,6 +1378,10 @@ namespace
 
             if (enabled)
             {
+                if (m_trailerMode)
+                {
+                    SetTrailerMode(false);
+                }
                 m_showcaseSavedEditorVisible = m_editorVisible;
                 m_editorVisible = false;
                 m_showcaseTime = 0.0f;
@@ -1242,6 +1403,17 @@ namespace
                     settings.TemporalBlend = 0.18f;
                     settings.ColorSaturation = 1.32f;
                     settings.ColorContrast = 1.16f;
+                    settings.DepthOfField = true;
+                    settings.DepthOfFieldFocus = 0.986f;
+                    settings.DepthOfFieldRange = 0.032f;
+                    settings.DepthOfFieldStrength = 0.34f;
+                    settings.LensDirt = true;
+                    settings.LensDirtStrength = 0.72f;
+                    settings.VignetteStrength = 0.18f;
+                    settings.CinematicOverlay = true;
+                    settings.LetterboxAmount = 0.055f;
+                    settings.TitleSafeOpacity = 0.0f;
+                    settings.FilmGrainStrength = 0.018f;
                     settings.PostDebugView = 0;
                     m_renderer->SetSettings(settings);
                 }
@@ -1261,6 +1433,427 @@ namespace
             m_showcaseSavedRendererSettings.reset();
             Disparity::AudioSystem::PlaySpatialTone("UI", 440.0f, 0.16f, 0.65f, m_riftPosition);
             SetStatus("Showcase mode disabled");
+        }
+
+        void SetTrailerMode(bool enabled)
+        {
+            if (m_trailerMode == enabled)
+            {
+                return;
+            }
+
+            if (enabled)
+            {
+                if (m_showcaseMode)
+                {
+                    SetShowcaseMode(false);
+                }
+
+                m_trailerSavedEditorVisible = m_editorVisible;
+                m_editorVisible = false;
+                m_trailerTime = 0.0f;
+                m_trailerMode = true;
+                if (m_renderer)
+                {
+                    m_trailerSavedRendererSettings = m_renderer->GetSettings();
+                }
+                UpdateTrailerCamera(0.0f);
+                ApplyPresentationRendererSettings();
+                Disparity::AudioSystem::PlaySpatialTone("SFX", 784.0f, 0.24f, 0.95f, m_riftPosition);
+                SetStatus("Trailer/photo mode enabled");
+                return;
+            }
+
+            m_trailerMode = false;
+            m_editorVisible = m_trailerSavedEditorVisible;
+            if (m_renderer && m_trailerSavedRendererSettings.has_value())
+            {
+                m_renderer->SetSettings(*m_trailerSavedRendererSettings);
+            }
+            m_trailerSavedRendererSettings.reset();
+            Disparity::AudioSystem::PlaySpatialTone("UI", 392.0f, 0.16f, 0.65f, m_riftPosition);
+            SetStatus("Trailer/photo mode disabled");
+        }
+
+        void ApplyPresentationRendererSettings()
+        {
+            if (!m_renderer || (!m_showcaseMode && !m_trailerMode))
+            {
+                return;
+            }
+
+            Disparity::RendererSettings settings = m_renderer->GetSettings();
+            settings.ToneMapping = true;
+            settings.Bloom = true;
+            settings.SSAO = true;
+            settings.AntiAliasing = true;
+            settings.TemporalAA = true;
+            settings.ClusteredLighting = true;
+            settings.DepthOfField = true;
+            settings.LensDirt = true;
+            settings.CinematicOverlay = true;
+            settings.Exposure = m_trailerMode ? 1.22f : settings.Exposure;
+            settings.BloomStrength = std::max(settings.BloomStrength, 1.08f + m_riftBeatPulse * 0.32f);
+            settings.BloomThreshold = std::min(settings.BloomThreshold, 0.32f);
+            settings.SsaoStrength = std::max(settings.SsaoStrength, 0.72f);
+            settings.ColorSaturation = std::max(settings.ColorSaturation, 1.22f);
+            settings.ColorContrast = std::max(settings.ColorContrast, 1.12f);
+            settings.DepthOfFieldFocus = m_trailerMode ? m_trailerFocus : 0.986f;
+            settings.DepthOfFieldRange = m_trailerMode ? 0.022f : 0.032f;
+            settings.DepthOfFieldStrength = m_trailerMode ? m_trailerDofStrength : 0.34f;
+            settings.LensDirtStrength = (m_trailerMode ? m_trailerLensDirt : 0.72f) + m_riftBeatPulse * 0.22f;
+            settings.VignetteStrength = m_trailerMode ? 0.24f : 0.18f;
+            settings.LetterboxAmount = m_trailerMode ? m_trailerLetterbox : 0.055f;
+            settings.TitleSafeOpacity = m_trailerMode ? 0.46f : 0.0f;
+            settings.FilmGrainStrength = m_trailerMode ? 0.026f : 0.018f;
+            settings.PresentationPulse = m_riftBeatPulse;
+            settings.PostDebugView = 0;
+            m_renderer->SetSettings(settings);
+        }
+
+        void UpdateRiftBeat(float)
+        {
+            const float visualTime = ShowcaseVisualTime();
+            const float beatWave = 0.5f + 0.5f * std::sin(visualTime * Pi * 2.0f * 1.12f);
+            m_riftBeatPulse = std::pow(std::clamp(beatWave, 0.0f, 1.0f), 7.0f);
+            ApplyPresentationRendererSettings();
+
+            const int beatIndex = static_cast<int>(std::floor(visualTime * 1.12f));
+            if ((m_showcaseMode || m_trailerMode) && beatIndex != m_lastRiftBeatIndex)
+            {
+                m_lastRiftBeatIndex = beatIndex;
+                const float frequency = 520.0f + static_cast<float>((beatIndex % 5 + 5) % 5) * 58.0f;
+                Disparity::AudioSystem::PlaySpatialTone("SFX", frequency, 0.11f, 0.52f, m_riftPosition);
+                if (m_runtimeVerification.Enabled)
+                {
+                    ++m_runtimeEditorStats.AudioBeatPulses;
+                }
+            }
+        }
+
+        bool ParseShotFloat3(const std::string& text, DirectX::XMFLOAT3& value) const
+        {
+            std::istringstream stream(text);
+            char commaA = 0;
+            char commaB = 0;
+            DirectX::XMFLOAT3 parsed = {};
+            if (!(stream >> parsed.x >> commaA >> parsed.y >> commaB >> parsed.z) || commaA != ',' || commaB != ',')
+            {
+                return false;
+            }
+
+            value = parsed;
+            return true;
+        }
+
+        void AddDefaultTrailerShots()
+        {
+            m_trailerKeys = {
+                TrailerShotKey{ 0.0f, { -7.4f, 3.3f, -0.6f }, Add(m_riftPosition, { 0.0f, 0.3f, 0.0f }), 0.982f, 0.50f, 0.62f, 0.070f },
+                TrailerShotKey{ 2.4f, { -2.6f, 2.0f, 2.8f }, Add(m_riftPosition, { 0.2f, 0.1f, 0.0f }), 0.989f, 0.38f, 0.68f, 0.080f },
+                TrailerShotKey{ 4.9f, { 4.8f, 3.9f, -2.2f }, Add(m_riftPosition, { -0.1f, 0.5f, 0.2f }), 0.978f, 0.56f, 0.78f, 0.090f },
+                TrailerShotKey{ 7.6f, { 0.4f, 1.8f, -15.4f }, Add(m_riftPosition, { 0.0f, 0.0f, 0.0f }), 0.992f, 0.44f, 0.72f, 0.075f },
+                TrailerShotKey{ 10.2f, { -7.4f, 3.3f, -0.6f }, Add(m_riftPosition, { 0.0f, 0.3f, 0.0f }), 0.982f, 0.50f, 0.62f, 0.070f }
+            };
+        }
+
+        void LoadTrailerShotAsset()
+        {
+            m_trailerKeys.clear();
+            const std::filesystem::path resolvedPath = Disparity::FileSystem::FindAssetPath("Assets/Cinematics/Showcase.dshot");
+            std::ifstream file(resolvedPath);
+            if (!file)
+            {
+                AddDefaultTrailerShots();
+                return;
+            }
+
+            std::string line;
+            while (std::getline(file, line))
+            {
+                line = Trim(line);
+                if (line.empty() || line.front() == '#')
+                {
+                    continue;
+                }
+
+                if (line.rfind("key ", 0) == 0)
+                {
+                    line = Trim(line.substr(4));
+                }
+
+                std::array<std::string, 7> fields = {};
+                size_t fieldIndex = 0;
+                size_t begin = 0;
+                while (fieldIndex < fields.size())
+                {
+                    const size_t separator = line.find('|', begin);
+                    fields[fieldIndex++] = Trim(line.substr(begin, separator == std::string::npos ? std::string::npos : separator - begin));
+                    if (separator == std::string::npos)
+                    {
+                        break;
+                    }
+                    begin = separator + 1;
+                }
+
+                if (fieldIndex < fields.size())
+                {
+                    continue;
+                }
+
+                TrailerShotKey key;
+                if (!ParseShotFloat3(fields[1], key.Position) || !ParseShotFloat3(fields[2], key.Target))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    key.Time = std::stof(fields[0]);
+                    key.Focus = std::stof(fields[3]);
+                    key.DofStrength = std::stof(fields[4]);
+                    key.LensDirt = std::stof(fields[5]);
+                    key.Letterbox = std::stof(fields[6]);
+                }
+                catch (...)
+                {
+                    continue;
+                }
+
+                m_trailerKeys.push_back(key);
+            }
+
+            std::sort(m_trailerKeys.begin(), m_trailerKeys.end(), [](const TrailerShotKey& a, const TrailerShotKey& b) {
+                return a.Time < b.Time;
+            });
+
+            if (m_trailerKeys.size() < 2)
+            {
+                AddDefaultTrailerShots();
+            }
+        }
+
+        Disparity::Transform BeamTransform(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end, float thickness) const
+        {
+            const DirectX::XMFLOAT3 delta = Subtract(end, start);
+            const float length = std::max(0.001f, Length(delta));
+            Disparity::Transform transform;
+            transform.Position = Scale(Add(start, end), 0.5f);
+            transform.Rotation = {
+                -std::asin(std::clamp(delta.y / length, -1.0f, 1.0f)),
+                std::atan2(delta.x, delta.z),
+                0.0f
+            };
+            transform.Scale = { thickness, thickness, length };
+            return transform;
+        }
+
+        Disparity::Transform BillboardTransform(const DirectX::XMFLOAT3& position, float size, float roll = 0.0f) const
+        {
+            const DirectX::XMFLOAT3 cameraPosition = GetRenderCamera().GetPosition();
+            const DirectX::XMFLOAT3 toCamera = Normalize(Subtract(cameraPosition, position));
+            Disparity::Transform transform;
+            transform.Position = position;
+            transform.Rotation = { Pi * 0.5f, std::atan2(toCamera.x, toCamera.z), roll };
+            transform.Scale = { size, size, size };
+            return transform;
+        }
+
+        void DrawRiftVfx(Disparity::Renderer& renderer)
+        {
+            const float visualTime = ShowcaseVisualTime();
+            const float modeBoost = (m_showcaseMode || m_trailerMode) ? 1.0f : 0.64f;
+            uint32_t drawCount = 0;
+
+            for (int fogIndex = 0; fogIndex < 7; ++fogIndex)
+            {
+                const float n = static_cast<float>(fogIndex);
+                const float angle = n * 0.897f + visualTime * (0.05f + n * 0.004f);
+                const float radius = 2.4f + n * 0.42f;
+                const DirectX::XMFLOAT3 position = Add(m_riftPosition, {
+                    std::sin(angle) * radius,
+                    -0.55f + std::sin(visualTime * 0.27f + n) * 0.45f,
+                    std::cos(angle) * radius * 0.72f
+                });
+                Disparity::Transform fog = BillboardTransform(position, (2.6f + n * 0.18f) * modeBoost, angle * 0.17f);
+                renderer.DrawMesh(m_vfxQuadMesh, fog, m_vfxFogMaterial);
+                ++drawCount;
+            }
+
+            for (int particleIndex = 0; particleIndex < 28; ++particleIndex)
+            {
+                const float n = static_cast<float>(particleIndex);
+                const float seed = n * 12.9898f;
+                const float angle = n * 0.83f + visualTime * (0.58f + std::fmod(n, 5.0f) * 0.03f);
+                const float radius = 1.35f + std::fmod(n * 1.91f, 3.4f);
+                const float orbitY = std::sin(visualTime * 1.18f + seed) * (0.95f + std::fmod(n, 3.0f) * 0.22f);
+                const DirectX::XMFLOAT3 position = Add(m_riftPosition, {
+                    std::sin(angle) * radius,
+                    orbitY,
+                    std::cos(angle * 1.11f) * radius * 0.72f
+                });
+                const float size = (0.14f + std::fmod(n, 6.0f) * 0.018f + m_riftBeatPulse * 0.16f) * modeBoost;
+                const Disparity::Material& material = particleIndex % 3 == 0 ? m_vfxHotParticleMaterial : m_vfxParticleMaterial;
+                renderer.DrawMesh(m_vfxQuadMesh, BillboardTransform(position, size, angle), material);
+                ++drawCount;
+            }
+
+            for (int ribbonIndex = 0; ribbonIndex < 12; ++ribbonIndex)
+            {
+                const float n = static_cast<float>(ribbonIndex);
+                const float angle = visualTime * 0.64f + n * Pi * 2.0f / 12.0f;
+                const float radius = 3.0f + std::sin(visualTime * 0.41f + n) * 0.34f;
+                const DirectX::XMFLOAT3 position = Add(m_riftPosition, {
+                    std::sin(angle) * radius,
+                    std::cos(angle * 1.7f) * 0.55f,
+                    std::cos(angle) * radius * 0.74f
+                });
+                Disparity::Transform ribbon;
+                ribbon.Position = position;
+                ribbon.Rotation = { 0.08f * std::sin(angle), angle + Pi * 0.5f, 0.22f * std::sin(visualTime + n) };
+                ribbon.Scale = { 0.055f * modeBoost, 0.035f * modeBoost, (1.1f + m_riftBeatPulse * 0.5f) * modeBoost };
+                renderer.DrawMesh(m_cubeMesh, ribbon, m_vfxRibbonMaterial);
+                ++drawCount;
+            }
+
+            for (int arcIndex = 0; arcIndex < 8; ++arcIndex)
+            {
+                const float n = static_cast<float>(arcIndex);
+                const float angleA = visualTime * 0.92f + n * Pi * 0.25f;
+                const float angleB = angleA + 0.52f + std::sin(visualTime * 1.5f + n) * 0.12f;
+                const DirectX::XMFLOAT3 start = Add(m_riftPosition, {
+                    std::sin(angleA) * 1.0f,
+                    std::sin(visualTime * 1.3f + n) * 0.72f,
+                    std::cos(angleA) * 0.8f
+                });
+                const DirectX::XMFLOAT3 end = Add(m_riftPosition, {
+                    std::sin(angleB) * (2.8f + m_riftBeatPulse * 0.7f),
+                    std::cos(visualTime * 1.1f + n) * 1.25f,
+                    std::cos(angleB) * (2.1f + m_riftBeatPulse * 0.35f)
+                });
+                renderer.DrawMesh(m_cubeMesh, BeamTransform(start, end, 0.035f + m_riftBeatPulse * 0.035f), m_vfxLightningMaterial);
+                ++drawCount;
+            }
+
+            if (m_runtimeVerification.Enabled)
+            {
+                m_runtimeEditorStats.RiftVfxDraws += drawCount;
+            }
+        }
+
+        void RequestHighResolutionCapture()
+        {
+            if (!m_renderer)
+            {
+                return;
+            }
+
+            std::filesystem::create_directories("Saved/Captures");
+            m_highResCaptureSourcePath = "Saved/Captures/DISPARITY_photo_source.ppm";
+            m_highResCaptureOutputPath = "Saved/Captures/DISPARITY_photo_2x.ppm";
+            m_highResCapturePending = true;
+            if (m_runtimeVerification.Enabled)
+            {
+                m_runtimeBudgetSkipFrames = std::max(m_runtimeBudgetSkipFrames, 4u);
+            }
+            m_renderer->RequestFrameCapture(m_highResCaptureSourcePath);
+            SetStatus("Queued 2x trailer/photo capture");
+        }
+
+        bool ReadPpmImage(const std::filesystem::path& path, PpmImage& image) const
+        {
+            std::ifstream file(path, std::ios::binary);
+            if (!file)
+            {
+                return false;
+            }
+
+            std::string magic;
+            uint32_t maxValue = 0;
+            file >> magic >> image.Width >> image.Height >> maxValue;
+            if (magic != "P6" || image.Width == 0 || image.Height == 0 || maxValue != 255)
+            {
+                return false;
+            }
+
+            file.get();
+            const size_t byteCount = static_cast<size_t>(image.Width) * static_cast<size_t>(image.Height) * 3u;
+            image.Pixels.resize(byteCount);
+            file.read(reinterpret_cast<char*>(image.Pixels.data()), static_cast<std::streamsize>(image.Pixels.size()));
+            return file.good() || file.gcount() == static_cast<std::streamsize>(image.Pixels.size());
+        }
+
+        bool WriteUpscaledPpm(const PpmImage& image, const std::filesystem::path& path, uint32_t scale) const
+        {
+            if (image.Width == 0 || image.Height == 0 || image.Pixels.empty() || scale < 2)
+            {
+                return false;
+            }
+
+            if (path.has_parent_path())
+            {
+                std::filesystem::create_directories(path.parent_path());
+            }
+
+            std::ofstream output(path, std::ios::binary | std::ios::trunc);
+            if (!output)
+            {
+                return false;
+            }
+
+            const uint32_t outWidth = image.Width * scale;
+            const uint32_t outHeight = image.Height * scale;
+            output << "P6\n" << outWidth << " " << outHeight << "\n255\n";
+            for (uint32_t y = 0; y < outHeight; ++y)
+            {
+                const uint32_t sourceY = y / scale;
+                for (uint32_t x = 0; x < outWidth; ++x)
+                {
+                    const uint32_t sourceX = x / scale;
+                    const size_t sourceIndex = (static_cast<size_t>(sourceY) * image.Width + sourceX) * 3u;
+                    output.write(reinterpret_cast<const char*>(&image.Pixels[sourceIndex]), 3);
+                }
+            }
+
+            return output.good();
+        }
+
+        void CompleteHighResolutionCaptureIfReady()
+        {
+            if (!m_highResCapturePending || !m_renderer || !m_renderer->HasLastFrameCapture())
+            {
+                return;
+            }
+
+            const Disparity::FrameCaptureResult& capture = m_renderer->GetLastFrameCapture();
+            if (!capture.Success || capture.Path.lexically_normal() != m_highResCaptureSourcePath.lexically_normal())
+            {
+                return;
+            }
+
+            PpmImage image;
+            if (!ReadPpmImage(m_highResCaptureSourcePath, image) || !WriteUpscaledPpm(image, m_highResCaptureOutputPath, 2))
+            {
+                m_highResCapturePending = false;
+                SetStatus("High-res capture failed");
+                if (m_runtimeVerification.Enabled)
+                {
+                    AddRuntimeVerificationFailure("high-resolution capture upscaling failed.");
+                }
+                return;
+            }
+
+            m_highResCapturePending = false;
+            if (m_runtimeVerification.Enabled)
+            {
+                m_runtimeBudgetSkipFrames = std::max(m_runtimeBudgetSkipFrames, 4u);
+            }
+            ++m_runtimeEditorStats.HighResCaptures;
+            SetStatus("Wrote " + m_highResCaptureOutputPath.string());
+            if (m_runtimeVerification.Enabled)
+            {
+                AddRuntimeVerificationNote("Validated 2x high-resolution capture workflow.");
+            }
         }
 
         void DrawShowcaseRift(Disparity::Renderer& renderer)
@@ -1520,6 +2113,14 @@ namespace
                     {
                         SetShowcaseMode(!m_showcaseMode);
                     }
+                    if (ImGui::MenuItem("Trailer/Photo Mode", "F8", m_trailerMode))
+                    {
+                        SetTrailerMode(!m_trailerMode);
+                    }
+                    if (ImGui::MenuItem("High-Res Capture", "F9"))
+                    {
+                        RequestHighResolutionCapture();
+                    }
                     if (ImGui::MenuItem("Reload Scene", "F5"))
                     {
                         ReloadSceneAndScript();
@@ -1589,6 +2190,17 @@ namespace
             {
                 SetShowcaseMode(showcaseMode);
             }
+            bool trailerMode = m_trailerMode;
+            if (ImGui::Checkbox("Trailer/photo mode", &trailerMode))
+            {
+                SetTrailerMode(trailerMode);
+            }
+            if (ImGui::Button("Capture 2x PPM"))
+            {
+                RequestHighResolutionCapture();
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("%s", m_highResCaptureOutputPath.empty() ? "No capture" : m_highResCaptureOutputPath.string().c_str());
             ImGui::Checkbox("Editor camera", &m_editorCameraEnabled);
             if (ImGui::Button("Frame Selection"))
             {
@@ -1621,7 +2233,7 @@ namespace
             ImGui::Text("Hover: %s", DescribeEditorPick(m_hoverPick).c_str());
             ImGui::Text("Viewport: %.0fx%.0f", m_editorViewport.Width, m_editorViewport.Height);
             ImGui::Text("Gizmo: %s", m_gizmoStatus.c_str());
-            ImGui::TextDisabled("F7 enters cinematic showcase. Tab releases mouse; left-click picks. Right-drag plus WASD/QE flies the editor camera.");
+            ImGui::TextDisabled("F7 showcase, F8 trailer/photo, F9 2x capture. Tab releases mouse; right-drag plus WASD/QE flies.");
             ImGui::End();
         }
 
@@ -1925,6 +2537,9 @@ namespace
             changed |= ImGui::Checkbox("SSAO", &settings.SSAO);
             changed |= ImGui::Checkbox("Anti-aliasing", &settings.AntiAliasing);
             changed |= ImGui::Checkbox("Temporal AA", &settings.TemporalAA);
+            changed |= ImGui::Checkbox("Depth of field", &settings.DepthOfField);
+            changed |= ImGui::Checkbox("Lens dirt", &settings.LensDirt);
+            changed |= ImGui::Checkbox("Cinematic overlay", &settings.CinematicOverlay);
             changed |= ImGui::SliderFloat("Exposure", &settings.Exposure, 0.1f, 4.0f);
             changed |= ImGui::SliderFloat("Shadow strength", &settings.ShadowStrength, 0.0f, 0.95f);
             changed |= ImGui::SliderFloat("Bloom strength", &settings.BloomStrength, 0.0f, 1.25f);
@@ -1934,13 +2549,26 @@ namespace
             changed |= ImGui::SliderFloat("TAA blend", &settings.TemporalBlend, 0.0f, 0.35f);
             changed |= ImGui::SliderFloat("Saturation", &settings.ColorSaturation, 0.0f, 2.0f);
             changed |= ImGui::SliderFloat("Contrast", &settings.ColorContrast, 0.0f, 2.0f);
+            changed |= ImGui::SliderFloat("DOF focus", &settings.DepthOfFieldFocus, 0.0f, 1.0f);
+            changed |= ImGui::SliderFloat("DOF range", &settings.DepthOfFieldRange, 0.001f, 0.25f);
+            changed |= ImGui::SliderFloat("DOF strength", &settings.DepthOfFieldStrength, 0.0f, 1.0f);
+            changed |= ImGui::SliderFloat("Lens dirt", &settings.LensDirtStrength, 0.0f, 1.0f);
+            changed |= ImGui::SliderFloat("Vignette", &settings.VignetteStrength, 0.0f, 1.0f);
+            changed |= ImGui::SliderFloat("Letterbox", &settings.LetterboxAmount, 0.0f, 0.25f);
+            changed |= ImGui::SliderFloat("Title safe", &settings.TitleSafeOpacity, 0.0f, 1.0f);
+            changed |= ImGui::SliderFloat("Film grain", &settings.FilmGrainStrength, 0.0f, 0.25f);
 
             if (ImGui::Button(m_showcaseMode ? "Stop Showcase" : "Start Showcase"))
             {
                 SetShowcaseMode(!m_showcaseMode);
             }
+            ImGui::SameLine();
+            if (ImGui::Button(m_trailerMode ? "Stop Trailer" : "Start Trailer"))
+            {
+                SetTrailerMode(!m_trailerMode);
+            }
 
-            const char* debugViews[] = { "Final", "Bloom", "SSAO mask", "AA edges", "Depth" };
+            const char* debugViews[] = { "Final", "Bloom", "SSAO mask", "AA edges", "Depth", "DOF", "Lens dirt" };
             int postDebugView = static_cast<int>(settings.PostDebugView);
             if (ImGui::Combo("Post debug", &postDebugView, debugViews, IM_ARRAYSIZE(debugViews)))
             {
@@ -2318,12 +2946,14 @@ namespace
             {
                 m_runtimeVerificationOriginalRendererSettings = m_renderer->GetSettings();
                 Disparity::RendererSettings settings = *m_runtimeVerificationOriginalRendererSettings;
-                for (uint32_t debugView = 0; debugView <= 4; ++debugView)
+                for (uint32_t debugView = 0; debugView <= 6; ++debugView)
                 {
                     settings.PostDebugView = debugView;
                     settings.Bloom = debugView == 1 || !m_runtimeVerificationOriginalRendererSettings->Bloom;
                     settings.SSAO = debugView == 2 || !m_runtimeVerificationOriginalRendererSettings->SSAO;
                     settings.AntiAliasing = debugView == 3 || !m_runtimeVerificationOriginalRendererSettings->AntiAliasing;
+                    settings.DepthOfField = debugView == 5 || m_runtimeVerificationOriginalRendererSettings->DepthOfField;
+                    settings.LensDirt = debugView == 6 || m_runtimeVerificationOriginalRendererSettings->LensDirt;
                     m_renderer->SetSettings(settings);
                     ++m_runtimeEditorStats.PostDebugViews;
                 }
@@ -2347,6 +2977,13 @@ namespace
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
+            if (!m_runtimeVerificationRequestedHighResCapture && m_runtimeVerificationFrame >= 34)
+            {
+                RequestHighResolutionCapture();
+                m_runtimeVerificationRequestedHighResCapture = true;
+                AddRuntimeVerificationNote("Requested high-resolution trailer/photo capture.");
+            }
+
             if (!m_runtimeVerificationStartedShowcase && m_runtimeVerificationFrame >= 38)
             {
                 SetShowcaseMode(true);
@@ -2359,12 +2996,28 @@ namespace
                 ++m_runtimeEditorStats.ShowcaseFrames;
             }
 
-            const uint32_t showcaseStopFrame = std::max(48u, m_runtimeVerification.TargetFrames > 12u ? m_runtimeVerification.TargetFrames - 12u : 48u);
+            constexpr uint32_t showcaseStopFrame = 52u;
             if (m_runtimeVerificationStartedShowcase && !m_runtimeVerificationStoppedShowcase && m_runtimeVerificationFrame >= showcaseStopFrame)
             {
                 SetShowcaseMode(false);
                 m_runtimeVerificationStoppedShowcase = true;
                 AddRuntimeVerificationNote("Stopped cinematic showcase mode and restored renderer settings.");
+            }
+
+            if (!m_runtimeVerificationStartedTrailer && m_runtimeVerificationFrame >= 54)
+            {
+                SetTrailerMode(true);
+                m_runtimeVerificationStartedTrailer = true;
+                m_runtimeVerificationTrailerStartFrame = m_runtimeVerificationFrame;
+                AddRuntimeVerificationNote("Started authored trailer/photo shot playback.");
+            }
+
+            const uint32_t trailerStopFrame = std::max(72u, m_runtimeVerification.TargetFrames > 12u ? m_runtimeVerification.TargetFrames - 12u : 72u);
+            if (m_runtimeVerificationStartedTrailer && !m_runtimeVerificationStoppedTrailer && m_runtimeVerificationFrame >= trailerStopFrame)
+            {
+                SetTrailerMode(false);
+                m_runtimeVerificationStoppedTrailer = true;
+                AddRuntimeVerificationNote("Stopped trailer/photo shot playback and restored renderer settings.");
             }
 
             const uint32_t captureRequestFrame = m_runtimeVerification.TargetFrames > 6u ? m_runtimeVerification.TargetFrames - 4u : m_runtimeVerification.TargetFrames;
@@ -2723,12 +3376,36 @@ namespace
             {
                 AddRuntimeVerificationFailure("showcase frame count is below baseline.");
             }
+            if (m_runtimeEditorStats.TrailerFrames < m_runtimeBaseline.MinTrailerFrames)
+            {
+                AddRuntimeVerificationFailure("trailer frame count is below baseline.");
+            }
+            if (m_runtimeEditorStats.HighResCaptures < m_runtimeBaseline.MinHighResCaptures)
+            {
+                AddRuntimeVerificationFailure("high-resolution capture count is below baseline.");
+            }
+            if (m_runtimeEditorStats.RiftVfxDraws < m_runtimeBaseline.MinRiftVfxDraws)
+            {
+                AddRuntimeVerificationFailure("rift VFX draw count is below baseline.");
+            }
+            if (m_runtimeEditorStats.AudioBeatPulses < m_runtimeBaseline.MinAudioBeatPulses)
+            {
+                AddRuntimeVerificationFailure("audio beat pulse count is below baseline.");
+            }
         }
 
         void CollectRuntimeBudgetStats()
         {
             if (!m_runtimeVerification.EnforceBudgets || m_runtimeVerificationFrame < 8 || m_runtimeVerificationCaptureRequested)
             {
+                return;
+            }
+            if (m_runtimeBudgetSkipFrames > 0 || m_highResCapturePending)
+            {
+                if (m_runtimeBudgetSkipFrames > 0)
+                {
+                    --m_runtimeBudgetSkipFrames;
+                }
                 return;
             }
 
@@ -2807,6 +3484,11 @@ namespace
             }
 
             const Disparity::FrameCaptureResult& capture = m_renderer->GetLastFrameCapture();
+            if (capture.Path.lexically_normal() != m_runtimeVerification.CapturePath.lexically_normal())
+            {
+                return;
+            }
+
             m_runtimeCapture = capture;
             m_runtimeVerificationCaptureValidated = true;
 
@@ -2871,7 +3553,7 @@ namespace
             {
                 AddRuntimeVerificationFailure(std::string(stage) + ": renderer dimensions are invalid.");
             }
-            if (m_cubeMesh == 0 || m_planeMesh == 0 || m_terrainMesh == 0 || m_gizmoRingMesh == 0 || m_gizmoPlaneHandleMesh == 0)
+            if (m_cubeMesh == 0 || m_planeMesh == 0 || m_terrainMesh == 0 || m_gizmoRingMesh == 0 || m_gizmoPlaneHandleMesh == 0 || m_vfxQuadMesh == 0)
             {
                 AddRuntimeVerificationFailure(std::string(stage) + ": a required procedural mesh handle is missing.");
             }
@@ -2977,6 +3659,10 @@ namespace
             {
                 SetShowcaseMode(false);
             }
+            if (m_trailerMode)
+            {
+                SetTrailerMode(false);
+            }
             ValidateRuntimeBudgets();
             ValidateRuntimeVerificationState("final");
             ValidateRuntimeScenarioCoverage();
@@ -3052,6 +3738,11 @@ namespace
             report << "scene_save_tests=" << m_runtimeEditorStats.SceneSaves << "\n";
             report << "post_debug_view_tests=" << m_runtimeEditorStats.PostDebugViews << "\n";
             report << "showcase_frames=" << m_runtimeEditorStats.ShowcaseFrames << "\n";
+            report << "trailer_frames=" << m_runtimeEditorStats.TrailerFrames << "\n";
+            report << "high_res_capture_tests=" << m_runtimeEditorStats.HighResCaptures << "\n";
+            report << "rift_vfx_draws=" << m_runtimeEditorStats.RiftVfxDraws << "\n";
+            report << "audio_beat_pulses=" << m_runtimeEditorStats.AudioBeatPulses << "\n";
+            report << "high_res_capture_path=" << m_highResCaptureOutputPath.string() << "\n";
             report << "audio_snapshot_tests=" << m_runtimeEditorStats.AudioSnapshotTests << "\n";
             report << "cpu_frame_samples=" << m_runtimeBudgetStats.CpuSamples << "\n";
             report << "cpu_frame_max_ms=" << m_runtimeBudgetStats.CpuFrameMaxMs << "\n";
@@ -4436,6 +5127,7 @@ namespace
                 m_hotReloader.Watch("Assets/Meshes/SampleTriangle.gltf");
                 m_hotReloader.Watch("Assets/Materials/PlayerBody.dmat");
                 m_hotReloader.Watch("Assets/Materials/PlayerHead.dmat");
+                m_hotReloader.Watch("Assets/Cinematics/Showcase.dshot");
                 return;
             }
 
@@ -4447,6 +5139,7 @@ namespace
                     m_hotReloader.Watch(dependency);
                 }
             }
+            m_hotReloader.Watch("Assets/Cinematics/Showcase.dshot");
         }
 
         void PollHotReload(float dt)
@@ -4470,6 +5163,7 @@ namespace
             }
 
             InitializeMaterials();
+            LoadTrailerShotAsset();
             ReloadGltfAssets();
             ReloadSceneAndScript();
             WatchAssets();
@@ -4598,6 +5292,10 @@ namespace
                     else if (key == "min_scene_saves") { loadedBaseline.MinSceneSaves = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_post_debug_views") { loadedBaseline.MinPostDebugViews = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_showcase_frames") { loadedBaseline.MinShowcaseFrames = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_trailer_frames") { loadedBaseline.MinTrailerFrames = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_high_res_captures") { loadedBaseline.MinHighResCaptures = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_rift_vfx_draws") { loadedBaseline.MinRiftVfxDraws = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_audio_beat_pulses") { loadedBaseline.MinAudioBeatPulses = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_audio_snapshot_tests") { loadedBaseline.MinAudioSnapshotTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_render_graph_allocations") { loadedBaseline.MinRenderGraphAllocations = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_render_graph_aliased_resources") { loadedBaseline.MinRenderGraphAliasedResources = static_cast<uint32_t>(std::stoul(value)); }
@@ -4629,6 +5327,7 @@ namespace
         Disparity::Camera m_camera;
         Disparity::Camera m_editorCamera;
         Disparity::Camera m_showcaseCamera;
+        Disparity::Camera m_trailerCamera;
         Disparity::Registry m_registry;
         Disparity::Scene m_scene;
         Disparity::AssetDatabase m_assetDatabase;
@@ -4649,10 +5348,12 @@ namespace
         std::optional<EditState> m_gizmoDragBeforeState;
         std::optional<Disparity::RendererSettings> m_runtimeVerificationOriginalRendererSettings;
         std::optional<Disparity::RendererSettings> m_showcaseSavedRendererSettings;
+        std::optional<Disparity::RendererSettings> m_trailerSavedRendererSettings;
         std::vector<GizmoDragObject> m_gizmoDragObjects;
         std::vector<std::string> m_runtimeVerificationNotes;
         std::vector<std::string> m_runtimeVerificationFailures;
         std::vector<RuntimeReplayStep> m_runtimeReplaySteps;
+        std::vector<TrailerShotKey> m_trailerKeys;
         RuntimeBudgetStats m_runtimeBudgetStats;
         RuntimePlaybackStats m_runtimePlayback;
         EditorVerificationStats m_runtimeEditorStats;
@@ -4665,6 +5366,7 @@ namespace
         Disparity::MeshHandle m_gltfMesh = 0;
         Disparity::MeshHandle m_gizmoPlaneHandleMesh = 0;
         Disparity::MeshHandle m_gizmoRingMesh = 0;
+        Disparity::MeshHandle m_vfxQuadMesh = 0;
         Disparity::Material m_playerBodyMaterial;
         Disparity::Material m_playerHeadMaterial;
         Disparity::Material m_shadowMaterial;
@@ -4680,6 +5382,11 @@ namespace
         Disparity::Material m_riftMagentaMaterial;
         Disparity::Material m_riftVioletMaterial;
         Disparity::Material m_riftObsidianMaterial;
+        Disparity::Material m_vfxParticleMaterial;
+        Disparity::Material m_vfxHotParticleMaterial;
+        Disparity::Material m_vfxRibbonMaterial;
+        Disparity::Material m_vfxLightningMaterial;
+        Disparity::Material m_vfxFogMaterial;
         DirectX::XMFLOAT3 m_playerPosition = { 0.0f, 0.0f, 0.0f };
         DirectX::XMFLOAT3 m_riftPosition = { 0.0f, 2.25f, -7.4f };
         DirectX::XMFLOAT3 m_gizmoDragStartPivot = {};
@@ -4699,13 +5406,22 @@ namespace
         float m_playerBobOffset = 0.0f;
         float m_sceneAnimationTime = 0.0f;
         float m_showcaseTime = 0.0f;
+        float m_trailerTime = 0.0f;
+        float m_trailerFocus = 0.985f;
+        float m_trailerDofStrength = 0.45f;
+        float m_trailerLensDirt = 0.62f;
+        float m_trailerLetterbox = 0.075f;
+        float m_riftBeatPulse = 0.0f;
         float m_statusTimer = 0.0f;
         float m_hotReloadPollTimer = 0.0f;
         float m_runtimeVerificationElapsed = 0.0f;
+        int m_lastRiftBeatIndex = -1;
         size_t m_selectedIndex = 0;
         uint32_t m_runtimeVerificationFrame = 0;
         uint32_t m_runtimeReplayStartFrame = 0;
         uint32_t m_runtimeReplayEndFrame = 0;
+        uint32_t m_runtimeVerificationTrailerStartFrame = 0;
+        uint32_t m_runtimeBudgetSkipFrames = 0;
         DirectX::XMFLOAT3 m_editorCameraTarget = { 0.0f, 1.1f, 0.0f };
         DirectX::XMFLOAT2 m_editorLastMousePosition = {};
         EditorViewportState m_editorViewport;
@@ -4714,7 +5430,9 @@ namespace
         bool m_selectedPlayer = true;
         bool m_editorVisible = true;
         bool m_showcaseSavedEditorVisible = true;
+        bool m_trailerSavedEditorVisible = true;
         bool m_showcaseMode = false;
+        bool m_trailerMode = false;
         bool m_editorCameraEnabled = false;
         bool m_hotReloadEnabled = true;
         bool m_gltfAnimationPlayback = true;
@@ -4729,7 +5447,11 @@ namespace
         bool m_runtimeVerificationCaptureValidated = false;
         bool m_runtimeVerificationStartedShowcase = false;
         bool m_runtimeVerificationStoppedShowcase = false;
+        bool m_runtimeVerificationStartedTrailer = false;
+        bool m_runtimeVerificationStoppedTrailer = false;
+        bool m_runtimeVerificationRequestedHighResCapture = false;
         bool m_runtimeBaselineLoaded = false;
+        bool m_highResCapturePending = false;
         bool m_gizmoDragging = false;
         bool m_gizmoDragMoved = false;
         GizmoAxis m_gizmoDragAxis = GizmoAxis::None;
@@ -4741,6 +5463,8 @@ namespace
         std::string m_statusMessage;
         std::string m_lastPickStatus = "None";
         std::string m_gizmoStatus = "Idle";
+        std::filesystem::path m_highResCaptureSourcePath;
+        std::filesystem::path m_highResCaptureOutputPath;
     };
 }
 

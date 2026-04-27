@@ -12,6 +12,8 @@ namespace Disparity
         float Roughness = 0.65f;
         float Metallic = 0.0f;
         float Alpha = 1.0f;
+        DirectX::XMFLOAT3 Emissive = { 0.0f, 0.0f, 0.0f };
+        float EmissiveIntensity = 0.0f;
         TextureHandle BaseColorTexture = 0;
     };
 }

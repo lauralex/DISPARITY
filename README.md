@@ -38,6 +38,8 @@ Controls:
 - `F5`: reload the serialized scene and scene script; visible changes appear after editing `Assets/Scenes/Prototype.dscene` or `Assets/Scripts/Prototype.dscript`.
 - `F6`: save the runtime scene snapshot to `Saved/PrototypeRuntime.dscene` and show status in the editor menu bar.
 - `F7`: toggle cinematic showcase mode, hide the editor, boost post-processing, and orbit the animated DISPARITY rift for capture-friendly footage.
+- `F8`: toggle trailer/photo mode with authored camera shots from `Assets/Cinematics/Showcase.dshot`, depth of field, lens dirt, and title-safe guide overlays.
+- `F9`: capture the current presented frame and write a 2x PPM photo to `Saved/Captures/DISPARITY_photo_2x.ppm`.
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 - When the mouse is released with `Tab`, left-click the viewport to pick objects. Hold `Ctrl` while clicking or selecting in the hierarchy to multi-select.
@@ -52,7 +54,7 @@ Editor UI:
 - `Viewport`: enable the independent editor camera, frame the player/selection, choose gizmo translate/rotate/scale and world/local space, and use right-drag plus WASD/QE to move without driving gameplay input.
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw draggable, camera-scaled 3D axis/ring/plane gizmo handles in the viewport.
 - `Assets`: reload scene/script, toggle hot reload, inspect the asset database, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
-- `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, and post debug views.
+- `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, inspect bus sends/meters, and store/recall a mixer snapshot.
 
 ## Engine v0 Features
@@ -218,6 +220,14 @@ Editor UI:
 - Runtime verification now exercises showcase mode, records `showcase_frames`, restores renderer settings before capture, and uses deterministic rift timing during verification for repeatable thumbnails.
 - All runtime golden thumbnails and luminance baselines were refreshed for the new showpiece scene.
 
+## Engine v18 Followups Implemented
+
+- `Assets/Cinematics/Showcase.dshot` now drives an authored trailer/photo camera path with shot key interpolation, per-shot focus/lens/letterbox values, and deterministic playback through `F8`.
+- `F9` queues a one-click 2x frame capture workflow that writes `Saved/Captures/DISPARITY_photo_source.ppm` and `Saved/Captures/DISPARITY_photo_2x.ppm`.
+- Materials now carry emissive color/intensity data through `.dmat`, renderer constants, and the scene shader, so the rift can glow without relying only on bright albedo.
+- The rift now has a real presentational VFX layer: billboard particles, hot particles, ribbon trails, lightning beams, fog cards, lens dirt, film grain, stronger depth-of-field, title-safe guides, and beat-synced audio-reactive pulses.
+- Runtime verification now exercises trailer/photo mode, high-resolution capture, all seven post debug views, rift VFX draw coverage, and beat-pulse coverage across all six suites, with refreshed baselines and golden thumbnails.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
@@ -228,5 +238,7 @@ More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 - Add prefab variants, nested prefabs, override diffing, and dependency-aware apply/revert with undo grouping.
 - Replace the WinMM playback path with XAudio2 voices, sends, streamed music, spatial emitters, attenuation curves, and live meters.
 - Add real installer bootstrapper output, symbol-server indexing, crash upload authentication/retry, and packaged runtime smoke on interactive CI runners.
-- Add a trailer/photo mode with timeline camera splines, depth-of-field, title-safe overlays, and one-click high-resolution frame capture.
-- Give the rift authored VFX controls: particle ribbons, volumetric fog cards, lightning arcs, lens dirt, and beat-synced audio-reactive pulses.
+- Replace the current 2x PPM upscaler with offscreen high-resolution render targets, multi-sample resolve options, PNG/WIC export, and a capture queue that never touches frame-budget samples.
+- Add an in-editor cinematic timeline for `.dshot` assets with shot thumbnails, renderer/audio cue tracks, easing curves, and preview scrubbing.
+- Add GPU particle simulation, soft particles, signed-distance fog volumes, motion vectors, and temporal VFX reprojection for the rift.
+- Add OBS/trailer tooling: deterministic camera bookmarks, build watermark toggles, capture metadata, and repeatable vertical-slice launch scripts.

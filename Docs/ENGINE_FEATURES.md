@@ -21,6 +21,13 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 - Showcase mode temporarily forces tone mapping, bloom, SSAO, anti-aliasing, temporal AA, clustered lighting, and higher color grading values, then restores the previous renderer settings when disabled.
 - Press `F7` again to return to the previous editor visibility and gameplay camera state.
 
+## Trailer And Photo Mode
+
+- Press `F8`, use `DISPARITY > Trailer/Photo Mode`, or click `Start Trailer` in the renderer panel to play authored camera shots from `Assets/Cinematics/Showcase.dshot`.
+- Trailer mode interpolates position, target, focus, depth-of-field strength, lens dirt, and letterbox values so the same vertical-slice camera move is repeatable for recording and verification.
+- Press `F9` or click `High-Res Capture` in the viewport panel to capture the presented frame, then write `Saved/Captures/DISPARITY_photo_source.ppm` and a 2x upscaled `Saved/Captures/DISPARITY_photo_2x.ppm`.
+- The renderer panel exposes depth of field, lens dirt, vignette, film grain, letterbox, title-safe guides, and presentation pulse controls for public demo capture.
+
 ## Assets And Prefabs
 
 - Edit `Assets/Scenes/Prototype.dscene`, `Assets/Scripts/Prototype.dscript`, `Assets/Prefabs/Beacon.dprefab`, or the player material files while the game is running.
@@ -42,13 +49,14 @@ This document is the practical test map for the current Visual Studio 2022 C++20
 ## Rendering
 
 - The renderer remains DirectX 11 and shader-model 5.
-- The `Renderer` panel exposes VSync, tone mapping, shadow maps, broader CSM-style shadow coverage, clustered light contribution, bloom, SSAO, anti-aliasing, temporal AA, exposure, shadow strength, bloom threshold/strength, SSAO strength, AA strength, temporal blend, saturation, contrast, and post debug views.
+- The `Renderer` panel exposes VSync, tone mapping, shadow maps, broader CSM-style shadow coverage, clustered light contribution, bloom, SSAO, anti-aliasing, temporal AA, exposure, shadow strength, bloom threshold/strength, SSAO strength, AA strength, temporal blend, saturation, contrast, depth of field, lens dirt, cinematic overlay, vignette, letterbox, title-safe guides, film grain, presentation pulse, and post debug views.
 - The scene uses a directional light, shadow map, and eight point lights, including animated rift lights.
 - Post-processing uses the HDR scene texture, temporal history texture, and depth SRV.
 - The renderer now owns dedicated editor GPU targets for viewport color, object IDs, and object depth. They are cleared and tracked in the compiled render graph as the foundation for GPU picking and editor-only overlays.
 - The `Profiler` panel shows frame timings, job worker count, renderer draw-call counters, GPU frame timing once DX11 timestamp queries warm up, and compiled render-graph schedule/resource lifetime diagnostics. The render graph view also reports per-pass GPU timings, culled passes, read/write transition diagnostics, alias candidates, transient allocation slots, and alias reuse.
-- If bloom/SSAO/AA differences are hard to spot in the final image, use `Renderer > Post debug`: `Bloom` isolates bright bleed, `SSAO mask` shows contact darkening, `AA edges` shows the edge detector, and `Depth` visualizes the depth buffer.
+- If bloom/SSAO/AA/DOF/lens differences are hard to spot in the final image, use `Renderer > Post debug`: `Bloom` isolates bright bleed, `SSAO mask` shows contact darkening, `AA edges` shows the edge detector, `Depth` visualizes the depth buffer, `DOF` shows the circle-of-confusion mask, and `Lens dirt` isolates the dirt/bloom response.
 - Bloom became more visible because the scene shader no longer clamps lighting before the HDR post pass.
+- Scene materials now include emissive color and emissive intensity, and the rift uses those channels for glow alongside its animated point lights.
 
 ## Audio
 
@@ -116,7 +124,7 @@ powershell -ExecutionPolicy Bypass -File .\Tools\RuntimeVerifyDisparity.ps1 -Con
 .\bin\x64\Debug\DisparityGame.exe --verify-runtime --verify-frames=90
 ```
 
-Runtime verification writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, runs deterministic input playback, validates capture dimensions/luminance/checksum/nonblank pixels, checks CPU/GPU frame budgets and per-pass render-graph budgets, validates render-graph dispatch order, transient allocation counts, alias reuse, and editor viewport/object-ID/depth target readiness, cycles post-debug views, exercises showcase mode with deterministic rift timing, validates editor pick/gizmo pick coverage, runs gizmo transform constraint checks, validates audio snapshot capture/restore, downsamples the frame into a thumbnail, compares it against a suite-specific golden PPM, writes a golden diff thumbnail, and exits non-zero if an invariant fails. Budget defaults can be overridden through `RuntimeVerifyDisparity.ps1` or direct flags such as `--verify-cpu-budget-ms=120`, `--verify-gpu-budget-ms=50`, and `--verify-pass-budget-ms=60`.
+Runtime verification writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, runs deterministic input playback, validates capture dimensions/luminance/checksum/nonblank pixels, checks CPU/GPU frame budgets and per-pass render-graph budgets, validates render-graph dispatch order, transient allocation counts, alias reuse, and editor viewport/object-ID/depth target readiness, cycles all seven post-debug views, exercises showcase mode and trailer/photo mode with deterministic rift timing, validates the 2x high-resolution capture workflow, validates rift VFX draw counts and beat-pulse counts, validates editor pick/gizmo pick coverage, runs gizmo transform constraint checks, validates audio snapshot capture/restore, downsamples the frame into a thumbnail, compares it against a suite-specific golden PPM, writes a golden diff thumbnail, and exits non-zero if an invariant fails. Budget defaults can be overridden through `RuntimeVerifyDisparity.ps1` or direct flags such as `--verify-cpu-budget-ms=120`, `--verify-gpu-budget-ms=50`, and `--verify-pass-budget-ms=60`.
 
 Runtime replay and baseline expectations are assetized:
 
@@ -125,12 +133,12 @@ Runtime replay and baseline expectations are assetized:
 - `Assets/Verification/CameraSweep.dreplay` adds a camera-heavy deterministic playback path.
 - `Assets/Verification/EditorPrecision.dreplay` adds editor-picking coverage for stable-ID object picks and gizmo handle picks.
 - `Assets/Verification/PostDebug.dreplay`, `AssetReload.dreplay`, and `GizmoDrag.dreplay` add scenario labels and replay paths for production-style verification coverage.
-- `Assets/Verification/*Baseline.dverify` files define expected capture dimensions, average luminance tolerance, nonblack pixel ratio, minimum replay path distance, editor pick counts, gizmo pick counts, showcase frame counts, render-graph allocation/alias requirements, editor GPU target requirements, performance budgets, and golden thumbnail tolerances.
+- `Assets/Verification/*Baseline.dverify` files define expected capture dimensions, average luminance tolerance, nonblack pixel ratio, minimum replay path distance, editor pick counts, gizmo pick counts, post-debug counts, showcase/trailer frame counts, high-resolution capture counts, rift VFX draw counts, beat-pulse counts, render-graph allocation/alias requirements, editor GPU target requirements, performance budgets, and golden thumbnail tolerances.
 - `Assets/Verification/Goldens/*.ppm` stores suite-specific 64x36 golden thumbnails.
 - `Assets/Verification/GoldenProfiles/*.dgoldenprofile` stores per-machine or per-adapter golden tolerance defaults. The runtime verification wrapper detects the primary display adapter and uses a matching profile when present, otherwise it falls back to the default profile.
 - `Assets/Verification/PerformanceBaselines.dperf` stores committed CPU/GPU/pass thresholds per suite for trend comparison.
 - `Tools/CompareCaptureDisparity.ps1` creates or compares capture thumbnails against goldens and writes diff thumbnails.
-- `Tools/SummarizePerformanceHistory.ps1` groups recent local runs by suite/executable and reports CPU/GPU deltas plus editor/gizmo/showcase scenario counters, then compares them against committed performance baselines when available.
+- `Tools/SummarizePerformanceHistory.ps1` groups recent local runs by suite/executable and reports CPU/GPU deltas plus editor/gizmo/showcase/trailer/high-res/VFX/beat scenario counters, then compares them against committed performance baselines when available.
 - `Tools/ReviewVerificationBaselines.ps1` checks runtime baselines for required capture, graph, editor target, and golden fields before running the performance summary.
 - `Saved/Verification/performance_history.csv` is appended by `RuntimeVerifyDisparity.ps1` so repeated local runs leave a trend trail without committing generated data.
 

@@ -1,6 +1,14 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v17 versions of many requested followups. The next milestones should turn those prototypes into durable production systems and build on the new showcase-friendly presentation layer.
+The current engine now has functional v18 versions of many requested followups. The next milestones should turn the showcase/trailer prototypes into durable production systems while continuing toward a modern content pipeline and renderer architecture.
+
+## v18 Completed Public Showcase Batch
+
+- `Assets/Cinematics/Showcase.dshot` provides deterministic authored trailer/photo camera keys with per-shot target, focus, lens dirt, and letterbox values.
+- `F8` toggles trailer/photo playback, while `F9` writes a source PPM plus 2x upscaled public-demo capture under `Saved/Captures`.
+- Materials now persist emissive color/intensity through `.dmat`, renderer constants, and HLSL, allowing showpiece geometry to glow without albedo-only hacks.
+- The DISPARITY rift now layers billboard particles, hot particles, ribbon trails, lightning beams, fog cards, lens dirt, film grain, depth-of-field, title-safe overlays, and beat-synced presentation pulses.
+- Runtime verification records `trailer_frames`, `high_res_capture_tests`, `rift_vfx_draws`, and `audio_beat_pulses`, requires them in all six baselines, refreshes all suite goldens, and keeps high-resolution capture work out of normal frame-budget samples.
 
 ## v17 Completed Showcase Batch
 
@@ -54,8 +62,9 @@ The current engine now has functional v17 versions of many requested followups. 
 - Add GPU frustum/occlusion culling and real clustered or Forward+ light binning.
 - Replace the single shadow-map coverage mode with true cascaded shadow maps.
 - Add normal/depth pre-pass options, SSR/SSGI experiments, motion vectors, and a more correct temporal AA resolve beyond the current FXAA-style resolve plus history blend.
-- Add a real VFX layer for the rift: billboard particles, ribbon trails, lightning arcs, volumetric fog cards, lens dirt, and material emissive controls instead of HDR albedo-only glow.
-- Add trailer/photo-mode rendering controls: camera splines, depth of field, cinematic bars, high-resolution captures, and deterministic shot playback.
+- Replace the current CPU 2x PPM photo path with offscreen high-resolution render targets, multi-sample resolves, WIC/PNG export, tiled supersampling, and an async capture queue.
+- Upgrade the rift VFX from mesh/billboard draw calls to a dedicated particle/ribbon renderer with soft particles, depth fade, sorting controls, and GPU simulation options.
+- Add motion vectors, temporal VFX reprojection, better TAA resolve, and exposure curves tuned for trailer captures.
 - Investigate a DX12 or Vulkan backend once the DX11 renderer has a stable render graph contract.
 
 ## Runtime
@@ -64,12 +73,12 @@ The current engine now has functional v17 versions of many requested followups. 
 - Add serialization versioning, save-game separation, and deterministic scene IDs.
 - Add physics, collision queries, controller movement, animation-driven character logic, and gameplay event routing.
 - Add scripting reload boundaries, script state preservation, and a safer script asset format.
-- Add a shot director asset format so camera moves, renderer settings, audio cues, and scene beats can be authored for repeatable trailers and vertical-slice demos.
+- Add a shot-director editor for `.dshot` files with camera splines, easing curves, renderer setting tracks, audio cue tracks, shot thumbnails, bookmarks, and preview scrubbing.
 
 ## Audio
 
 - Replace WinMM playback with XAudio2 behind the v16 snapshot/meter/listener/backend-selection surface.
-- Add real mixer voices, sends, snapshots, streamed music layers, spatial emitters, attenuation curves, and debugging meters.
+- Add real mixer voices, sends, snapshots, streamed music layers, spatial emitters, attenuation curves, debugging meters, and amplitude analysis that can drive VFX pulses from actual content.
 
 ## Production
 
@@ -77,3 +86,4 @@ The current engine now has functional v17 versions of many requested followups. 
 - Turn the local baseline review and performance history summary into automated commit-to-commit regression gates with explicit baseline update approvals.
 - Extend CI with packaged runtime smoke tests by default when an interactive desktop runner is available.
 - Replace the installer payload manifest with a real installer bootstrapper, add symbol-server publishing, and add authenticated crash upload with retry/backoff.
+- Add trailer automation scripts for repeatable public captures, OBS/recording metadata, watermark toggles, and packaged vertical-slice launch presets.

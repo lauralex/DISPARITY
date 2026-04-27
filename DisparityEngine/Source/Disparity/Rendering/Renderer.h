@@ -48,6 +48,9 @@ namespace Disparity
         bool SSAO = true;
         bool AntiAliasing = true;
         bool TemporalAA = true;
+        bool DepthOfField = false;
+        bool LensDirt = false;
+        bool CinematicOverlay = false;
         float Exposure = 1.0f;
         float ShadowStrength = 0.48f;
         float BloomStrength = 0.42f;
@@ -57,6 +60,15 @@ namespace Disparity
         float TemporalBlend = 0.12f;
         float ColorSaturation = 1.04f;
         float ColorContrast = 1.03f;
+        float DepthOfFieldFocus = 0.985f;
+        float DepthOfFieldRange = 0.026f;
+        float DepthOfFieldStrength = 0.0f;
+        float LensDirtStrength = 0.0f;
+        float VignetteStrength = 0.08f;
+        float LetterboxAmount = 0.0f;
+        float TitleSafeOpacity = 0.0f;
+        float FilmGrainStrength = 0.0f;
+        float PresentationPulse = 0.0f;
         uint32_t PostDebugView = 0;
         uint32_t ShadowMapSize = 2048;
     };

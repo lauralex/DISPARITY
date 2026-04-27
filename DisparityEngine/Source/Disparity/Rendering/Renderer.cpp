@@ -38,12 +38,9 @@ namespace Disparity
         struct ObjectConstants
         {
             DirectX::XMFLOAT4X4 World = {};
-            DirectX::XMFLOAT3 Albedo = {};
-            float Roughness = 0.65f;
-            float Metallic = 0.0f;
-            float Alpha = 1.0f;
-            float UseTexture = 0.0f;
-            float Padding = 0.0f;
+            DirectX::XMFLOAT4 AlbedoRoughness = {};
+            DirectX::XMFLOAT4 Surface = {};
+            DirectX::XMFLOAT4 Emissive = {};
         };
 
         struct PostConstants
@@ -61,7 +58,16 @@ namespace Disparity
             float ColorContrast = 1.0f;
             float PostDebugView = 0.0f;
             float AntiAliasingEnabled = 0.0f;
-            DirectX::XMFLOAT2 Padding = {};
+            float DepthOfFieldStrength = 0.0f;
+            float DepthOfFieldFocus = 0.985f;
+            float DepthOfFieldRange = 0.026f;
+            float LensDirtStrength = 0.0f;
+            float VignetteStrength = 0.08f;
+            float LetterboxAmount = 0.0f;
+            float TitleSafeOpacity = 0.0f;
+            float FilmGrainStrength = 0.0f;
+            float PresentationPulse = 0.0f;
+            float PostPadding = 0.0f;
         };
 
         std::string HrToString(HRESULT hr)
@@ -468,7 +474,16 @@ namespace Disparity
         m_settings.TemporalBlend = std::clamp(m_settings.TemporalBlend, 0.0f, 0.35f);
         m_settings.ColorSaturation = std::clamp(m_settings.ColorSaturation, 0.0f, 2.0f);
         m_settings.ColorContrast = std::clamp(m_settings.ColorContrast, 0.0f, 2.0f);
-        m_settings.PostDebugView = std::clamp(m_settings.PostDebugView, 0u, 4u);
+        m_settings.DepthOfFieldFocus = std::clamp(m_settings.DepthOfFieldFocus, 0.0f, 1.0f);
+        m_settings.DepthOfFieldRange = std::clamp(m_settings.DepthOfFieldRange, 0.001f, 0.25f);
+        m_settings.DepthOfFieldStrength = std::clamp(m_settings.DepthOfFieldStrength, 0.0f, 1.0f);
+        m_settings.LensDirtStrength = std::clamp(m_settings.LensDirtStrength, 0.0f, 1.0f);
+        m_settings.VignetteStrength = std::clamp(m_settings.VignetteStrength, 0.0f, 1.0f);
+        m_settings.LetterboxAmount = std::clamp(m_settings.LetterboxAmount, 0.0f, 0.25f);
+        m_settings.TitleSafeOpacity = std::clamp(m_settings.TitleSafeOpacity, 0.0f, 1.0f);
+        m_settings.FilmGrainStrength = std::clamp(m_settings.FilmGrainStrength, 0.0f, 0.25f);
+        m_settings.PresentationPulse = std::clamp(m_settings.PresentationPulse, 0.0f, 1.0f);
+        m_settings.PostDebugView = std::clamp(m_settings.PostDebugView, 0u, 6u);
         m_settings.ShadowMapSize = std::clamp(m_settings.ShadowMapSize, 512u, 4096u);
     }
 
@@ -577,10 +592,24 @@ namespace Disparity
 
         ObjectConstants objectConstants = {};
         DirectX::XMStoreFloat4x4(&objectConstants.World, transform.ToMatrix());
-        objectConstants.Albedo = material.Albedo;
-        objectConstants.Roughness = std::clamp(material.Roughness, 0.02f, 1.0f);
-        objectConstants.Metallic = std::clamp(material.Metallic, 0.0f, 1.0f);
-        objectConstants.Alpha = std::clamp(material.Alpha, 0.0f, 1.0f);
+        objectConstants.AlbedoRoughness = {
+            material.Albedo.x,
+            material.Albedo.y,
+            material.Albedo.z,
+            std::clamp(material.Roughness, 0.02f, 1.0f)
+        };
+        objectConstants.Surface = {
+            std::clamp(material.Metallic, 0.0f, 1.0f),
+            std::clamp(material.Alpha, 0.0f, 1.0f),
+            0.0f,
+            std::max(0.0f, material.EmissiveIntensity)
+        };
+        objectConstants.Emissive = {
+            std::max(0.0f, material.Emissive.x),
+            std::max(0.0f, material.Emissive.y),
+            std::max(0.0f, material.Emissive.z),
+            0.0f
+        };
 
         ID3D11ShaderResourceView* textureView = nullptr;
         if (material.BaseColorTexture != 0)
@@ -589,7 +618,7 @@ namespace Disparity
             if (texture != m_textures.end())
             {
                 textureView = texture->second.ShaderResourceView.Get();
-                objectConstants.UseTexture = 1.0f;
+                objectConstants.Surface.z = 1.0f;
             }
         }
 
@@ -619,7 +648,7 @@ namespace Disparity
 
         m_context->PSSetShaderResources(0, 1, &textureView);
 
-        if (objectConstants.Alpha < 0.999f)
+        if (objectConstants.Surface.y < 0.999f)
         {
             const float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
             m_context->OMSetBlendState(m_alphaBlendState.Get(), blendFactor, 0xffffffff);
@@ -1787,6 +1816,15 @@ namespace Disparity
         postConstants.ColorContrast = m_settings.ColorContrast;
         postConstants.PostDebugView = static_cast<float>(m_settings.PostDebugView);
         postConstants.AntiAliasingEnabled = m_settings.AntiAliasing ? 1.0f : 0.0f;
+        postConstants.DepthOfFieldStrength = m_settings.DepthOfField ? m_settings.DepthOfFieldStrength : 0.0f;
+        postConstants.DepthOfFieldFocus = m_settings.DepthOfFieldFocus;
+        postConstants.DepthOfFieldRange = m_settings.DepthOfFieldRange;
+        postConstants.LensDirtStrength = m_settings.LensDirt ? m_settings.LensDirtStrength : 0.0f;
+        postConstants.VignetteStrength = m_settings.VignetteStrength;
+        postConstants.LetterboxAmount = m_settings.CinematicOverlay ? m_settings.LetterboxAmount : 0.0f;
+        postConstants.TitleSafeOpacity = m_settings.CinematicOverlay ? m_settings.TitleSafeOpacity : 0.0f;
+        postConstants.FilmGrainStrength = m_settings.FilmGrainStrength;
+        postConstants.PresentationPulse = m_settings.PresentationPulse;
         m_context->UpdateSubresource(m_postConstantBuffer.Get(), 0, nullptr, &postConstants, 0, 0);
 
         ID3D11Buffer* postBuffer = m_postConstantBuffer.Get();

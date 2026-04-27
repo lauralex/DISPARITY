@@ -88,8 +88,12 @@ foreach ($group in $groups) {
     $gizmoDrags = if ($latest.PSObject.Properties.Name -contains "gizmo_drag_tests" -and ![string]::IsNullOrWhiteSpace($latest.gizmo_drag_tests)) { [int]$latest.gizmo_drag_tests } else { 0 }
     $postDebugViews = if ($latest.PSObject.Properties.Name -contains "post_debug_view_tests" -and ![string]::IsNullOrWhiteSpace($latest.post_debug_view_tests)) { [int]$latest.post_debug_view_tests } else { 0 }
     $showcaseFrames = if ($latest.PSObject.Properties.Name -contains "showcase_frames" -and ![string]::IsNullOrWhiteSpace($latest.showcase_frames)) { [int]$latest.showcase_frames } else { 0 }
+    $trailerFrames = if ($latest.PSObject.Properties.Name -contains "trailer_frames" -and ![string]::IsNullOrWhiteSpace($latest.trailer_frames)) { [int]$latest.trailer_frames } else { 0 }
+    $highResCaptures = if ($latest.PSObject.Properties.Name -contains "high_res_capture_tests" -and ![string]::IsNullOrWhiteSpace($latest.high_res_capture_tests)) { [int]$latest.high_res_capture_tests } else { 0 }
+    $riftVfxDraws = if ($latest.PSObject.Properties.Name -contains "rift_vfx_draws" -and ![string]::IsNullOrWhiteSpace($latest.rift_vfx_draws)) { [int]$latest.rift_vfx_draws } else { 0 }
+    $audioBeatPulses = if ($latest.PSObject.Properties.Name -contains "audio_beat_pulses" -and ![string]::IsNullOrWhiteSpace($latest.audio_beat_pulses)) { [int]$latest.audio_beat_pulses } else { 0 }
 
-    Write-Host ("{0}: latest cpu_max={1:N3}ms gpu_max={2:N3}ms pass_cpu_max={3:N3}ms luma={4:N2} editor_picks={5} gizmo_picks={6} gizmo_drags={7} post_debug={8} showcase_frames={9}" -f $label, $latestCpu, $latestGpu, $latestPassCpu, $latestLuma, $editorPicks, $gizmoPicks, $gizmoDrags, $postDebugViews, $showcaseFrames)
+    Write-Host ("{0}: latest cpu_max={1:N3}ms gpu_max={2:N3}ms pass_cpu_max={3:N3}ms luma={4:N2} editor_picks={5} gizmo_picks={6} gizmo_drags={7} post_debug={8} showcase_frames={9} trailer_frames={10} high_res={11} rift_vfx={12} beat_pulses={13}" -f $label, $latestCpu, $latestGpu, $latestPassCpu, $latestLuma, $editorPicks, $gizmoPicks, $gizmoDrags, $postDebugViews, $showcaseFrames, $trailerFrames, $highResCaptures, $riftVfxDraws, $audioBeatPulses)
     if (!$latestBySuite.ContainsKey($suiteName)) {
         $latestBySuite[$suiteName] = $latest
     }
