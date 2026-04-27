@@ -1,0 +1,62 @@
+# DISPARITY v32 roadmap batch manifest
+# Format: point <metric key>|<domain>|<description>
+point v32_point_01_editor_director_relay_controls|Editor|Demo Director exposes phase relay state and controls
+point v32_point_02_editor_viewport_relay_markers|Editor|Viewport HUD surfaces relay objective markers
+point v32_point_03_editor_command_macro_relay_route|Editor|Command history records the complex relay route macro
+point v32_point_04_editor_readiness_table|Editor|Profiler includes the v32 sixty-point readiness table
+point v32_point_05_editor_showcase_workspace|Editor|Workspace presets remain ready for public showcase capture
+point v32_point_06_editor_event_route_audit|Editor|Gameplay event route audit includes relay events
+point v32_point_07_editor_hud_relay_detail|Editor|Public HUD reports relay progress
+point v32_point_08_editor_checkpoint_relay_snapshot|Editor|Checkpoints snapshot relay progress metadata
+point v32_point_09_editor_overcharge_stats|Editor|Demo Director reports relay overcharge windows
+point v32_point_10_editor_docs_guide|Editor|Editor-facing docs describe the v32 demo flow
+point v32_point_11_asset_relay_manifest|AssetPipeline|Relay gameplay manifest is assetized for verification
+point v32_point_12_asset_cooked_route_metadata|AssetPipeline|Cooked package diagnostics stay valid with the longer route
+point v32_point_13_asset_dependency_replay_v32|AssetPipeline|Dependency replay diagnostics cover the v32 batch
+point v32_point_14_asset_relay_material_bindings|AssetPipeline|Relay materials use the material binding path
+point v32_point_15_asset_gltf_package_audit|AssetPipeline|glTF package audit remains covered during route validation
+point v32_point_16_asset_runtime_promotion_fallback|AssetPipeline|Runtime promotion fallbacks are represented in diagnostics
+point v32_point_17_asset_import_cook_review|AssetPipeline|Cook/import review tools include v32 manifest coverage
+point v32_point_18_asset_schema_relay_metrics|AssetPipeline|Runtime schema includes relay asset and route metrics
+point v32_point_19_asset_prefab_checkpoint_links|AssetPipeline|Prefab/checkpoint metadata remains compatible with relays
+point v32_point_20_asset_docs_package_route|AssetPipeline|Docs describe asset package expectations for v32
+point v32_point_21_render_relay_glyph_rings|Rendering|Phase relays render visible glyph rings
+point v32_point_22_render_relay_bridge_beams|Rendering|Stabilized relays render bridge beams
+point v32_point_23_render_objective_beam_upgrade|Rendering|Objective hint beam targets relay objectives
+point v32_point_24_render_overcharge_hazard_rings|Rendering|Overcharge windows render warning rings
+point v32_point_25_render_rift_charge_relays|Rendering|Rift charge responds to relay stabilization
+point v32_point_26_render_vfx_counter_relays|Rendering|Runtime report emits relay VFX draw counters
+point v32_point_27_render_csm_route_visibility|Rendering|Existing shadow/visibility diagnostics stay valid
+point v32_point_28_render_capture_readability|Rendering|Capture path includes relay readability metrics
+point v32_point_29_render_profiler_detail|Rendering|Profiler reports renderer-side relay readiness
+point v32_point_30_render_release_capture_schema|Rendering|Release capture schema includes v32 render metrics
+point v32_point_31_runtime_relay_stage_machine|Runtime|Stage machine includes a relay stabilization phase
+point v32_point_32_runtime_relay_proximity_volumes|Runtime|Relay proximity volumes advance objectives
+point v32_point_33_runtime_overcharge_windows|Runtime|Relay overcharge windows are tracked
+point v32_point_34_runtime_combo_chain_steps|Runtime|Objective combo-chain step counters are tracked
+point v32_point_35_runtime_checkpoint_relays|Runtime|Retry/checkpoint flow remains valid with relays
+point v32_point_36_runtime_route_distance_relays|Runtime|Objective distance points at relay targets
+point v32_point_37_runtime_deterministic_relay_completion|Runtime|Runtime verification completes the relay route deterministically
+point v32_point_38_runtime_stage_telemetry_relays|Runtime|Stage telemetry includes relay transitions
+point v32_point_39_runtime_complex_demo_completion|Runtime|The longer public demo completes successfully
+point v32_point_40_runtime_gameplay_event_routes|Runtime|Gameplay event route counters include relay events
+point v32_point_41_audio_relay_stabilize_cue|Audio|Relay stabilization cues are routed through SFX
+point v32_point_42_audio_overcharge_warning_cue|Audio|Overcharge warning cue telemetry is represented
+point v32_point_43_audio_combo_confirm_cue|Audio|Combo completion cue telemetry is represented
+point v32_point_44_audio_mix_safe_oneshots|Audio|One-shot relay cues use mix-safe routing
+point v32_point_45_audio_content_pulse_relays|Audio|Relay charge links into content pulse diagnostics
+point v32_point_46_audio_footstep_pressure_coexist|Audio|Footstep and pressure cues coexist with relays
+point v32_point_47_audio_backend_fallback_route|Audio|XAudio2/WinMM fallback remains covered
+point v32_point_48_audio_meter_relay_coverage|Audio|Audio meter coverage includes relay cue runs
+point v32_point_49_audio_cinematic_isolation|Audio|Cinematic cue isolation remains available
+point v32_point_50_audio_docs_mix_notes|Audio|Docs describe relay cue testing
+point v32_point_51_prod_manifest_v32|Production|v32 followup manifest defines sixty points
+point v32_point_52_prod_schema_v32|Production|Runtime report schema includes v32 metrics
+point v32_point_53_prod_baselines_v32|Production|Verification baselines require v32 relay coverage
+point v32_point_54_prod_runtime_wrapper_v32|Production|Runtime wrapper asserts v32 relay metrics
+point v32_point_55_prod_release_readiness_v32|Production|Release readiness validates the v32 manifest
+point v32_point_56_prod_perf_history_v32|Production|Performance history captures v32 relay counters
+point v32_point_57_prod_baseline_review_v32|Production|Baseline review requires v32 keys
+point v32_point_58_prod_docs_roadmap_readme|Production|README and roadmap document v32
+point v32_point_59_prod_agents_snapshot|Production|AGENTS snapshot describes the v32 batch
+point v32_point_60_prod_version_reporting|Production|Version/reporting surfaces v32

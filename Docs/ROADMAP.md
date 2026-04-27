@@ -1,6 +1,14 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v31 versions of many requested followups, including a small public vertical slice for capture and demos. The next milestones should keep rotating through gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+The current engine now has functional v32 versions of many requested followups, including a more layered public vertical slice for capture and demos. The next milestones should keep rotating through gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+
+## v32 Completed Sixty-Point Roadmap Batch
+
+- Added `Assets/Verification/V32RoadmapBatch.dfollowups`, a sixty-point roadmap batch with ten points each for Editor, Asset Pipeline, Rendering, Runtime, Audio, and Production.
+- The public demo now extends the shard/anchor/resonance-gate route with three phase relays before extraction. Relays draw readable ground rings, vertical glyphs, orbit shards, bridge beams, overcharge warning rings, and traversal markers so the objective chain has a more dramatic public-facing middle beat.
+- Runtime/gameplay telemetry now tracks phase-relay stabilization, relay overcharge windows, combo-route steps, traversal marker draws, relay bridge draws, relay objective readiness, and extraction gating after all relays are stabilized.
+- The Profiler includes a v32 roadmap readiness table, while runtime reports, baselines, schema checks, release-readiness review, production-batch review, baseline review, and performance-history summaries all require the new v32 counters and point metrics.
+- The batch promotes concrete surfaces across the roadmap: editor command/profile/viewport readiness, asset cook/package/dependency readiness, render-graph/capture/VFX diagnostics, runtime collision/controller/demo-flow readiness, audio cue/mixer/spatial readiness, and production schema/release/CI readiness.
 
 ## v31 Completed Diversified Roadmap Batch
 
@@ -203,7 +211,7 @@ The current engine now has functional v31 versions of many requested followups, 
 
 ## Runtime
 
-- Turn the v31 vertical slice into a more game-like demo with true collision-backed traversal, controller/gamepad gameplay, a title/menu-to-gameplay flow, a visible failure/retry screen, and more expressive objective gates.
+- Turn the v32 relay route into a more game-like demo with true collision-backed traversal, controller/gamepad gameplay, a title/menu-to-gameplay flow, simple enemy behavior, a visible failure/retry screen, and more expressive objective gates.
 - Replace the current telemetry-level footstep/pickup/anchor/resonance/completion events with authored animation states, content sounds, pressure-hit feedback, and objective-gate affordances for the playable demo.
 - Extend the job-system async IO helper into asset streaming, cancellation, priorities, file watching, and frame pacing diagnostics.
 - Add serialization versioning, save-game separation, and deterministic scene IDs.

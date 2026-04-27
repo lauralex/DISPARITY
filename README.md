@@ -40,8 +40,8 @@ Controls:
 - `F7`: toggle cinematic showcase mode, hide the editor, boost post-processing, and orbit the animated DISPARITY rift for capture-friendly footage.
 - `F8`: toggle trailer/photo mode with authored camera shots from `Assets/Cinematics/Showcase.dshot`, depth of field, lens dirt, and title-safe guide overlays.
 - `F9`: capture the current presented frame and write a source PPM, source PNG, async 2x PPM photo, and schema v3 high-resolution capture manifest under `Saved/Captures`.
-- `F10`: reset the public playable demo, returning rift shards, phase anchors, resonance gates, sentinels, checkpoint/retry state, extraction state, and HUD objectives to their start state.
-- Hold `Shift` while using `WASD` in the playable demo to sprint. Collect all six rift shards, align the three phase anchors, tune the two resonance gates, avoid sentinel pressure, then return to the extraction beacon to complete the loop.
+- `F10`: reset the public playable demo, returning rift shards, phase anchors, resonance gates, phase relays, sentinels, checkpoint/retry state, extraction state, and HUD objectives to their start state.
+- Hold `Shift` while using `WASD` in the playable demo to sprint. Collect all six rift shards, align the three phase anchors, tune the two resonance gates, stabilize the three phase relays during overcharge windows, avoid sentinel pressure, then return to the extraction beacon to complete the loop.
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 - When the mouse is released with `Tab`, left-click the viewport to pick objects. Hold `Ctrl` while clicking or selecting in the hierarchy to multi-select. The editor tries GPU object-ID readback first and falls back to CPU ray tests.
@@ -57,7 +57,7 @@ Editor UI:
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw draggable, camera-scaled 3D axis/ring/plane gizmo handles in the viewport.
 - `Assets`: reload scene/script, toggle hot reload, inspect the asset database and dependency graph, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
 - `Shot Director`: edit, add, save, reload, capture, thumbnail, and preview-scrub v6 `.dshot` trailer keys without leaving the running editor.
-- `Demo Director`: inspect the public vertical slice stage, objective distance, shard/anchor/gate progress, checkpoint/retry/pressure/footstep telemetry, recent gameplay events, and v30/v31 readiness while the demo is running.
+- `Demo Director`: inspect the public vertical slice stage, objective distance, shard/anchor/gate/relay progress, checkpoint/retry/pressure/footstep/combo telemetry, recent gameplay events, and v30/v31/v32 readiness while the demo is running.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters/production counters, and store/recall a mixer snapshot.
 
@@ -348,12 +348,19 @@ Editor UI:
 - Runtime reports and baselines now cover resonance gates, pressure hits, footstep cadence events, event routing, failure/retry presentation, and all `v31_point_*` metrics.
 - The Profiler has a v31 diversified readiness table, and release-readiness/performance-history tooling now includes the v31 manifest and counters.
 
+## Engine v32 Sixty-Point Roadmap Batch Implemented
+
+- `Assets/Verification/V32RoadmapBatch.dfollowups` tracks sixty roadmap points, ten each for Editor, Asset Pipeline, Rendering, Runtime, Audio, and Production.
+- The public demo now extends the shard/anchor/gate route with three phase relays. Each relay has visible rings, vertical glyphs, orbit shards, bridge beams, overcharge windows, and combo-route telemetry before extraction opens.
+- Runtime reports and baselines now require phase-relay stabilization, relay overcharge windows, combo-chain steps, traversal markers, relay bridge draws, and all `v32_point_*` metrics.
+- The Profiler has a v32 roadmap readiness table, while runtime schema checks, production manifest review, release readiness, baseline review, and performance-history summaries all include the new v32 gates.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Turn the v31 vertical slice into a more game-like public demo with real collision, traversal mechanics, an authored failure screen, gamepad support, and a menu-to-gameplay flow.
-- Add real player feedback: animation states, authored footsteps, pickup/anchor/resonance/completion sounds through the production audio path, screen-space hit/pressure cues, and content-driven rift pulses.
+- Turn the v32 relay route into a more game-like public demo with real collision, traversal mechanics, simple enemy behaviors, an authored failure screen, gamepad support, and a menu-to-gameplay flow.
+- Add real player feedback: animation states, authored footsteps, pickup/anchor/gate/relay/completion sounds through the production audio path, screen-space hit/pressure cues, and content-driven rift pulses.
 - Promote v28 graph-owned rendering diagnostics into actual DX11 pass execution: explicit bind/unbind barriers, alias lifetime validation, GPU culling, Forward+ lighting, cascaded shadows, motion-vector rendering, and stronger temporal AA.
 - Move the high-resolution capture proof from resolved source-frame sampling to true tiled offscreen supersampling with per-tile camera jitter, selectable resolve filters, real EXR output, and real async compression workers.
 - Turn editor profile import/export/diff and workspace presets into a versioned per-project preference system with dock-layout files, schema migration, conflict-safe merge, and checked-in team defaults.

@@ -8,6 +8,7 @@ param(
     [string]$PublicDemoBatchPath = "Assets/Verification/V29PublicDemo.dfollowups",
     [string]$VerticalSliceBatchPath = "Assets/Verification/V30VerticalSlice.dfollowups",
     [string]$V31DiversifiedBatchPath = "Assets/Verification/V31DiversifiedBatch.dfollowups",
+    [string]$V32RoadmapBatchPath = "Assets/Verification/V32RoadmapBatch.dfollowups",
     [string]$OutputPath = "Saved/Release/release_readiness_manifest.json"
 )
 
@@ -31,6 +32,7 @@ $DiversifiedBatchPath = Resolve-RepoPath -Path $DiversifiedBatchPath
 $PublicDemoBatchPath = Resolve-RepoPath -Path $PublicDemoBatchPath
 $VerticalSliceBatchPath = Resolve-RepoPath -Path $VerticalSliceBatchPath
 $V31DiversifiedBatchPath = Resolve-RepoPath -Path $V31DiversifiedBatchPath
+$V32RoadmapBatchPath = Resolve-RepoPath -Path $V32RoadmapBatchPath
 $OutputPath = Resolve-RepoPath -Path $OutputPath
 
 $packageManifestPath = Join-Path $PackagePath "package_manifest.json"
@@ -49,7 +51,8 @@ $checks = @(
     [pscustomobject]@{ name = "diversified_batch_manifest"; path = $DiversifiedBatchPath; exists = Test-Path -LiteralPath $DiversifiedBatchPath },
     [pscustomobject]@{ name = "public_demo_batch_manifest"; path = $PublicDemoBatchPath; exists = Test-Path -LiteralPath $PublicDemoBatchPath },
     [pscustomobject]@{ name = "vertical_slice_batch_manifest"; path = $VerticalSliceBatchPath; exists = Test-Path -LiteralPath $VerticalSliceBatchPath },
-    [pscustomobject]@{ name = "v31_diversified_batch_manifest"; path = $V31DiversifiedBatchPath; exists = Test-Path -LiteralPath $V31DiversifiedBatchPath }
+    [pscustomobject]@{ name = "v31_diversified_batch_manifest"; path = $V31DiversifiedBatchPath; exists = Test-Path -LiteralPath $V31DiversifiedBatchPath },
+    [pscustomobject]@{ name = "v32_roadmap_batch_manifest"; path = $V32RoadmapBatchPath; exists = Test-Path -LiteralPath $V32RoadmapBatchPath }
 )
 
 foreach ($check in $checks) {
@@ -72,8 +75,8 @@ $schemaMetrics = @(Get-Content -LiteralPath $RuntimeReportSchemaPath | Where-Obj
     $trimmed = $_.Trim()
     ![string]::IsNullOrWhiteSpace($trimmed) -and !$trimmed.StartsWith("#")
 })
-if ($schemaMetrics.Count -lt 210 -or !($schemaMetrics -contains "v25_production_points") -or !($schemaMetrics -contains "v28_diversified_points") -or !($schemaMetrics -contains "v29_public_demo_points") -or !($schemaMetrics -contains "v30_vertical_slice_points") -or !($schemaMetrics -contains "v31_diversified_points")) {
-    throw "Runtime report schema does not include the v25/v28/v29/v30/v31 production metrics."
+if ($schemaMetrics.Count -lt 285 -or !($schemaMetrics -contains "v25_production_points") -or !($schemaMetrics -contains "v28_diversified_points") -or !($schemaMetrics -contains "v29_public_demo_points") -or !($schemaMetrics -contains "v30_vertical_slice_points") -or !($schemaMetrics -contains "v31_diversified_points") -or !($schemaMetrics -contains "v32_roadmap_points")) {
+    throw "Runtime report schema does not include the v25/v28/v29/v30/v31/v32 production metrics."
 }
 
 $productionPoints = @(Get-Content -LiteralPath $ProductionBatchPath | Where-Object {
@@ -111,6 +114,13 @@ if ($v31DiversifiedPoints.Count -ne 30) {
     throw "v31 diversified batch manifest does not define thirty points."
 }
 
+$v32RoadmapPoints = @(Get-Content -LiteralPath $V32RoadmapBatchPath | Where-Object {
+    $_.Trim().StartsWith("point ")
+})
+if ($v32RoadmapPoints.Count -ne 60) {
+    throw "v32 roadmap batch manifest does not define sixty points."
+}
+
 $parent = Split-Path -Parent $OutputPath
 if (![string]::IsNullOrWhiteSpace($parent)) {
     New-Item -ItemType Directory -Force -Path $parent | Out-Null
@@ -127,6 +137,7 @@ if (![string]::IsNullOrWhiteSpace($parent)) {
     public_demo_batch_point_count = $publicDemoPoints.Count
     vertical_slice_batch_point_count = $verticalSlicePoints.Count
     v31_diversified_batch_point_count = $v31DiversifiedPoints.Count
+    v32_roadmap_batch_point_count = $v32RoadmapPoints.Count
     checks = $checks
 } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $OutputPath
 

@@ -1026,6 +1026,7 @@ namespace
             CollectShards,
             ActivateAnchors,
             TuneResonance,
+            StabilizeRelays,
             ExtractionReady,
             Completed
         };
@@ -1047,6 +1048,16 @@ namespace
             bool Tuned = false;
         };
 
+        struct PublicDemoPhaseRelay
+        {
+            DirectX::XMFLOAT3 Position = {};
+            DirectX::XMFLOAT3 Color = { 1.0f, 0.75f, 0.28f };
+            float Radius = 1.45f;
+            float Phase = 0.0f;
+            float OrbitRadius = 0.65f;
+            bool Stabilized = false;
+        };
+
         struct PublicDemoCheckpoint
         {
             DirectX::XMFLOAT3 Position = { 0.0f, 0.0f, 6.0f };
@@ -1054,6 +1065,7 @@ namespace
             PublicDemoStage Stage = PublicDemoStage::CollectShards;
             uint32_t ShardsCollected = 0;
             uint32_t AnchorsActivated = 0;
+            uint32_t RelaysStabilized = 0;
             bool Valid = false;
         };
 
@@ -1082,12 +1094,24 @@ namespace
             bool PressureCueReady = false;
             bool MixSafeCueRouting = false;
             bool ContentPulseLinked = false;
+            bool PhaseRelayComplete = false;
+            bool RelayOverchargeReady = false;
+            bool ComplexRouteReady = false;
+            bool TraversalLoopReady = false;
+            bool ComboObjectiveReady = false;
+            bool DirectorPhaseRelayReady = false;
             uint32_t ShardsTotal = 0;
             uint32_t ShardsCollected = 0;
             uint32_t AnchorsTotal = 0;
             uint32_t AnchorsActivated = 0;
             uint32_t ResonanceGatesTotal = 0;
             uint32_t ResonanceGatesTuned = 0;
+            uint32_t PhaseRelaysTotal = 0;
+            uint32_t PhaseRelaysStabilized = 0;
+            uint32_t RelayOverchargeWindows = 0;
+            uint32_t RelayBridgeDraws = 0;
+            uint32_t TraversalMarkers = 0;
+            uint32_t ComboChainSteps = 0;
             uint32_t BeaconDraws = 0;
             uint32_t HudFrames = 0;
             uint32_t SentinelTicks = 0;
@@ -1110,6 +1134,7 @@ namespace
             std::array<PublicDemoShard, 6> Shards = {};
             std::array<PublicDemoAnchor, 3> Anchors = {};
             std::array<PublicDemoResonanceGate, 2> ResonanceGates = {};
+            std::array<PublicDemoPhaseRelay, 3> PhaseRelays = {};
             PublicDemoCheckpoint Checkpoint = {};
             std::deque<std::string> Events = {};
             DirectX::XMFLOAT3 PlayerPosition = {};
@@ -1126,6 +1151,10 @@ namespace
             uint32_t PressureHitCount = 0;
             uint32_t FootstepEventCount = 0;
             uint32_t GameplayEventRouteCount = 0;
+            uint32_t RelayOverchargeWindowCount = 0;
+            uint32_t RelayBridgeDrawCount = 0;
+            uint32_t TraversalMarkerCount = 0;
+            uint32_t ComboChainStepCount = 0;
             bool ExtractionReady = false;
             bool Completed = false;
             PublicDemoStage Stage = PublicDemoStage::CollectShards;
@@ -1136,9 +1165,11 @@ namespace
         static constexpr size_t V29PublicDemoPointCount = 30;
         static constexpr size_t V30VerticalSlicePointCount = 36;
         static constexpr size_t V31DiversifiedPointCount = 30;
+        static constexpr size_t V32RoadmapPointCount = 60;
         static constexpr size_t PublicDemoShardCount = 6;
         static constexpr size_t PublicDemoAnchorCount = 3;
         static constexpr size_t PublicDemoResonanceGateCount = 2;
+        static constexpr size_t PublicDemoPhaseRelayCount = 3;
 
         static const std::array<ProductionFollowupPoint, V25ProductionPointCount>& GetV25ProductionPoints()
         {
@@ -1347,6 +1378,73 @@ namespace
             return points;
         }
 
+        static const std::array<ProductionFollowupPoint, V32RoadmapPointCount>& GetV32RoadmapPoints()
+        {
+            static const std::array<ProductionFollowupPoint, V32RoadmapPointCount> points = { {
+                { "v32_point_01_editor_director_relay_controls", "Editor", "Demo Director exposes phase relay state and controls" },
+                { "v32_point_02_editor_viewport_relay_markers", "Editor", "Viewport HUD surfaces relay objective markers" },
+                { "v32_point_03_editor_command_macro_relay_route", "Editor", "Command history records the complex relay route macro" },
+                { "v32_point_04_editor_readiness_table", "Editor", "Profiler includes the v32 sixty-point readiness table" },
+                { "v32_point_05_editor_showcase_workspace", "Editor", "Workspace presets remain ready for public showcase capture" },
+                { "v32_point_06_editor_event_route_audit", "Editor", "Gameplay event route audit includes relay events" },
+                { "v32_point_07_editor_hud_relay_detail", "Editor", "Public HUD reports relay progress" },
+                { "v32_point_08_editor_checkpoint_relay_snapshot", "Editor", "Checkpoints snapshot relay progress metadata" },
+                { "v32_point_09_editor_overcharge_stats", "Editor", "Demo Director reports relay overcharge windows" },
+                { "v32_point_10_editor_docs_guide", "Editor", "Editor-facing docs describe the v32 demo flow" },
+                { "v32_point_11_asset_relay_manifest", "AssetPipeline", "Relay gameplay manifest is assetized for verification" },
+                { "v32_point_12_asset_cooked_route_metadata", "AssetPipeline", "Cooked package diagnostics stay valid with the longer route" },
+                { "v32_point_13_asset_dependency_replay_v32", "AssetPipeline", "Dependency replay diagnostics cover the v32 batch" },
+                { "v32_point_14_asset_relay_material_bindings", "AssetPipeline", "Relay materials use the material binding path" },
+                { "v32_point_15_asset_gltf_package_audit", "AssetPipeline", "glTF package audit remains covered during route validation" },
+                { "v32_point_16_asset_runtime_promotion_fallback", "AssetPipeline", "Runtime promotion fallbacks are represented in diagnostics" },
+                { "v32_point_17_asset_import_cook_review", "AssetPipeline", "Cook/import review tools include v32 manifest coverage" },
+                { "v32_point_18_asset_schema_relay_metrics", "AssetPipeline", "Runtime schema includes relay asset and route metrics" },
+                { "v32_point_19_asset_prefab_checkpoint_links", "AssetPipeline", "Prefab/checkpoint metadata remains compatible with relays" },
+                { "v32_point_20_asset_docs_package_route", "AssetPipeline", "Docs describe asset package expectations for v32" },
+                { "v32_point_21_render_relay_glyph_rings", "Rendering", "Phase relays render visible glyph rings" },
+                { "v32_point_22_render_relay_bridge_beams", "Rendering", "Stabilized relays render bridge beams" },
+                { "v32_point_23_render_objective_beam_upgrade", "Rendering", "Objective hint beam targets relay objectives" },
+                { "v32_point_24_render_overcharge_hazard_rings", "Rendering", "Overcharge windows render warning rings" },
+                { "v32_point_25_render_rift_charge_relays", "Rendering", "Rift charge responds to relay stabilization" },
+                { "v32_point_26_render_vfx_counter_relays", "Rendering", "Runtime report emits relay VFX draw counters" },
+                { "v32_point_27_render_csm_route_visibility", "Rendering", "Existing shadow/visibility diagnostics stay valid" },
+                { "v32_point_28_render_capture_readability", "Rendering", "Capture path includes relay readability metrics" },
+                { "v32_point_29_render_profiler_detail", "Rendering", "Profiler reports renderer-side relay readiness" },
+                { "v32_point_30_render_release_capture_schema", "Rendering", "Release capture schema includes v32 render metrics" },
+                { "v32_point_31_runtime_relay_stage_machine", "Runtime", "Stage machine includes a relay stabilization phase" },
+                { "v32_point_32_runtime_relay_proximity_volumes", "Runtime", "Relay proximity volumes advance objectives" },
+                { "v32_point_33_runtime_overcharge_windows", "Runtime", "Relay overcharge windows are tracked" },
+                { "v32_point_34_runtime_combo_chain_steps", "Runtime", "Objective combo-chain step counters are tracked" },
+                { "v32_point_35_runtime_checkpoint_relays", "Runtime", "Retry/checkpoint flow remains valid with relays" },
+                { "v32_point_36_runtime_route_distance_relays", "Runtime", "Objective distance points at relay targets" },
+                { "v32_point_37_runtime_deterministic_relay_completion", "Runtime", "Runtime verification completes the relay route deterministically" },
+                { "v32_point_38_runtime_stage_telemetry_relays", "Runtime", "Stage telemetry includes relay transitions" },
+                { "v32_point_39_runtime_complex_demo_completion", "Runtime", "The longer public demo completes successfully" },
+                { "v32_point_40_runtime_gameplay_event_routes", "Runtime", "Gameplay event route counters include relay events" },
+                { "v32_point_41_audio_relay_stabilize_cue", "Audio", "Relay stabilization cues are routed through SFX" },
+                { "v32_point_42_audio_overcharge_warning_cue", "Audio", "Overcharge warning cue telemetry is represented" },
+                { "v32_point_43_audio_combo_confirm_cue", "Audio", "Combo completion cue telemetry is represented" },
+                { "v32_point_44_audio_mix_safe_oneshots", "Audio", "One-shot relay cues use mix-safe routing" },
+                { "v32_point_45_audio_content_pulse_relays", "Audio", "Relay charge links into content pulse diagnostics" },
+                { "v32_point_46_audio_footstep_pressure_coexist", "Audio", "Footstep and pressure cues coexist with relays" },
+                { "v32_point_47_audio_backend_fallback_route", "Audio", "XAudio2/WinMM fallback remains covered" },
+                { "v32_point_48_audio_meter_relay_coverage", "Audio", "Audio meter coverage includes relay cue runs" },
+                { "v32_point_49_audio_cinematic_isolation", "Audio", "Cinematic cue isolation remains available" },
+                { "v32_point_50_audio_docs_mix_notes", "Audio", "Docs describe relay cue testing" },
+                { "v32_point_51_prod_manifest_v32", "Production", "v32 followup manifest defines sixty points" },
+                { "v32_point_52_prod_schema_v32", "Production", "Runtime report schema includes v32 metrics" },
+                { "v32_point_53_prod_baselines_v32", "Production", "Verification baselines require v32 relay coverage" },
+                { "v32_point_54_prod_runtime_wrapper_v32", "Production", "Runtime wrapper asserts v32 relay metrics" },
+                { "v32_point_55_prod_release_readiness_v32", "Production", "Release readiness validates the v32 manifest" },
+                { "v32_point_56_prod_perf_history_v32", "Production", "Performance history captures v32 relay counters" },
+                { "v32_point_57_prod_baseline_review_v32", "Production", "Baseline review requires v32 keys" },
+                { "v32_point_58_prod_docs_roadmap_readme", "Production", "README and roadmap document v32" },
+                { "v32_point_59_prod_agents_snapshot", "Production", "AGENTS snapshot describes the v32 batch" },
+                { "v32_point_60_prod_version_reporting", "Production", "Version/reporting surfaces v32" }
+            } };
+            return points;
+        }
+
         struct RuntimeBaseline
         {
             uint32_t ExpectedCaptureWidth = 1280;
@@ -1429,6 +1527,10 @@ namespace
             uint32_t MinPublicDemoPressureHits = 1;
             uint32_t MinPublicDemoFootstepEvents = 1;
             uint32_t MinV31DiversifiedPoints = static_cast<uint32_t>(V31DiversifiedPointCount);
+            uint32_t MinPublicDemoPhaseRelays = static_cast<uint32_t>(PublicDemoPhaseRelayCount);
+            uint32_t MinPublicDemoRelayOverchargeWindows = 1;
+            uint32_t MinPublicDemoComboSteps = 1;
+            uint32_t MinV32RoadmapPoints = static_cast<uint32_t>(V32RoadmapPointCount);
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -1596,6 +1698,10 @@ namespace
             uint32_t PublicDemoPressureHits = 0;
             uint32_t PublicDemoFootstepEvents = 0;
             uint32_t V31DiversifiedPointTests = 0;
+            uint32_t PublicDemoPhaseRelays = 0;
+            uint32_t PublicDemoRelayOverchargeWindows = 0;
+            uint32_t PublicDemoComboSteps = 0;
+            uint32_t V32RoadmapPointTests = 0;
         };
 
         void InitializeMaterials()
@@ -1738,6 +1844,13 @@ namespace
             m_demoResonanceMaterial.Alpha = 0.58f;
             m_demoResonanceMaterial.Emissive = { 0.10f, 1.0f, 0.82f };
             m_demoResonanceMaterial.EmissiveIntensity = 2.25f;
+
+            m_demoRelayMaterial.Albedo = { 3.8f, 2.1f, 0.34f };
+            m_demoRelayMaterial.Roughness = 0.10f;
+            m_demoRelayMaterial.Metallic = 0.10f;
+            m_demoRelayMaterial.Alpha = 0.62f;
+            m_demoRelayMaterial.Emissive = { 1.0f, 0.52f, 0.12f };
+            m_demoRelayMaterial.EmissiveIntensity = 2.55f;
         }
 
         void ReloadGltfAssets()
@@ -2006,7 +2119,8 @@ namespace
             const float shardCharge = static_cast<float>(m_publicDemoShardsCollected) / static_cast<float>(PublicDemoShardCount);
             const float anchorCharge = static_cast<float>(PublicDemoAnchorsActivated()) / static_cast<float>(PublicDemoAnchorCount);
             const float gateCharge = static_cast<float>(PublicDemoResonanceGatesTuned()) / static_cast<float>(PublicDemoResonanceGateCount);
-            return std::clamp(shardCharge * 0.62f + anchorCharge * 0.23f + gateCharge * 0.15f, 0.0f, 1.0f);
+            const float relayCharge = static_cast<float>(PublicDemoPhaseRelaysStabilized()) / static_cast<float>(PublicDemoPhaseRelayCount);
+            return std::clamp(shardCharge * 0.50f + anchorCharge * 0.20f + gateCharge * 0.15f + relayCharge * 0.15f, 0.0f, 1.0f);
         }
 
         const char* PublicDemoStageName() const
@@ -2016,6 +2130,7 @@ namespace
             case PublicDemoStage::CollectShards: return "Collect shards";
             case PublicDemoStage::ActivateAnchors: return "Align anchors";
             case PublicDemoStage::TuneResonance: return "Tune gates";
+            case PublicDemoStage::StabilizeRelays: return "Stabilize relays";
             case PublicDemoStage::ExtractionReady: return "Extract";
             case PublicDemoStage::Completed: return "Complete";
             default: return "Unknown";
@@ -2062,6 +2177,26 @@ namespace
             return -1;
         }
 
+        uint32_t PublicDemoPhaseRelaysStabilized() const
+        {
+            return static_cast<uint32_t>(std::count_if(m_publicDemoPhaseRelays.begin(), m_publicDemoPhaseRelays.end(), [](const PublicDemoPhaseRelay& relay)
+            {
+                return relay.Stabilized;
+            }));
+        }
+
+        int NextPublicDemoPhaseRelayIndex() const
+        {
+            for (size_t index = 0; index < m_publicDemoPhaseRelays.size(); ++index)
+            {
+                if (!m_publicDemoPhaseRelays[index].Stabilized)
+                {
+                    return static_cast<int>(index);
+                }
+            }
+            return -1;
+        }
+
         DirectX::XMFLOAT3 PublicDemoCurrentObjectivePosition() const
         {
             const int nextShard = NextPublicDemoShardIndex();
@@ -2083,6 +2218,13 @@ namespace
             {
                 const PublicDemoResonanceGate& gate = m_publicDemoResonanceGates[static_cast<size_t>(nextGate)];
                 return { gate.Position.x, 0.0f, gate.Position.z };
+            }
+
+            const int nextRelay = NextPublicDemoPhaseRelayIndex();
+            if (nextRelay >= 0)
+            {
+                const PublicDemoPhaseRelay& relay = m_publicDemoPhaseRelays[static_cast<size_t>(nextRelay)];
+                return { relay.Position.x, 0.0f, relay.Position.z };
             }
 
             return { m_riftPosition.x, 0.0f, m_riftPosition.z };
@@ -2136,6 +2278,7 @@ namespace
             m_publicDemoCheckpoint.Stage = m_publicDemoStage;
             m_publicDemoCheckpoint.ShardsCollected = m_publicDemoShardsCollected;
             m_publicDemoCheckpoint.AnchorsActivated = PublicDemoAnchorsActivated();
+            m_publicDemoCheckpoint.RelaysStabilized = PublicDemoPhaseRelaysStabilized();
             m_publicDemoCheckpoint.Valid = true;
             ++m_publicDemoCheckpointCount;
             if (m_runtimeVerification.Enabled)
@@ -2244,6 +2387,28 @@ namespace
                 };
             }
 
+            const std::array<DirectX::XMFLOAT3, PublicDemoPhaseRelayCount> relayPositions = { {
+                { -5.4f, 0.10f, -1.7f },
+                { 0.0f, 0.10f, -0.4f },
+                { 5.4f, 0.10f, -1.7f }
+            } };
+            const std::array<DirectX::XMFLOAT3, PublicDemoPhaseRelayCount> relayColors = { {
+                { 1.0f, 0.62f, 0.20f },
+                { 0.44f, 1.0f, 0.72f },
+                { 0.98f, 0.34f, 1.0f }
+            } };
+            for (size_t index = 0; index < PublicDemoPhaseRelayCount; ++index)
+            {
+                m_publicDemoPhaseRelays[index] = PublicDemoPhaseRelay{
+                    relayPositions[index],
+                    relayColors[index],
+                    1.42f + static_cast<float>(index) * 0.10f,
+                    static_cast<float>(index) * 2.11f,
+                    0.56f + static_cast<float>(index) * 0.12f,
+                    false
+                };
+            }
+
             m_publicDemoSentinels = { {
                 PublicDemoSentinel{ 5.2f, 0.82f, 0.0f, 0.78f },
                 PublicDemoSentinel{ 7.4f, -0.58f, 1.9f, 1.15f },
@@ -2275,6 +2440,10 @@ namespace
             m_publicDemoFootstepEventCount = 0;
             m_publicDemoGameplayEventRouteCount = 0;
             m_publicDemoFailureScreenFrames = 0;
+            m_publicDemoRelayOverchargeWindowCount = 0;
+            m_publicDemoRelayBridgeDrawCount = 0;
+            m_publicDemoTraversalMarkerCount = 0;
+            m_publicDemoComboChainStepCount = 0;
             m_publicDemoStepAccumulator = 0.0f;
             m_publicDemoEvents.clear();
             SavePublicDemoCheckpoint("start");
@@ -2287,6 +2456,7 @@ namespace
                 m_publicDemoShards,
                 m_publicDemoAnchors,
                 m_publicDemoResonanceGates,
+                m_publicDemoPhaseRelays,
                 m_publicDemoCheckpoint,
                 m_publicDemoEvents,
                 m_playerPosition,
@@ -2303,6 +2473,10 @@ namespace
                 m_publicDemoPressureHitCount,
                 m_publicDemoFootstepEventCount,
                 m_publicDemoGameplayEventRouteCount,
+                m_publicDemoRelayOverchargeWindowCount,
+                m_publicDemoRelayBridgeDrawCount,
+                m_publicDemoTraversalMarkerCount,
+                m_publicDemoComboChainStepCount,
                 m_publicDemoExtractionReady,
                 m_publicDemoCompleted,
                 m_publicDemoStage
@@ -2314,6 +2488,7 @@ namespace
             m_publicDemoShards = snapshot.Shards;
             m_publicDemoAnchors = snapshot.Anchors;
             m_publicDemoResonanceGates = snapshot.ResonanceGates;
+            m_publicDemoPhaseRelays = snapshot.PhaseRelays;
             m_publicDemoCheckpoint = snapshot.Checkpoint;
             m_publicDemoEvents = snapshot.Events;
             m_playerPosition = snapshot.PlayerPosition;
@@ -2329,6 +2504,10 @@ namespace
             m_publicDemoPressureHitCount = snapshot.PressureHitCount;
             m_publicDemoFootstepEventCount = snapshot.FootstepEventCount;
             m_publicDemoGameplayEventRouteCount = snapshot.GameplayEventRouteCount;
+            m_publicDemoRelayOverchargeWindowCount = snapshot.RelayOverchargeWindowCount;
+            m_publicDemoRelayBridgeDrawCount = snapshot.RelayBridgeDrawCount;
+            m_publicDemoTraversalMarkerCount = snapshot.TraversalMarkerCount;
+            m_publicDemoComboChainStepCount = snapshot.ComboChainStepCount;
             m_publicDemoExtractionReady = snapshot.ExtractionReady;
             m_publicDemoCompleted = snapshot.Completed;
             m_publicDemoStage = snapshot.Stage;
@@ -2369,6 +2548,11 @@ namespace
             m_publicDemoStability = std::clamp(m_publicDemoStability + 0.12f, 0.0f, 1.0f);
             m_publicDemoFocus = std::clamp(m_publicDemoFocus + 0.18f, 0.0f, 1.0f);
             m_publicDemoSurge = 1.0f;
+            ++m_publicDemoComboChainStepCount;
+            if (m_runtimeVerification.Enabled)
+            {
+                ++m_runtimeEditorStats.PublicDemoComboSteps;
+            }
             if (m_runtimeVerification.Enabled)
             {
                 ++m_runtimeEditorStats.PublicDemoShardPickups;
@@ -2403,6 +2587,11 @@ namespace
             m_publicDemoAnchors[index].Activated = true;
             m_publicDemoStability = std::clamp(m_publicDemoStability + 0.10f, 0.0f, 1.0f);
             m_publicDemoSurge = 1.0f;
+            ++m_publicDemoComboChainStepCount;
+            if (m_runtimeVerification.Enabled)
+            {
+                ++m_runtimeEditorStats.PublicDemoComboSteps;
+            }
             if (m_runtimeVerification.Enabled)
             {
                 ++m_runtimeEditorStats.PublicDemoAnchorActivations;
@@ -2438,6 +2627,11 @@ namespace
             m_publicDemoResonanceGates[index].Tuned = true;
             m_publicDemoStability = std::clamp(m_publicDemoStability + 0.08f, 0.0f, 1.0f);
             m_publicDemoSurge = 1.0f;
+            ++m_publicDemoComboChainStepCount;
+            if (m_runtimeVerification.Enabled)
+            {
+                ++m_runtimeEditorStats.PublicDemoComboSteps;
+            }
             if (m_runtimeVerification.Enabled)
             {
                 ++m_runtimeEditorStats.PublicDemoResonanceGates;
@@ -2453,13 +2647,52 @@ namespace
 
             if (gatesTuned >= PublicDemoResonanceGateCount)
             {
-                m_publicDemoExtractionReady = true;
-                SetPublicDemoStage(PublicDemoStage::ExtractionReady);
-                SetStatus("Resonance field tuned. Enter the extraction field.");
+                SetPublicDemoStage(PublicDemoStage::StabilizeRelays);
+                SavePublicDemoCheckpoint("gates tuned");
+                SetStatus("Resonance field tuned. Stabilize the three phase relays.");
             }
             else
             {
                 SetStatus("Resonance gate tuned " + std::to_string(gatesTuned) + "/" + std::to_string(PublicDemoResonanceGateCount));
+            }
+        }
+
+        void StabilizePublicDemoPhaseRelay(size_t index, bool playAudio)
+        {
+            if (index >= m_publicDemoPhaseRelays.size() || m_publicDemoPhaseRelays[index].Stabilized)
+            {
+                return;
+            }
+
+            m_publicDemoPhaseRelays[index].Stabilized = true;
+            m_publicDemoStability = std::clamp(m_publicDemoStability + 0.07f, 0.0f, 1.0f);
+            m_publicDemoFocus = std::clamp(m_publicDemoFocus + 0.12f, 0.0f, 1.0f);
+            m_publicDemoSurge = 1.0f;
+            ++m_publicDemoComboChainStepCount;
+            if (m_runtimeVerification.Enabled)
+            {
+                ++m_runtimeEditorStats.PublicDemoPhaseRelays;
+                ++m_runtimeEditorStats.PublicDemoComboSteps;
+            }
+
+            const uint32_t relaysStabilized = PublicDemoPhaseRelaysStabilized();
+            SavePublicDemoCheckpoint("phase relay stabilized");
+            RecordPublicDemoEvent("Phase relay stabilized " + std::to_string(relaysStabilized) + "/" + std::to_string(PublicDemoPhaseRelayCount));
+            if (playAudio)
+            {
+                Disparity::AudioSystem::PlaySpatialTone("SFX", 920.0f + static_cast<float>(relaysStabilized) * 66.0f, 0.09f, 0.15f, m_publicDemoPhaseRelays[index].Position);
+            }
+
+            if (relaysStabilized >= PublicDemoPhaseRelayCount)
+            {
+                m_publicDemoExtractionReady = true;
+                SetPublicDemoStage(PublicDemoStage::ExtractionReady);
+                SavePublicDemoCheckpoint("relays synchronized");
+                SetStatus("Phase relays synchronized. Enter the extraction field.");
+            }
+            else
+            {
+                SetStatus("Phase relay stabilized " + std::to_string(relaysStabilized) + "/" + std::to_string(PublicDemoPhaseRelayCount));
             }
         }
 
@@ -2468,7 +2701,8 @@ namespace
             if (!m_publicDemoExtractionReady ||
                 m_publicDemoCompleted ||
                 PublicDemoAnchorsActivated() < PublicDemoAnchorCount ||
-                PublicDemoResonanceGatesTuned() < PublicDemoResonanceGateCount)
+                PublicDemoResonanceGatesTuned() < PublicDemoResonanceGateCount ||
+                PublicDemoPhaseRelaysStabilized() < PublicDemoPhaseRelayCount)
             {
                 return;
             }
@@ -2483,6 +2717,11 @@ namespace
             m_publicDemoCompleted = true;
             m_publicDemoStability = 1.0f;
             m_publicDemoSurge = 1.0f;
+            ++m_publicDemoComboChainStepCount;
+            if (m_runtimeVerification.Enabled)
+            {
+                ++m_runtimeEditorStats.PublicDemoComboSteps;
+            }
             SetPublicDemoStage(PublicDemoStage::Completed);
             if (m_runtimeVerification.Enabled)
             {
@@ -2616,6 +2855,44 @@ namespace
                     if (Length(flatDelta) <= m_publicDemoResonanceGates[index].Radius)
                     {
                         TunePublicDemoResonanceGate(index, true);
+                    }
+                }
+            }
+
+            if (m_publicDemoStage == PublicDemoStage::StabilizeRelays)
+            {
+                for (size_t index = 0; index < m_publicDemoPhaseRelays.size(); ++index)
+                {
+                    if (m_publicDemoPhaseRelays[index].Stabilized)
+                    {
+                        continue;
+                    }
+
+                    const DirectX::XMFLOAT3 flatDelta = {
+                        m_publicDemoPhaseRelays[index].Position.x - m_playerPosition.x,
+                        0.0f,
+                        m_publicDemoPhaseRelays[index].Position.z - m_playerPosition.z
+                    };
+                    const float distance = Length(flatDelta);
+                    if (distance <= m_publicDemoPhaseRelays[index].Radius * 1.85f)
+                    {
+                        ++m_publicDemoRelayOverchargeWindowCount;
+                        if (m_runtimeVerification.Enabled)
+                        {
+                            ++m_runtimeEditorStats.PublicDemoRelayOverchargeWindows;
+                        }
+                        if ((m_publicDemoRelayOverchargeWindowCount % 18u) == 1u)
+                        {
+                            RecordPublicDemoEvent("Relay overcharge window");
+                            if (!m_cinematicAudioCues)
+                            {
+                                Disparity::AudioSystem::PlaySpatialTone("SFX", 420.0f, 0.035f, 0.08f, m_publicDemoPhaseRelays[index].Position);
+                            }
+                        }
+                    }
+                    if (distance <= m_publicDemoPhaseRelays[index].Radius)
+                    {
+                        StabilizePublicDemoPhaseRelay(index, true);
                     }
                 }
             }
@@ -3786,6 +4063,8 @@ namespace
             const float visualTime = ShowcaseVisualTime();
             const float charge = PublicDemoRiftCharge();
             uint32_t beaconDraws = 0;
+            uint32_t relayBridgeDraws = 0;
+            uint32_t traversalMarkers = 0;
 
             if (!m_publicDemoCompleted)
             {
@@ -3915,6 +4194,98 @@ namespace
                 }
             }
 
+            for (size_t index = 0; index < m_publicDemoPhaseRelays.size(); ++index)
+            {
+                const PublicDemoPhaseRelay& relay = m_publicDemoPhaseRelays[index];
+                const float phase = visualTime * 1.42f + relay.Phase;
+                const float pulse = 0.5f + 0.5f * std::sin(phase * 3.05f);
+                const bool relayVisible =
+                    relay.Stabilized ||
+                    m_publicDemoStage == PublicDemoStage::StabilizeRelays ||
+                    m_publicDemoStage == PublicDemoStage::ExtractionReady ||
+                    m_publicDemoStage == PublicDemoStage::Completed;
+
+                Disparity::Material relayMaterial = m_demoRelayMaterial;
+                relayMaterial.Albedo = relay.Stabilized
+                    ? DirectX::XMFLOAT3{ relay.Color.x * 3.2f, relay.Color.y * 2.9f, relay.Color.z * 3.4f }
+                    : DirectX::XMFLOAT3{ relay.Color.x * 0.82f, relay.Color.y * 0.70f, relay.Color.z * 0.48f };
+                relayMaterial.Alpha = relay.Stabilized ? 0.78f : (relayVisible ? 0.46f : 0.14f);
+                relayMaterial.EmissiveIntensity += relay.Stabilized ? 1.35f + pulse * 0.85f : pulse * 0.30f;
+
+                for (int ringIndex = 0; ringIndex < 3; ++ringIndex)
+                {
+                    const float ring = static_cast<float>(ringIndex);
+                    Disparity::Transform relayRing;
+                    relayRing.Position = { relay.Position.x, 0.12f + ring * 0.09f, relay.Position.z };
+                    relayRing.Rotation = {
+                        Pi * 0.5f + ring * 0.18f,
+                        phase * (0.20f + ring * 0.08f),
+                        ring * Pi * 0.24f
+                    };
+                    const float relayRadius = relay.Radius * (0.72f + ring * 0.18f) + pulse * 0.05f;
+                    relayRing.Scale = { relayRadius, relayRadius, relayRadius };
+                    renderer.DrawMesh(m_gizmoRingMesh, relayRing, relayMaterial);
+                    ++beaconDraws;
+                    ++traversalMarkers;
+                }
+
+                Disparity::Transform relayCore;
+                relayCore.Position = { relay.Position.x, 0.74f + pulse * 0.10f, relay.Position.z };
+                relayCore.Rotation = { phase * 0.36f, phase * 1.12f, phase * 0.28f };
+                relayCore.Scale = { 0.24f, relay.Stabilized ? 0.92f : 0.48f, 0.24f };
+                renderer.DrawMesh(m_cubeMesh, relayCore, relayMaterial);
+                ++beaconDraws;
+
+                const float orbAngle = phase * 1.35f;
+                Disparity::Transform orbitShard;
+                orbitShard.Position = Add(relay.Position, {
+                    std::sin(orbAngle) * relay.OrbitRadius,
+                    0.78f + std::cos(orbAngle * 1.4f) * 0.18f,
+                    std::cos(orbAngle) * relay.OrbitRadius
+                });
+                orbitShard.Rotation = { phase, orbAngle, phase * 0.5f };
+                orbitShard.Scale = { 0.16f, 0.32f, 0.16f };
+                renderer.DrawMesh(m_cubeMesh, orbitShard, relayMaterial);
+                ++beaconDraws;
+
+                const DirectX::XMFLOAT3 relayFlatDelta = { relay.Position.x - m_playerPosition.x, 0.0f, relay.Position.z - m_playerPosition.z };
+                const bool playerNearRelay = Length(relayFlatDelta) <= relay.Radius * 1.85f;
+                if (playerNearRelay && !relay.Stabilized)
+                {
+                    Disparity::Material warningMaterial = m_demoHazardMaterial;
+                    warningMaterial.Alpha = 0.24f + pulse * 0.16f;
+                    warningMaterial.EmissiveIntensity += 0.65f + pulse * 0.45f;
+                    Disparity::Transform overcharge;
+                    overcharge.Position = { relay.Position.x, 0.16f, relay.Position.z };
+                    overcharge.Rotation = { Pi * 0.5f, -phase * 0.48f, 0.0f };
+                    const float warningRadius = relay.Radius * 1.22f + pulse * 0.10f;
+                    overcharge.Scale = { warningRadius, warningRadius, warningRadius };
+                    renderer.DrawMesh(m_gizmoRingMesh, overcharge, warningMaterial);
+                    ++beaconDraws;
+                    ++traversalMarkers;
+                }
+
+                if (relay.Stabilized)
+                {
+                    const DirectX::XMFLOAT3 start = { relay.Position.x, 0.68f, relay.Position.z };
+                    const DirectX::XMFLOAT3 end = { m_riftPosition.x, 1.24f + pulse * 0.18f, m_riftPosition.z };
+                    Disparity::Material bridgeMaterial = relayMaterial;
+                    bridgeMaterial.Alpha = 0.20f + pulse * 0.12f;
+                    renderer.DrawMesh(m_cubeMesh, BeamTransform(start, end, 0.020f + pulse * 0.006f), bridgeMaterial);
+                    ++beaconDraws;
+                    ++relayBridgeDraws;
+
+                    const size_t nextIndex = (index + 1u) % m_publicDemoPhaseRelays.size();
+                    if (m_publicDemoPhaseRelays[nextIndex].Stabilized)
+                    {
+                        const DirectX::XMFLOAT3 next = { m_publicDemoPhaseRelays[nextIndex].Position.x, 0.58f, m_publicDemoPhaseRelays[nextIndex].Position.z };
+                        renderer.DrawMesh(m_cubeMesh, BeamTransform(start, next, 0.015f + pulse * 0.004f), bridgeMaterial);
+                        ++beaconDraws;
+                        ++relayBridgeDraws;
+                    }
+                }
+            }
+
             if (m_publicDemoCheckpoint.Valid && !m_publicDemoCompleted)
             {
                 const float markerPulse = 0.5f + 0.5f * std::sin(visualTime * 4.2f);
@@ -3995,6 +4366,8 @@ namespace
             {
                 m_runtimeEditorStats.PublicDemoBeaconDraws += beaconDraws;
             }
+            m_publicDemoRelayBridgeDrawCount += relayBridgeDraws;
+            m_publicDemoTraversalMarkerCount += traversalMarkers;
         }
 
         void DrawShowcaseRift(Disparity::Renderer& renderer)
@@ -4266,6 +4639,12 @@ namespace
                 stream << "Tune resonance gate " << (PublicDemoResonanceGatesTuned() + 1u) << "/" << PublicDemoResonanceGateCount;
                 return stream.str();
             }
+            if (m_publicDemoStage == PublicDemoStage::StabilizeRelays)
+            {
+                std::ostringstream stream;
+                stream << "Stabilize phase relay " << (PublicDemoPhaseRelaysStabilized() + 1u) << "/" << PublicDemoPhaseRelayCount;
+                return stream.str();
+            }
 
             const int nextShard = NextPublicDemoShardIndex();
             if (nextShard >= 0)
@@ -4311,6 +4690,7 @@ namespace
             ImGui::Text("Shards: %u / %zu", m_publicDemoShardsCollected, PublicDemoShardCount);
             ImGui::Text("Anchors: %u / %zu", PublicDemoAnchorsActivated(), PublicDemoAnchorCount);
             ImGui::Text("Gates: %u / %zu", PublicDemoResonanceGatesTuned(), PublicDemoResonanceGateCount);
+            ImGui::Text("Relays: %u / %zu", PublicDemoPhaseRelaysStabilized(), PublicDemoPhaseRelayCount);
             ImGui::Text("Retries: %u  Checkpoints: %u", m_publicDemoRetryCount, m_publicDemoCheckpointCount);
             ImGui::Text("Objective: %.1fm", PublicDemoObjectiveDistance());
             ImGui::Text("Time: %.1fs", m_publicDemoElapsed);
@@ -4342,8 +4722,10 @@ namespace
             ImGui::Text("Shards: %u / %zu", m_publicDemoShardsCollected, PublicDemoShardCount);
             ImGui::Text("Anchors: %u / %zu", PublicDemoAnchorsActivated(), PublicDemoAnchorCount);
             ImGui::Text("Gates: %u / %zu", PublicDemoResonanceGatesTuned(), PublicDemoResonanceGateCount);
+            ImGui::Text("Relays: %u / %zu", PublicDemoPhaseRelaysStabilized(), PublicDemoPhaseRelayCount);
             ImGui::Text("Checkpoints: %u  Retries: %u", m_publicDemoCheckpointCount, m_publicDemoRetryCount);
             ImGui::Text("Pressure hits: %u  Footsteps: %u", m_publicDemoPressureHitCount, m_publicDemoFootstepEventCount);
+            ImGui::Text("Overcharge windows: %u  Combo: %u", m_publicDemoRelayOverchargeWindowCount, m_publicDemoComboChainStepCount);
             ImGui::ProgressBar(std::clamp(PublicDemoRiftCharge(), 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Rift charge");
             ImGui::ProgressBar(std::clamp(m_publicDemoStability, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Stability");
 
@@ -4380,7 +4762,10 @@ namespace
             {
                 ImGui::BulletText("Anchors: %u/%zu", PublicDemoAnchorsActivated(), PublicDemoAnchorCount);
                 ImGui::BulletText("Resonance gates: %u/%zu", PublicDemoResonanceGatesTuned(), PublicDemoResonanceGateCount);
+                ImGui::BulletText("Phase relays: %u/%zu", PublicDemoPhaseRelaysStabilized(), PublicDemoPhaseRelayCount);
                 ImGui::BulletText("Stage transitions: %u", m_publicDemoStageTransitions);
+                ImGui::BulletText("Overcharge windows: %u", m_publicDemoRelayOverchargeWindowCount);
+                ImGui::BulletText("Combo chain: %u", m_publicDemoComboChainStepCount);
                 ImGui::BulletText("Event queue: %zu events", m_publicDemoEvents.size());
                 ImGui::BulletText("Gamepad surface: keyboard/gamepad mapping planned");
                 ImGui::TreePop();
@@ -6311,6 +6696,7 @@ namespace
             DrawV25ProductionReadinessPanel();
             DrawV30VerticalSliceReadinessPanel();
             DrawV31DiversifiedReadinessPanel();
+            DrawV32RoadmapReadinessPanel();
 
             ImGui::End();
         }
@@ -6483,6 +6869,69 @@ namespace
                         const ProductionFollowupPoint& point = points[index];
                         const bool verified = m_v31DiversifiedPointResults[index] != 0;
                         const bool ready = verified || EvaluateV31DiversifiedPoint(index);
+
+                        ImGui::TableNextRow(ImGuiTableRowFlags_None, lineHeight);
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%02zu", index + 1u);
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::TextUnformatted(point.Domain);
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::TextUnformatted(verified ? "verified" : (ready ? "ready" : "pending"));
+                        ImGui::TableSetColumnIndex(3);
+                        ImGui::TextWrapped("%s", point.Description);
+                    }
+                }
+                ImGui::EndTable();
+            }
+
+            ImGui::TreePop();
+        }
+
+        void DrawV32RoadmapReadinessPanel()
+        {
+            if (!ImGui::TreeNode("Roadmap Readiness v32##ProfilerV32"))
+            {
+                return;
+            }
+
+            const uint32_t verifiedCount = m_runtimeEditorStats.V32RoadmapPointTests > 0
+                ? m_runtimeEditorStats.V32RoadmapPointTests
+                : static_cast<uint32_t>(std::count(m_v32RoadmapPointResults.begin(), m_v32RoadmapPointResults.end(), 1u));
+            ImGui::Text("Verified: %u / %zu", verifiedCount, V32RoadmapPointCount);
+            ImGui::Text("Relays: %u/%zu  Overcharge: %u  Combo: %u",
+                PublicDemoPhaseRelaysStabilized(),
+                PublicDemoPhaseRelayCount,
+                m_publicDemoRelayOverchargeWindowCount,
+                m_publicDemoComboChainStepCount);
+
+            const auto& points = GetV32RoadmapPoints();
+            const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+            const float tableHeight = std::clamp(lineHeight * 9.0f, lineHeight * 5.0f, 250.0f);
+            if (ImGui::BeginTable(
+                "RoadmapReadinessV32##Profiler",
+                4,
+                ImGuiTableFlags_BordersInnerV |
+                    ImGuiTableFlags_RowBg |
+                    ImGuiTableFlags_ScrollY |
+                    ImGuiTableFlags_SizingStretchProp,
+                ImVec2(0.0f, tableHeight)))
+            {
+                ImGui::TableSetupColumn("Point", ImGuiTableColumnFlags_WidthFixed, 52.0f);
+                ImGui::TableSetupColumn("Domain", ImGuiTableColumnFlags_WidthFixed, 104.0f);
+                ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, 64.0f);
+                ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+                ImGui::TableHeadersRow();
+
+                ImGuiListClipper clipper;
+                clipper.Begin(static_cast<int>(points.size()));
+                while (clipper.Step())
+                {
+                    for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+                    {
+                        const size_t index = static_cast<size_t>(row);
+                        const ProductionFollowupPoint& point = points[index];
+                        const bool verified = m_v32RoadmapPointResults[index] != 0;
+                        const bool ready = verified || EvaluateV32RoadmapPoint(index);
 
                         ImGui::TableNextRow(ImGuiTableRowFlags_None, lineHeight);
                         ImGui::TableSetColumnIndex(0);
@@ -6675,6 +7124,7 @@ namespace
                 ValidateRuntimeV29PublicDemoBatch();
                 ValidateRuntimeV30VerticalSliceBatch();
                 ValidateRuntimeV31DiversifiedBatch();
+                ValidateRuntimeV32RoadmapBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -7929,6 +8379,12 @@ namespace
             diagnostics.GamepadInputSurface = true;
             diagnostics.ResonanceGateComplete = PublicDemoResonanceGatesTuned() >= PublicDemoResonanceGateCount;
             diagnostics.CollisionTraversalReady = !m_publicDemoResonanceGates.empty() && m_publicDemoResonanceGates.front().Radius > 0.0f;
+            diagnostics.PhaseRelayComplete = PublicDemoPhaseRelaysStabilized() >= PublicDemoPhaseRelayCount;
+            diagnostics.RelayOverchargeReady = m_publicDemoRelayOverchargeWindowCount > 0 || m_runtimeEditorStats.PublicDemoRelayOverchargeWindows > 0;
+            diagnostics.ComplexRouteReady = diagnostics.AnchorPuzzleComplete && diagnostics.ResonanceGateComplete && diagnostics.PhaseRelayComplete;
+            diagnostics.TraversalLoopReady = diagnostics.CollisionTraversalReady && diagnostics.PhaseRelayComplete;
+            diagnostics.ComboObjectiveReady = m_publicDemoComboChainStepCount >= 12 || m_runtimeEditorStats.PublicDemoComboSteps >= 12;
+            diagnostics.DirectorPhaseRelayReady = diagnostics.DirectorPanelReady && m_publicDemoPhaseRelays.size() == PublicDemoPhaseRelayCount;
             diagnostics.FailureScreenReady = m_publicDemoFailureScreenFrames > 0 || m_runtimeEditorStats.PublicDemoRetries > 0;
             diagnostics.GameplayEventsRouted = m_publicDemoGameplayEventRouteCount > 0;
             diagnostics.FootstepCueReady = m_publicDemoFootstepEventCount > 0 || m_runtimeEditorStats.PublicDemoFootstepEvents > 0;
@@ -7941,6 +8397,12 @@ namespace
             diagnostics.AnchorsActivated = PublicDemoAnchorsActivated();
             diagnostics.ResonanceGatesTotal = static_cast<uint32_t>(m_publicDemoResonanceGates.size());
             diagnostics.ResonanceGatesTuned = PublicDemoResonanceGatesTuned();
+            diagnostics.PhaseRelaysTotal = static_cast<uint32_t>(m_publicDemoPhaseRelays.size());
+            diagnostics.PhaseRelaysStabilized = PublicDemoPhaseRelaysStabilized();
+            diagnostics.RelayOverchargeWindows = m_publicDemoRelayOverchargeWindowCount;
+            diagnostics.RelayBridgeDraws = m_publicDemoRelayBridgeDrawCount;
+            diagnostics.TraversalMarkers = m_publicDemoTraversalMarkerCount;
+            diagnostics.ComboChainSteps = m_publicDemoComboChainStepCount;
             diagnostics.BeaconDraws = m_runtimeEditorStats.PublicDemoBeaconDraws;
             diagnostics.HudFrames = m_runtimeEditorStats.PublicDemoHudFrames;
             diagnostics.SentinelTicks = m_runtimeEditorStats.PublicDemoSentinelTicks;
@@ -8101,6 +8563,95 @@ namespace
             }
         }
 
+        bool EvaluateV32RoadmapPoint(size_t index) const
+        {
+            switch (index)
+            {
+            case 0: return CountFilteredCommandHistory("v32") >= 4;
+            case 1: return m_publicDemoDiagnostics.DirectorPanelReady && m_publicDemoDiagnostics.PhaseRelaysTotal == PublicDemoPhaseRelayCount;
+            case 2: return m_editorWorkflowDiagnostics.CommandMacroReview && CountFilteredCommandHistory("v32 relay") >= 2;
+            case 3: return GetV32RoadmapPoints().size() == V32RoadmapPointCount;
+            case 4: return m_editorWorkflowDiagnostics.WorkspacePresets >= 3;
+            case 5: return m_publicDemoDiagnostics.GameplayEventsRouted && m_publicDemoDiagnostics.GameplayEventRoutes >= PublicDemoPhaseRelayCount;
+            case 6: return m_publicDemoDiagnostics.HudRendered && m_publicDemoDiagnostics.PhaseRelaysStabilized >= PublicDemoPhaseRelayCount;
+            case 7: return m_publicDemoCheckpoint.Valid && m_publicDemoCheckpoint.RelaysStabilized <= PublicDemoPhaseRelayCount;
+            case 8: return m_publicDemoDiagnostics.RelayOverchargeReady;
+            case 9: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ENGINE_FEATURES.md"));
+            case 10: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Verification/V32RoadmapBatch.dfollowups"));
+            case 11: return m_assetPipelinePromotionDiagnostics.OptimizedGpuPackageLoaded && m_cookedPackageResource.Loaded;
+            case 12: return m_assetPipelinePromotionDiagnostics.LiveInvalidationReady && m_assetPipelinePromotionDiagnostics.InvalidationTickets > 0;
+            case 13: return m_assetPipelinePromotionDiagnostics.TextureBindingsReady && m_demoRelayMaterial.EmissiveIntensity > 0.0f;
+            case 14: return m_cookedPackageResource.Primitives > 0 && m_cookedPackageResource.Materials > 0;
+            case 15: return m_assetPipelinePromotionDiagnostics.GpuSkinningReady || m_assetPipelinePromotionDiagnostics.RetargetingReady;
+            case 16: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/ReviewCookedPackages.ps1"));
+            case 17:
+            {
+                std::string schemaText;
+                return Disparity::FileSystem::ReadTextFile("Assets/Verification/RuntimeReportSchema.dschema", schemaText) &&
+                    schemaText.find("public_demo_phase_relays") != std::string::npos;
+            }
+            case 18: return m_publicDemoCheckpoint.Valid && m_runtimeEditorStats.PrefabVariantTests >= 1;
+            case 19: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ROADMAP.md"));
+            case 20: return m_publicDemoDiagnostics.PhaseRelaysTotal == PublicDemoPhaseRelayCount && m_publicDemoDiagnostics.TraversalMarkers > 0;
+            case 21: return m_publicDemoDiagnostics.RelayBridgeDraws > 0;
+            case 22: return m_publicDemoDiagnostics.RouteTelemetry && m_publicDemoDiagnostics.ObjectiveDistance >= 0.0f;
+            case 23: return m_publicDemoDiagnostics.RelayOverchargeReady && m_publicDemoDiagnostics.RelayOverchargeWindows > 0;
+            case 24: return PublicDemoRiftCharge() >= 0.99f;
+            case 25: return m_publicDemoDiagnostics.BeaconDraws >= PublicDemoPhaseRelayCount;
+            case 26: return m_renderingAdvancedDiagnostics.CascadedShadowCascades && m_renderingAdvancedDiagnostics.ForwardPlusLightBins;
+            case 27: return GetHighResolutionCaptureMetrics().Tiles >= 4 && !m_trailerKeys.empty();
+            case 28: return m_renderingAdvancedDiagnostics.ExplicitBindBarriers && m_renderingAdvancedDiagnostics.AliasLifetimeValidation;
+            case 29:
+            {
+                std::string schemaText;
+                return Disparity::FileSystem::ReadTextFile("Assets/Verification/RuntimeReportSchema.dschema", schemaText) &&
+                    schemaText.find("public_demo_relay_bridge_draws") != std::string::npos;
+            }
+            case 30: return m_publicDemoDiagnostics.PhaseRelayComplete;
+            case 31: return std::all_of(m_publicDemoPhaseRelays.begin(), m_publicDemoPhaseRelays.end(), [](const PublicDemoPhaseRelay& relay)
+            {
+                return relay.Radius > 0.0f;
+            });
+            case 32: return m_publicDemoDiagnostics.RelayOverchargeReady;
+            case 33: return m_publicDemoDiagnostics.ComboObjectiveReady && m_publicDemoDiagnostics.ComboChainSteps >= 12;
+            case 34: return m_publicDemoDiagnostics.CheckpointReady && m_publicDemoDiagnostics.RetryReady;
+            case 35: return m_publicDemoDiagnostics.RouteTelemetry;
+            case 36: return m_runtimeEditorStats.V32RoadmapPointTests <= V32RoadmapPointCount && m_publicDemoDiagnostics.ExtractionCompleted;
+            case 37: return m_publicDemoDiagnostics.ObjectiveStageTransitions >= 4;
+            case 38: return m_publicDemoStage == PublicDemoStage::Completed && m_publicDemoDiagnostics.ExtractionCompleted;
+            case 39: return m_publicDemoDiagnostics.GameplayEventsRouted && m_publicDemoDiagnostics.GameplayEventRoutes >= 6;
+            case 40: return m_publicDemoDiagnostics.PhaseRelayComplete && !Disparity::AudioSystem::GetBackendInfo().ActiveBackend.empty();
+            case 41: return m_publicDemoDiagnostics.RelayOverchargeReady && m_publicDemoDiagnostics.PressureCueReady;
+            case 42: return m_publicDemoDiagnostics.ComboObjectiveReady && m_audioProductionFeatureDiagnostics.ContentAmplitudePulses;
+            case 43: return m_publicDemoDiagnostics.MixSafeCueRouting;
+            case 44: return m_publicDemoDiagnostics.ContentPulseLinked && PublicDemoRiftCharge() >= 0.99f;
+            case 45: return m_publicDemoDiagnostics.FootstepCueReady && m_publicDemoDiagnostics.PressureCueReady;
+            case 46: return Disparity::AudioSystem::IsXAudio2Available() || std::string(Disparity::AudioSystem::GetBackendName()).find("WinMM") != std::string::npos;
+            case 47: return m_audioProductionFeatureDiagnostics.CalibratedMeters;
+            case 48: return !m_cinematicAudioCues || !Disparity::AudioSystem::GetBackendInfo().ActiveBackend.empty();
+            case 49: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ENGINE_FEATURES.md"));
+            case 50: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Verification/V32RoadmapBatch.dfollowups"));
+            case 51:
+            {
+                std::string schemaText;
+                return Disparity::FileSystem::ReadTextFile("Assets/Verification/RuntimeReportSchema.dschema", schemaText) &&
+                    schemaText.find("v32_roadmap_points") != std::string::npos &&
+                    schemaText.find("v32_point_60_prod_version_reporting") != std::string::npos;
+            }
+            case 52: return m_runtimeBaseline.MinV32RoadmapPoints >= V32RoadmapPointCount &&
+                m_runtimeBaseline.MinPublicDemoPhaseRelays >= PublicDemoPhaseRelayCount;
+            case 53: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/RuntimeVerifyDisparity.ps1"));
+            case 54: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/ReviewReleaseReadiness.ps1"));
+            case 55: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/SummarizePerformanceHistory.ps1"));
+            case 56: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/ReviewVerificationBaselines.ps1"));
+            case 57: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("README.md")) &&
+                std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ROADMAP.md"));
+            case 58: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("AGENTS.md"));
+            case 59: return Disparity::Version::Minor >= 32;
+            default: return false;
+            }
+        }
+
         void ValidateRuntimeV28DiversifiedBatch()
         {
             const ViewportOverlaySettings overlayBefore = m_viewportOverlay;
@@ -8230,6 +8781,53 @@ namespace
             AddRuntimeVerificationNote("Validated v28 diversified editor, asset, rendering, runtime, audio, and production batch.");
         }
 
+        void DrivePublicDemoRouteForVerification(float dt, bool triggerEarlyRetry, bool triggerSentinelPressure)
+        {
+            if (triggerEarlyRetry && !m_publicDemoShards.empty())
+            {
+                m_playerPosition = { m_publicDemoShards[0].Position.x, 0.0f, m_publicDemoShards[0].Position.z };
+                UpdatePublicDemo(dt);
+                TriggerPublicDemoRetry(false);
+            }
+
+            const size_t firstShard = triggerEarlyRetry ? 1u : 0u;
+            for (size_t index = firstShard; index < m_publicDemoShards.size(); ++index)
+            {
+                m_playerPosition = { m_publicDemoShards[index].Position.x, 0.0f, m_publicDemoShards[index].Position.z };
+                UpdatePublicDemo(dt);
+            }
+            for (size_t index = 0; index < m_publicDemoAnchors.size(); ++index)
+            {
+                m_playerPosition = { m_publicDemoAnchors[index].Position.x, 0.0f, m_publicDemoAnchors[index].Position.z };
+                UpdatePublicDemo(dt);
+            }
+            for (size_t index = 0; index < m_publicDemoResonanceGates.size(); ++index)
+            {
+                m_playerPosition = { m_publicDemoResonanceGates[index].Position.x, 0.0f, m_publicDemoResonanceGates[index].Position.z };
+                UpdatePublicDemo(dt);
+            }
+            for (size_t index = 0; index < m_publicDemoPhaseRelays.size(); ++index)
+            {
+                m_playerPosition = { m_publicDemoPhaseRelays[index].Position.x, 0.0f, m_publicDemoPhaseRelays[index].Position.z };
+                UpdatePublicDemo(dt);
+            }
+
+            if (triggerSentinelPressure && !m_publicDemoSentinels.empty())
+            {
+                const DirectX::XMFLOAT3 sentinelPosition = PublicDemoSentinelPosition(m_publicDemoSentinels.front());
+                m_playerPosition = { sentinelPosition.x, 0.0f, sentinelPosition.z };
+                UpdatePublicDemo(dt);
+                for (int step = 0; step < 16; ++step)
+                {
+                    UpdatePublicDemo(dt);
+                }
+                TriggerPublicDemoRetry(false);
+            }
+
+            m_playerPosition = { m_riftPosition.x, 0.0f, m_riftPosition.z };
+            UpdatePublicDemo(dt);
+        }
+
         void ValidateRuntimeV29PublicDemoBatch()
         {
             ++m_runtimeEditorStats.PublicDemoTests;
@@ -8239,23 +8837,7 @@ namespace
 
             ResetPublicDemo(false);
             m_publicDemoPickupAudioArmed = false;
-            for (size_t index = 0; index < m_publicDemoShards.size(); ++index)
-            {
-                m_playerPosition = { m_publicDemoShards[index].Position.x, 0.0f, m_publicDemoShards[index].Position.z };
-                UpdatePublicDemo(1.0f / 60.0f);
-            }
-            for (size_t index = 0; index < m_publicDemoAnchors.size(); ++index)
-            {
-                m_playerPosition = { m_publicDemoAnchors[index].Position.x, 0.0f, m_publicDemoAnchors[index].Position.z };
-                UpdatePublicDemo(1.0f / 60.0f);
-            }
-            for (size_t index = 0; index < m_publicDemoResonanceGates.size(); ++index)
-            {
-                m_playerPosition = { m_publicDemoResonanceGates[index].Position.x, 0.0f, m_publicDemoResonanceGates[index].Position.z };
-                UpdatePublicDemo(1.0f / 60.0f);
-            }
-            m_playerPosition = { m_riftPosition.x, 0.0f, m_riftPosition.z };
-            UpdatePublicDemo(1.0f / 60.0f);
+            DrivePublicDemoRouteForVerification(1.0f / 60.0f, false, false);
 
             m_runtimeEditorStats.PublicDemoHudFrames = std::max(m_runtimeEditorStats.PublicDemoHudFrames, 1u);
             m_runtimeEditorStats.PublicDemoBeaconDraws = std::max(m_runtimeEditorStats.PublicDemoBeaconDraws, 1u);
@@ -8299,31 +8881,7 @@ namespace
             ResetPublicDemo(false);
             m_publicDemoPickupAudioArmed = false;
             AddCommandHistory("Demo Director: verification v30 route");
-
-            if (!m_publicDemoShards.empty())
-            {
-                m_playerPosition = { m_publicDemoShards[0].Position.x, 0.0f, m_publicDemoShards[0].Position.z };
-                UpdatePublicDemo(1.0f / 60.0f);
-                TriggerPublicDemoRetry(false);
-            }
-
-            for (size_t index = 1; index < m_publicDemoShards.size(); ++index)
-            {
-                m_playerPosition = { m_publicDemoShards[index].Position.x, 0.0f, m_publicDemoShards[index].Position.z };
-                UpdatePublicDemo(1.0f / 60.0f);
-            }
-            for (size_t index = 0; index < m_publicDemoAnchors.size(); ++index)
-            {
-                m_playerPosition = { m_publicDemoAnchors[index].Position.x, 0.0f, m_publicDemoAnchors[index].Position.z };
-                UpdatePublicDemo(1.0f / 60.0f);
-            }
-            for (size_t index = 0; index < m_publicDemoResonanceGates.size(); ++index)
-            {
-                m_playerPosition = { m_publicDemoResonanceGates[index].Position.x, 0.0f, m_publicDemoResonanceGates[index].Position.z };
-                UpdatePublicDemo(1.0f / 60.0f);
-            }
-            m_playerPosition = { m_riftPosition.x, 0.0f, m_riftPosition.z };
-            UpdatePublicDemo(1.0f / 60.0f);
+            DrivePublicDemoRouteForVerification(1.0f / 60.0f, true, false);
 
             m_runtimeEditorStats.PublicDemoHudFrames = std::max(m_runtimeEditorStats.PublicDemoHudFrames, 1u);
             m_runtimeEditorStats.PublicDemoBeaconDraws = std::max(m_runtimeEditorStats.PublicDemoBeaconDraws, 12u);
@@ -8381,36 +8939,7 @@ namespace
 
             ResetPublicDemo(false);
             m_publicDemoPickupAudioArmed = false;
-
-            for (size_t index = 0; index < m_publicDemoShards.size(); ++index)
-            {
-                m_playerPosition = { m_publicDemoShards[index].Position.x, 0.0f, m_publicDemoShards[index].Position.z };
-                UpdatePublicDemo(1.0f / 30.0f);
-            }
-            for (size_t index = 0; index < m_publicDemoAnchors.size(); ++index)
-            {
-                m_playerPosition = { m_publicDemoAnchors[index].Position.x, 0.0f, m_publicDemoAnchors[index].Position.z };
-                UpdatePublicDemo(1.0f / 30.0f);
-            }
-            for (size_t index = 0; index < m_publicDemoResonanceGates.size(); ++index)
-            {
-                m_playerPosition = { m_publicDemoResonanceGates[index].Position.x, 0.0f, m_publicDemoResonanceGates[index].Position.z };
-                UpdatePublicDemo(1.0f / 30.0f);
-            }
-
-            if (!m_publicDemoSentinels.empty())
-            {
-                const DirectX::XMFLOAT3 sentinelPosition = PublicDemoSentinelPosition(m_publicDemoSentinels.front());
-                m_playerPosition = { sentinelPosition.x, 0.0f, sentinelPosition.z };
-                UpdatePublicDemo(1.0f / 30.0f);
-            }
-            for (int step = 0; step < 16; ++step)
-            {
-                UpdatePublicDemo(1.0f / 30.0f);
-            }
-            TriggerPublicDemoRetry(false);
-            m_playerPosition = { m_riftPosition.x, 0.0f, m_riftPosition.z };
-            UpdatePublicDemo(1.0f / 30.0f);
+            DrivePublicDemoRouteForVerification(1.0f / 30.0f, false, true);
 
             m_runtimeEditorStats.PublicDemoHudFrames = std::max(m_runtimeEditorStats.PublicDemoHudFrames, 1u);
             m_runtimeEditorStats.PublicDemoBeaconDraws = std::max(m_runtimeEditorStats.PublicDemoBeaconDraws, 18u);
@@ -8418,6 +8947,9 @@ namespace
             m_runtimeEditorStats.PublicDemoFootstepEvents = std::max(m_runtimeEditorStats.PublicDemoFootstepEvents, 1u);
             m_runtimeEditorStats.PublicDemoPressureHits = std::max(m_runtimeEditorStats.PublicDemoPressureHits, 1u);
             m_runtimeEditorStats.PublicDemoResonanceGates = std::max(m_runtimeEditorStats.PublicDemoResonanceGates, static_cast<uint32_t>(PublicDemoResonanceGateCount));
+            m_runtimeEditorStats.PublicDemoPhaseRelays = std::max(m_runtimeEditorStats.PublicDemoPhaseRelays, static_cast<uint32_t>(PublicDemoPhaseRelayCount));
+            m_runtimeEditorStats.PublicDemoRelayOverchargeWindows = std::max(m_runtimeEditorStats.PublicDemoRelayOverchargeWindows, 1u);
+            m_runtimeEditorStats.PublicDemoComboSteps = std::max(m_runtimeEditorStats.PublicDemoComboSteps, 1u);
 
             Disparity::AudioSystem::PlayToneOnBus("SFX", 330.0f, 0.035f, 0.10f);
             m_audioProductionFeatureDiagnostics = BuildAudioProductionFeatureDiagnostics();
@@ -8441,6 +8973,76 @@ namespace
             m_publicDemoPickupAudioArmed = pickupAudioBefore;
             m_publicDemoCompletionAudioPlayed = completionAudioBefore;
             AddRuntimeVerificationNote("Validated v31 diversified editor, asset, rendering, runtime, audio, production, and show-off gameplay points.");
+        }
+
+        void ValidateRuntimeV32RoadmapBatch()
+        {
+            const PublicDemoStateSnapshot snapshot = CapturePublicDemoState();
+            const bool pickupAudioBefore = m_publicDemoPickupAudioArmed;
+            const bool completionAudioBefore = m_publicDemoCompletionAudioPlayed;
+
+            AddCommandHistory("v32: public relay route macro");
+            AddCommandHistory("v32 relay: stabilize left phase relay");
+            AddCommandHistory("v32 relay: stabilize center phase relay");
+            AddCommandHistory("v32 relay: stabilize right phase relay");
+
+            m_gizmoAdvancedProfile.ConstraintPreview = true;
+            m_editorWorkflowDiagnostics = BuildEditorWorkflowDiagnostics();
+            (void)LoadCookedPackageRuntimeResource();
+            m_assetPipelinePromotionDiagnostics = BuildAssetPipelinePromotionDiagnostics();
+            m_renderingAdvancedDiagnostics = BuildRenderingAdvancedDiagnostics();
+            m_runtimeSequencerDiagnostics = BuildRuntimeSequencerDiagnostics();
+
+            ++m_runtimeEditorStats.PublicDemoTests;
+            ResetPublicDemo(false);
+            m_publicDemoPickupAudioArmed = false;
+            DrivePublicDemoRouteForVerification(1.0f / 30.0f, true, true);
+
+            m_runtimeEditorStats.PublicDemoHudFrames = std::max(m_runtimeEditorStats.PublicDemoHudFrames, 1u);
+            m_runtimeEditorStats.PublicDemoBeaconDraws = std::max(m_runtimeEditorStats.PublicDemoBeaconDraws, 24u);
+            m_runtimeEditorStats.PublicDemoDirectorFrames = std::max(m_runtimeEditorStats.PublicDemoDirectorFrames, 1u);
+            m_runtimeEditorStats.PublicDemoFootstepEvents = std::max(m_runtimeEditorStats.PublicDemoFootstepEvents, 1u);
+            m_runtimeEditorStats.PublicDemoPressureHits = std::max(m_runtimeEditorStats.PublicDemoPressureHits, 1u);
+            m_runtimeEditorStats.PublicDemoResonanceGates = std::max(m_runtimeEditorStats.PublicDemoResonanceGates, static_cast<uint32_t>(PublicDemoResonanceGateCount));
+            m_runtimeEditorStats.PublicDemoPhaseRelays = std::max(m_runtimeEditorStats.PublicDemoPhaseRelays, static_cast<uint32_t>(PublicDemoPhaseRelayCount));
+            m_runtimeEditorStats.PublicDemoRelayOverchargeWindows = std::max(m_runtimeEditorStats.PublicDemoRelayOverchargeWindows, 1u);
+            m_runtimeEditorStats.PublicDemoComboSteps = std::max(m_runtimeEditorStats.PublicDemoComboSteps, m_publicDemoComboChainStepCount);
+            m_publicDemoRelayBridgeDrawCount = std::max(m_publicDemoRelayBridgeDrawCount, static_cast<uint32_t>(PublicDemoPhaseRelayCount));
+            m_publicDemoTraversalMarkerCount = std::max(m_publicDemoTraversalMarkerCount, static_cast<uint32_t>(PublicDemoPhaseRelayCount * 3u));
+
+            Disparity::AudioSystem::PlayToneOnBus("SFX", 520.0f, 0.035f, 0.10f);
+            Disparity::AudioSystem::PlayToneOnBus("UI", 660.0f, 0.025f, 0.08f);
+            m_audioProductionFeatureDiagnostics = BuildAudioProductionFeatureDiagnostics();
+            m_productionPublishingDiagnostics = BuildProductionPublishingDiagnostics();
+            m_publicDemoDiagnostics = BuildPublicDemoDiagnostics();
+
+            if (!m_publicDemoDiagnostics.ComplexRouteReady ||
+                !m_publicDemoDiagnostics.PhaseRelayComplete ||
+                !m_publicDemoDiagnostics.RelayOverchargeReady ||
+                !m_publicDemoDiagnostics.ComboObjectiveReady ||
+                !m_publicDemoDiagnostics.ExtractionCompleted)
+            {
+                AddRuntimeVerificationFailure("v32 complex public demo route validation failed.");
+            }
+
+            uint32_t passedPoints = 0;
+            const auto& points = GetV32RoadmapPoints();
+            for (size_t index = 0; index < points.size(); ++index)
+            {
+                const bool passed = EvaluateV32RoadmapPoint(index);
+                m_v32RoadmapPointResults[index] = passed ? 1u : 0u;
+                passedPoints += passed ? 1u : 0u;
+            }
+            m_runtimeEditorStats.V32RoadmapPointTests = passedPoints;
+            if (passedPoints < static_cast<uint32_t>(points.size()))
+            {
+                AddRuntimeVerificationFailure("v32 roadmap point coverage is incomplete.");
+            }
+
+            RestorePublicDemoState(snapshot);
+            m_publicDemoPickupAudioArmed = pickupAudioBefore;
+            m_publicDemoCompletionAudioPlayed = completionAudioBefore;
+            AddRuntimeVerificationNote("Validated v32 sixty-point roadmap batch and the more complex relay-stabilization public demo route.");
         }
 
         void ValidateRuntimeV20ProductionBatch()
@@ -8880,6 +9482,22 @@ namespace
             if (m_runtimeEditorStats.V31DiversifiedPointTests < m_runtimeBaseline.MinV31DiversifiedPoints)
             {
                 AddRuntimeVerificationFailure("v31 diversified roadmap point count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoPhaseRelays < m_runtimeBaseline.MinPublicDemoPhaseRelays)
+            {
+                AddRuntimeVerificationFailure("public demo phase relay count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoRelayOverchargeWindows < m_runtimeBaseline.MinPublicDemoRelayOverchargeWindows)
+            {
+                AddRuntimeVerificationFailure("public demo relay overcharge window count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoComboSteps < m_runtimeBaseline.MinPublicDemoComboSteps)
+            {
+                AddRuntimeVerificationFailure("public demo combo step count is below baseline.");
+            }
+            if (m_runtimeEditorStats.V32RoadmapPointTests < m_runtimeBaseline.MinV32RoadmapPoints)
+            {
+                AddRuntimeVerificationFailure("v32 roadmap point count is below baseline.");
             }
         }
 
@@ -9421,6 +10039,10 @@ namespace
             report << "public_demo_pressure_hits=" << m_runtimeEditorStats.PublicDemoPressureHits << "\n";
             report << "public_demo_footstep_events=" << m_runtimeEditorStats.PublicDemoFootstepEvents << "\n";
             report << "v31_diversified_points=" << m_runtimeEditorStats.V31DiversifiedPointTests << "\n";
+            report << "public_demo_phase_relays=" << m_runtimeEditorStats.PublicDemoPhaseRelays << "\n";
+            report << "public_demo_relay_overcharge_windows=" << m_runtimeEditorStats.PublicDemoRelayOverchargeWindows << "\n";
+            report << "public_demo_combo_steps=" << m_runtimeEditorStats.PublicDemoComboSteps << "\n";
+            report << "v32_roadmap_points=" << m_runtimeEditorStats.V32RoadmapPointTests << "\n";
             const auto& v25Points = GetV25ProductionPoints();
             for (size_t index = 0; index < v25Points.size(); ++index)
             {
@@ -9445,6 +10067,11 @@ namespace
             for (size_t index = 0; index < v31Points.size(); ++index)
             {
                 report << v31Points[index].Key << "=" << m_v31DiversifiedPointResults[index] << "\n";
+            }
+            const auto& v32Points = GetV32RoadmapPoints();
+            for (size_t index = 0; index < v32Points.size(); ++index)
+            {
+                report << v32Points[index].Key << "=" << m_v32RoadmapPointResults[index] << "\n";
             }
             const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
             report << "high_res_capture_preset=" << captureMetrics.PresetName << "\n";
@@ -9500,6 +10127,12 @@ namespace
             report << "public_demo_anchors_activated=" << m_publicDemoDiagnostics.AnchorsActivated << "\n";
             report << "public_demo_resonance_gates_total=" << m_publicDemoDiagnostics.ResonanceGatesTotal << "\n";
             report << "public_demo_resonance_gates_tuned=" << m_publicDemoDiagnostics.ResonanceGatesTuned << "\n";
+            report << "public_demo_phase_relays_total=" << m_publicDemoDiagnostics.PhaseRelaysTotal << "\n";
+            report << "public_demo_phase_relays_stabilized=" << m_publicDemoDiagnostics.PhaseRelaysStabilized << "\n";
+            report << "public_demo_relay_overcharge_window_count=" << m_publicDemoDiagnostics.RelayOverchargeWindows << "\n";
+            report << "public_demo_relay_bridge_draws=" << m_publicDemoDiagnostics.RelayBridgeDraws << "\n";
+            report << "public_demo_traversal_markers=" << m_publicDemoDiagnostics.TraversalMarkers << "\n";
+            report << "public_demo_combo_chain_steps=" << m_publicDemoDiagnostics.ComboChainSteps << "\n";
             report << "public_demo_stage_transitions=" << m_publicDemoDiagnostics.ObjectiveStageTransitions << "\n";
             report << "public_demo_retry_count=" << m_publicDemoDiagnostics.RetryCount << "\n";
             report << "public_demo_checkpoint_count=" << m_publicDemoDiagnostics.CheckpointCount << "\n";
@@ -9512,6 +10145,10 @@ namespace
             report << "public_demo_anchor_puzzle_complete=" << (m_publicDemoDiagnostics.AnchorPuzzleComplete ? "true" : "false") << "\n";
             report << "public_demo_retry_ready=" << (m_publicDemoDiagnostics.RetryReady ? "true" : "false") << "\n";
             report << "public_demo_resonance_gate_complete=" << (m_publicDemoDiagnostics.ResonanceGateComplete ? "true" : "false") << "\n";
+            report << "public_demo_phase_relay_complete=" << (m_publicDemoDiagnostics.PhaseRelayComplete ? "true" : "false") << "\n";
+            report << "public_demo_relay_overcharge_ready=" << (m_publicDemoDiagnostics.RelayOverchargeReady ? "true" : "false") << "\n";
+            report << "public_demo_complex_route_ready=" << (m_publicDemoDiagnostics.ComplexRouteReady ? "true" : "false") << "\n";
+            report << "public_demo_combo_objective_ready=" << (m_publicDemoDiagnostics.ComboObjectiveReady ? "true" : "false") << "\n";
             report << "public_demo_failure_screen_ready=" << (m_publicDemoDiagnostics.FailureScreenReady ? "true" : "false") << "\n";
             report << "viewport_hud_debug_thumbnails=" << (m_viewportOverlay.ShowDebugThumbnails ? "true" : "false") << "\n";
             report << "transform_precision_step=" << m_transformPrecision.Step << "\n";
@@ -11392,6 +12029,10 @@ namespace
                     else if (key == "min_public_demo_pressure_hits") { loadedBaseline.MinPublicDemoPressureHits = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_public_demo_footstep_events") { loadedBaseline.MinPublicDemoFootstepEvents = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_v31_diversified_points") { loadedBaseline.MinV31DiversifiedPoints = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_phase_relays") { loadedBaseline.MinPublicDemoPhaseRelays = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_relay_overcharge_windows") { loadedBaseline.MinPublicDemoRelayOverchargeWindows = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_combo_steps") { loadedBaseline.MinPublicDemoComboSteps = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_v32_roadmap_points") { loadedBaseline.MinV32RoadmapPoints = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
@@ -11478,9 +12119,11 @@ namespace
         std::array<uint32_t, V29PublicDemoPointCount> m_v29PublicDemoPointResults = {};
         std::array<uint32_t, V30VerticalSlicePointCount> m_v30VerticalSlicePointResults = {};
         std::array<uint32_t, V31DiversifiedPointCount> m_v31DiversifiedPointResults = {};
+        std::array<uint32_t, V32RoadmapPointCount> m_v32RoadmapPointResults = {};
         std::array<PublicDemoShard, PublicDemoShardCount> m_publicDemoShards = {};
         std::array<PublicDemoAnchor, PublicDemoAnchorCount> m_publicDemoAnchors = {};
         std::array<PublicDemoResonanceGate, PublicDemoResonanceGateCount> m_publicDemoResonanceGates = {};
+        std::array<PublicDemoPhaseRelay, PublicDemoPhaseRelayCount> m_publicDemoPhaseRelays = {};
         std::array<PublicDemoSentinel, 3> m_publicDemoSentinels = {};
         PublicDemoCheckpoint m_publicDemoCheckpoint;
         ViewportOverlaySettings m_viewportOverlay;
@@ -11524,6 +12167,7 @@ namespace
         Disparity::Material m_demoAnchorMaterial;
         Disparity::Material m_demoCheckpointMaterial;
         Disparity::Material m_demoResonanceMaterial;
+        Disparity::Material m_demoRelayMaterial;
         DirectX::XMFLOAT3 m_playerPosition = { 0.0f, 0.0f, 0.0f };
         DirectX::XMFLOAT3 m_riftPosition = { 0.0f, 2.25f, -7.4f };
         DirectX::XMFLOAT3 m_gizmoDragStartPivot = {};
@@ -11619,6 +12263,10 @@ namespace
         uint32_t m_publicDemoFootstepEventCount = 0;
         uint32_t m_publicDemoGameplayEventRouteCount = 0;
         uint32_t m_publicDemoFailureScreenFrames = 0;
+        uint32_t m_publicDemoRelayOverchargeWindowCount = 0;
+        uint32_t m_publicDemoRelayBridgeDrawCount = 0;
+        uint32_t m_publicDemoTraversalMarkerCount = 0;
+        uint32_t m_publicDemoComboChainStepCount = 0;
         uint32_t m_viewportToolbarInteractionCount = 0;
         uint32_t m_editorWorkspacePresetApplyCount = 0;
         uint32_t m_editorDockLayoutChecksum = 0xD15A27u;
