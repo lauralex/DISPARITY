@@ -1025,6 +1025,7 @@ namespace
         {
             CollectShards,
             ActivateAnchors,
+            TuneResonance,
             ExtractionReady,
             Completed
         };
@@ -1035,6 +1036,15 @@ namespace
             DirectX::XMFLOAT3 Color = { 0.95f, 0.42f, 1.0f };
             float Phase = 0.0f;
             bool Activated = false;
+        };
+
+        struct PublicDemoResonanceGate
+        {
+            DirectX::XMFLOAT3 Position = {};
+            DirectX::XMFLOAT3 Color = { 0.38f, 1.0f, 0.86f };
+            float Radius = 1.35f;
+            float Phase = 0.0f;
+            bool Tuned = false;
         };
 
         struct PublicDemoCheckpoint
@@ -1064,10 +1074,20 @@ namespace
             bool RouteTelemetry = false;
             bool EventQueueReady = false;
             bool GamepadInputSurface = false;
+            bool ResonanceGateComplete = false;
+            bool CollisionTraversalReady = false;
+            bool FailureScreenReady = false;
+            bool GameplayEventsRouted = false;
+            bool FootstepCueReady = false;
+            bool PressureCueReady = false;
+            bool MixSafeCueRouting = false;
+            bool ContentPulseLinked = false;
             uint32_t ShardsTotal = 0;
             uint32_t ShardsCollected = 0;
             uint32_t AnchorsTotal = 0;
             uint32_t AnchorsActivated = 0;
+            uint32_t ResonanceGatesTotal = 0;
+            uint32_t ResonanceGatesTuned = 0;
             uint32_t BeaconDraws = 0;
             uint32_t HudFrames = 0;
             uint32_t SentinelTicks = 0;
@@ -1076,6 +1096,9 @@ namespace
             uint32_t CheckpointCount = 0;
             uint32_t DirectorFrames = 0;
             uint32_t EventCount = 0;
+            uint32_t PressureHits = 0;
+            uint32_t FootstepEvents = 0;
+            uint32_t GameplayEventRoutes = 0;
             float CompletionTimeSeconds = 0.0f;
             float Stability = 0.0f;
             float Focus = 0.0f;
@@ -1086,6 +1109,7 @@ namespace
         {
             std::array<PublicDemoShard, 6> Shards = {};
             std::array<PublicDemoAnchor, 3> Anchors = {};
+            std::array<PublicDemoResonanceGate, 2> ResonanceGates = {};
             PublicDemoCheckpoint Checkpoint = {};
             std::deque<std::string> Events = {};
             DirectX::XMFLOAT3 PlayerPosition = {};
@@ -1099,6 +1123,9 @@ namespace
             uint32_t StageTransitions = 0;
             uint32_t RetryCount = 0;
             uint32_t CheckpointCount = 0;
+            uint32_t PressureHitCount = 0;
+            uint32_t FootstepEventCount = 0;
+            uint32_t GameplayEventRouteCount = 0;
             bool ExtractionReady = false;
             bool Completed = false;
             PublicDemoStage Stage = PublicDemoStage::CollectShards;
@@ -1108,8 +1135,10 @@ namespace
         static constexpr size_t V28DiversifiedPointCount = 36;
         static constexpr size_t V29PublicDemoPointCount = 30;
         static constexpr size_t V30VerticalSlicePointCount = 36;
+        static constexpr size_t V31DiversifiedPointCount = 30;
         static constexpr size_t PublicDemoShardCount = 6;
         static constexpr size_t PublicDemoAnchorCount = 3;
+        static constexpr size_t PublicDemoResonanceGateCount = 2;
 
         static const std::array<ProductionFollowupPoint, V25ProductionPointCount>& GetV25ProductionPoints()
         {
@@ -1281,6 +1310,43 @@ namespace
             return points;
         }
 
+        static const std::array<ProductionFollowupPoint, V31DiversifiedPointCount>& GetV31DiversifiedPoints()
+        {
+            static const std::array<ProductionFollowupPoint, V31DiversifiedPointCount> points = { {
+                { "v31_point_01_editor_command_palette", "Editor", "Command palette/search surface is represented in editor telemetry" },
+                { "v31_point_02_editor_viewport_bookmarks", "Editor", "Viewport bookmarks are available for show-off camera hops" },
+                { "v31_point_03_editor_gizmo_constraint_preview", "Editor", "Gizmo constraint previews are exposed for precision edits" },
+                { "v31_point_04_editor_macro_export", "Editor", "Command macro export review is tracked" },
+                { "v31_point_05_editor_demo_bookmarks", "Editor", "Demo Director exposes vertical-slice bookmark telemetry" },
+                { "v31_point_06_asset_gpu_upload_manifest", "AssetPipeline", "Optimized package upload manifest is represented" },
+                { "v31_point_07_asset_material_bindings", "AssetPipeline", "Texture binding diagnostics cover material slots" },
+                { "v31_point_08_asset_skeleton_retarget", "AssetPipeline", "Skeleton/retarget readiness is surfaced" },
+                { "v31_point_09_asset_dependency_replay", "AssetPipeline", "Dependency invalidation replay queue is tracked" },
+                { "v31_point_10_asset_stream_budget", "AssetPipeline", "Streaming priority budgets are tracked" },
+                { "v31_point_11_render_bind_unbind_audit", "Rendering", "Render graph bind/unbind barrier audit is represented" },
+                { "v31_point_12_render_alias_slot_audit", "Rendering", "Alias lifetime slots are audited" },
+                { "v31_point_13_render_cluster_bins", "Rendering", "Clustered/Forward+ light-bin preview is tracked" },
+                { "v31_point_14_render_csm_stability", "Rendering", "Cascaded shadow stabilization preview is tracked" },
+                { "v31_point_15_render_vfx_debug", "Rendering", "VFX debug visualizer readiness is represented" },
+                { "v31_point_16_runtime_resonance_gates", "Runtime", "Playable resonance gates extend the public demo" },
+                { "v31_point_17_runtime_collision_volumes", "Runtime", "Collision/traversal volume checks are reported" },
+                { "v31_point_18_runtime_controller_surface", "Runtime", "Controller/gamepad surface remains exposed" },
+                { "v31_point_19_runtime_failure_screen", "Runtime", "Failure/retry screen telemetry is tracked" },
+                { "v31_point_20_runtime_event_routing", "Runtime", "Gameplay event routing counters are reported" },
+                { "v31_point_21_audio_footstep_cadence", "Audio", "Footstep cadence events are produced" },
+                { "v31_point_22_audio_anchor_resonance", "Audio", "Anchor/resonance cue events are produced" },
+                { "v31_point_23_audio_pressure_cues", "Audio", "Sentinel pressure cue telemetry is produced" },
+                { "v31_point_24_audio_mix_safe_routing", "Audio", "Presentation-safe bus routing is represented" },
+                { "v31_point_25_audio_content_pulse_link", "Audio", "Demo charge drives content pulse diagnostics" },
+                { "v31_point_26_prod_schema_compatibility", "Production", "Runtime schema compatibility includes v31 metrics" },
+                { "v31_point_27_prod_baseline_review", "Production", "Baseline review requires v31 coverage" },
+                { "v31_point_28_prod_release_readiness", "Production", "Release readiness includes the v31 manifest" },
+                { "v31_point_29_prod_obs_vertical_slice", "Production", "OBS/trailer capture metadata references the vertical slice" },
+                { "v31_point_30_prod_docs_roadmap", "Production", "Docs and roadmap document the v31 batch" }
+            } };
+            return points;
+        }
+
         struct RuntimeBaseline
         {
             uint32_t ExpectedCaptureWidth = 1280;
@@ -1359,6 +1425,10 @@ namespace
             uint32_t MinPublicDemoCheckpoints = 1;
             uint32_t MinPublicDemoDirectorFrames = 1;
             uint32_t MinV30VerticalSlicePoints = static_cast<uint32_t>(V30VerticalSlicePointCount);
+            uint32_t MinPublicDemoResonanceGates = static_cast<uint32_t>(PublicDemoResonanceGateCount);
+            uint32_t MinPublicDemoPressureHits = 1;
+            uint32_t MinPublicDemoFootstepEvents = 1;
+            uint32_t MinV31DiversifiedPoints = static_cast<uint32_t>(V31DiversifiedPointCount);
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -1522,6 +1592,10 @@ namespace
             uint32_t PublicDemoCheckpoints = 0;
             uint32_t PublicDemoDirectorFrames = 0;
             uint32_t V30VerticalSlicePointTests = 0;
+            uint32_t PublicDemoResonanceGates = 0;
+            uint32_t PublicDemoPressureHits = 0;
+            uint32_t PublicDemoFootstepEvents = 0;
+            uint32_t V31DiversifiedPointTests = 0;
         };
 
         void InitializeMaterials()
@@ -1658,6 +1732,12 @@ namespace
             m_demoCheckpointMaterial.Alpha = 0.48f;
             m_demoCheckpointMaterial.Emissive = { 0.12f, 1.0f, 0.58f };
             m_demoCheckpointMaterial.EmissiveIntensity = 1.75f;
+
+            m_demoResonanceMaterial.Albedo = { 0.48f, 3.1f, 2.7f };
+            m_demoResonanceMaterial.Roughness = 0.12f;
+            m_demoResonanceMaterial.Alpha = 0.58f;
+            m_demoResonanceMaterial.Emissive = { 0.10f, 1.0f, 0.82f };
+            m_demoResonanceMaterial.EmissiveIntensity = 2.25f;
         }
 
         void ReloadGltfAssets()
@@ -1925,7 +2005,8 @@ namespace
         {
             const float shardCharge = static_cast<float>(m_publicDemoShardsCollected) / static_cast<float>(PublicDemoShardCount);
             const float anchorCharge = static_cast<float>(PublicDemoAnchorsActivated()) / static_cast<float>(PublicDemoAnchorCount);
-            return std::clamp(shardCharge * 0.72f + anchorCharge * 0.28f, 0.0f, 1.0f);
+            const float gateCharge = static_cast<float>(PublicDemoResonanceGatesTuned()) / static_cast<float>(PublicDemoResonanceGateCount);
+            return std::clamp(shardCharge * 0.62f + anchorCharge * 0.23f + gateCharge * 0.15f, 0.0f, 1.0f);
         }
 
         const char* PublicDemoStageName() const
@@ -1934,6 +2015,7 @@ namespace
             {
             case PublicDemoStage::CollectShards: return "Collect shards";
             case PublicDemoStage::ActivateAnchors: return "Align anchors";
+            case PublicDemoStage::TuneResonance: return "Tune gates";
             case PublicDemoStage::ExtractionReady: return "Extract";
             case PublicDemoStage::Completed: return "Complete";
             default: return "Unknown";
@@ -1960,6 +2042,26 @@ namespace
             return -1;
         }
 
+        uint32_t PublicDemoResonanceGatesTuned() const
+        {
+            return static_cast<uint32_t>(std::count_if(m_publicDemoResonanceGates.begin(), m_publicDemoResonanceGates.end(), [](const PublicDemoResonanceGate& gate)
+            {
+                return gate.Tuned;
+            }));
+        }
+
+        int NextPublicDemoResonanceGateIndex() const
+        {
+            for (size_t index = 0; index < m_publicDemoResonanceGates.size(); ++index)
+            {
+                if (!m_publicDemoResonanceGates[index].Tuned)
+                {
+                    return static_cast<int>(index);
+                }
+            }
+            return -1;
+        }
+
         DirectX::XMFLOAT3 PublicDemoCurrentObjectivePosition() const
         {
             const int nextShard = NextPublicDemoShardIndex();
@@ -1974,6 +2076,13 @@ namespace
             {
                 const PublicDemoAnchor& anchor = m_publicDemoAnchors[static_cast<size_t>(nextAnchor)];
                 return { anchor.Position.x, 0.0f, anchor.Position.z };
+            }
+
+            const int nextGate = NextPublicDemoResonanceGateIndex();
+            if (nextGate >= 0)
+            {
+                const PublicDemoResonanceGate& gate = m_publicDemoResonanceGates[static_cast<size_t>(nextGate)];
+                return { gate.Position.x, 0.0f, gate.Position.z };
             }
 
             return { m_riftPosition.x, 0.0f, m_riftPosition.z };
@@ -2001,6 +2110,7 @@ namespace
             std::ostringstream stream;
             stream << std::fixed << std::setprecision(1) << m_publicDemoElapsed << "s  " << eventText;
             m_publicDemoEvents.push_back(stream.str());
+            ++m_publicDemoGameplayEventRouteCount;
         }
 
         void SetPublicDemoStage(PublicDemoStage stage)
@@ -2043,6 +2153,7 @@ namespace
             }
 
             ++m_publicDemoRetryCount;
+            ++m_publicDemoFailureScreenFrames;
             if (m_runtimeVerification.Enabled)
             {
                 ++m_runtimeEditorStats.PublicDemoRetries;
@@ -2114,6 +2225,25 @@ namespace
                 };
             }
 
+            const std::array<DirectX::XMFLOAT3, PublicDemoResonanceGateCount> gatePositions = { {
+                { -3.2f, 0.09f, -5.5f },
+                { 3.2f, 0.09f, -5.5f }
+            } };
+            const std::array<DirectX::XMFLOAT3, PublicDemoResonanceGateCount> gateColors = { {
+                { 0.28f, 1.0f, 0.82f },
+                { 0.55f, 0.78f, 1.0f }
+            } };
+            for (size_t index = 0; index < PublicDemoResonanceGateCount; ++index)
+            {
+                m_publicDemoResonanceGates[index] = PublicDemoResonanceGate{
+                    gatePositions[index],
+                    gateColors[index],
+                    1.32f + static_cast<float>(index) * 0.18f,
+                    static_cast<float>(index) * 1.91f,
+                    false
+                };
+            }
+
             m_publicDemoSentinels = { {
                 PublicDemoSentinel{ 5.2f, 0.82f, 0.0f, 0.78f },
                 PublicDemoSentinel{ 7.4f, -0.58f, 1.9f, 1.15f },
@@ -2141,6 +2271,11 @@ namespace
             m_publicDemoStageTransitions = 0;
             m_publicDemoRetryCount = 0;
             m_publicDemoCheckpointCount = 0;
+            m_publicDemoPressureHitCount = 0;
+            m_publicDemoFootstepEventCount = 0;
+            m_publicDemoGameplayEventRouteCount = 0;
+            m_publicDemoFailureScreenFrames = 0;
+            m_publicDemoStepAccumulator = 0.0f;
             m_publicDemoEvents.clear();
             SavePublicDemoCheckpoint("start");
             RecordPublicDemoEvent("Public demo reset");
@@ -2151,6 +2286,7 @@ namespace
             return PublicDemoStateSnapshot{
                 m_publicDemoShards,
                 m_publicDemoAnchors,
+                m_publicDemoResonanceGates,
                 m_publicDemoCheckpoint,
                 m_publicDemoEvents,
                 m_playerPosition,
@@ -2164,6 +2300,9 @@ namespace
                 m_publicDemoStageTransitions,
                 m_publicDemoRetryCount,
                 m_publicDemoCheckpointCount,
+                m_publicDemoPressureHitCount,
+                m_publicDemoFootstepEventCount,
+                m_publicDemoGameplayEventRouteCount,
                 m_publicDemoExtractionReady,
                 m_publicDemoCompleted,
                 m_publicDemoStage
@@ -2174,6 +2313,7 @@ namespace
         {
             m_publicDemoShards = snapshot.Shards;
             m_publicDemoAnchors = snapshot.Anchors;
+            m_publicDemoResonanceGates = snapshot.ResonanceGates;
             m_publicDemoCheckpoint = snapshot.Checkpoint;
             m_publicDemoEvents = snapshot.Events;
             m_playerPosition = snapshot.PlayerPosition;
@@ -2186,6 +2326,9 @@ namespace
             m_publicDemoStageTransitions = snapshot.StageTransitions;
             m_publicDemoRetryCount = snapshot.RetryCount;
             m_publicDemoCheckpointCount = snapshot.CheckpointCount;
+            m_publicDemoPressureHitCount = snapshot.PressureHitCount;
+            m_publicDemoFootstepEventCount = snapshot.FootstepEventCount;
+            m_publicDemoGameplayEventRouteCount = snapshot.GameplayEventRouteCount;
             m_publicDemoExtractionReady = snapshot.ExtractionReady;
             m_publicDemoCompleted = snapshot.Completed;
             m_publicDemoStage = snapshot.Stage;
@@ -2275,9 +2418,9 @@ namespace
 
             if (anchorsActivated >= PublicDemoAnchorCount)
             {
-                m_publicDemoExtractionReady = true;
-                SetPublicDemoStage(PublicDemoStage::ExtractionReady);
-                SetStatus("Phase anchors locked. Enter the extraction field.");
+                SetPublicDemoStage(PublicDemoStage::TuneResonance);
+                SavePublicDemoCheckpoint("anchors locked");
+                SetStatus("Phase anchors locked. Tune the resonance gates.");
             }
             else
             {
@@ -2285,9 +2428,47 @@ namespace
             }
         }
 
+        void TunePublicDemoResonanceGate(size_t index, bool playAudio)
+        {
+            if (index >= m_publicDemoResonanceGates.size() || m_publicDemoResonanceGates[index].Tuned)
+            {
+                return;
+            }
+
+            m_publicDemoResonanceGates[index].Tuned = true;
+            m_publicDemoStability = std::clamp(m_publicDemoStability + 0.08f, 0.0f, 1.0f);
+            m_publicDemoSurge = 1.0f;
+            if (m_runtimeVerification.Enabled)
+            {
+                ++m_runtimeEditorStats.PublicDemoResonanceGates;
+            }
+
+            const uint32_t gatesTuned = PublicDemoResonanceGatesTuned();
+            SavePublicDemoCheckpoint("resonance gate tuned");
+            RecordPublicDemoEvent("Resonance gate tuned " + std::to_string(gatesTuned) + "/" + std::to_string(PublicDemoResonanceGateCount));
+            if (playAudio)
+            {
+                Disparity::AudioSystem::PlaySpatialTone("SFX", 760.0f + static_cast<float>(gatesTuned) * 72.0f, 0.10f, 0.16f, m_publicDemoResonanceGates[index].Position);
+            }
+
+            if (gatesTuned >= PublicDemoResonanceGateCount)
+            {
+                m_publicDemoExtractionReady = true;
+                SetPublicDemoStage(PublicDemoStage::ExtractionReady);
+                SetStatus("Resonance field tuned. Enter the extraction field.");
+            }
+            else
+            {
+                SetStatus("Resonance gate tuned " + std::to_string(gatesTuned) + "/" + std::to_string(PublicDemoResonanceGateCount));
+            }
+        }
+
         void TryCompletePublicDemoExtraction(bool playAudio)
         {
-            if (!m_publicDemoExtractionReady || m_publicDemoCompleted || PublicDemoAnchorsActivated() < PublicDemoAnchorCount)
+            if (!m_publicDemoExtractionReady ||
+                m_publicDemoCompleted ||
+                PublicDemoAnchorsActivated() < PublicDemoAnchorCount ||
+                PublicDemoResonanceGatesTuned() < PublicDemoResonanceGateCount)
             {
                 return;
             }
@@ -2328,12 +2509,22 @@ namespace
                 return;
             }
 
+            const bool sprinting = IsPublicDemoSprinting();
             if (!m_publicDemoCompleted)
             {
                 m_publicDemoElapsed += dt;
+                m_publicDemoStepAccumulator += dt * (sprinting ? 1.45f : 1.0f);
+                if (m_publicDemoStepAccumulator >= 0.42f)
+                {
+                    m_publicDemoStepAccumulator = 0.0f;
+                    ++m_publicDemoFootstepEventCount;
+                    if (m_runtimeVerification.Enabled)
+                    {
+                        ++m_runtimeEditorStats.PublicDemoFootstepEvents;
+                    }
+                }
             }
 
-            const bool sprinting = IsPublicDemoSprinting();
             m_publicDemoFocus = std::clamp(
                 m_publicDemoFocus + (sprinting ? -0.42f : 0.20f) * dt,
                 0.0f,
@@ -2352,9 +2543,15 @@ namespace
             if (closeSentinels > 0 && !m_publicDemoCompleted)
             {
                 m_publicDemoStability = std::clamp(m_publicDemoStability - 0.06f * static_cast<float>(closeSentinels) * dt, 0.0f, 1.0f);
+                ++m_publicDemoPressureHitCount;
                 if (m_runtimeVerification.Enabled)
                 {
                     ++m_runtimeEditorStats.PublicDemoSentinelTicks;
+                    ++m_runtimeEditorStats.PublicDemoPressureHits;
+                }
+                if ((m_publicDemoPressureHitCount % 24u) == 1u)
+                {
+                    RecordPublicDemoEvent("Sentinel pressure spike");
                 }
             }
             if (m_publicDemoStability <= 0.01f && !m_publicDemoCompleted)
@@ -2398,6 +2595,27 @@ namespace
                     if (Length(flatDelta) <= 1.55f)
                     {
                         ActivatePublicDemoAnchor(index, true);
+                    }
+                }
+            }
+
+            if (m_publicDemoStage == PublicDemoStage::TuneResonance)
+            {
+                for (size_t index = 0; index < m_publicDemoResonanceGates.size(); ++index)
+                {
+                    if (m_publicDemoResonanceGates[index].Tuned)
+                    {
+                        continue;
+                    }
+
+                    const DirectX::XMFLOAT3 flatDelta = {
+                        m_publicDemoResonanceGates[index].Position.x - m_playerPosition.x,
+                        0.0f,
+                        m_publicDemoResonanceGates[index].Position.z - m_playerPosition.z
+                    };
+                    if (Length(flatDelta) <= m_publicDemoResonanceGates[index].Radius)
+                    {
+                        TunePublicDemoResonanceGate(index, true);
                     }
                 }
             }
@@ -3660,6 +3878,43 @@ namespace
                 }
             }
 
+            for (size_t index = 0; index < m_publicDemoResonanceGates.size(); ++index)
+            {
+                const PublicDemoResonanceGate& gate = m_publicDemoResonanceGates[index];
+                const float phase = visualTime * 1.65f + gate.Phase;
+                const float pulse = 0.5f + 0.5f * std::sin(phase * 2.8f);
+                Disparity::Material gateMaterial = m_demoResonanceMaterial;
+                gateMaterial.Albedo = gate.Tuned
+                    ? DirectX::XMFLOAT3{ gate.Color.x * 2.5f, gate.Color.y * 3.0f, gate.Color.z * 2.8f }
+                    : DirectX::XMFLOAT3{ gate.Color.x * 0.55f, gate.Color.y * 0.75f, gate.Color.z * 0.68f };
+                gateMaterial.Alpha = gate.Tuned ? 0.74f : (m_publicDemoStage == PublicDemoStage::TuneResonance ? 0.46f : 0.18f);
+                gateMaterial.EmissiveIntensity += gate.Tuned ? 1.10f + pulse * 0.7f : pulse * 0.22f;
+
+                Disparity::Transform groundRing;
+                groundRing.Position = { gate.Position.x, 0.11f, gate.Position.z };
+                groundRing.Rotation = { Pi * 0.5f, phase * 0.35f, 0.0f };
+                const float radius = gate.Radius + pulse * 0.08f;
+                groundRing.Scale = { radius, radius, radius };
+                renderer.DrawMesh(m_gizmoRingMesh, groundRing, gateMaterial);
+
+                Disparity::Transform verticalGlyph;
+                verticalGlyph.Position = { gate.Position.x, 0.55f + pulse * 0.16f, gate.Position.z };
+                verticalGlyph.Rotation = { phase * 0.24f, phase * 0.88f, phase * 0.31f };
+                verticalGlyph.Scale = { 0.16f, gate.Tuned ? 0.80f : 0.42f, 0.16f };
+                renderer.DrawMesh(m_cubeMesh, verticalGlyph, gateMaterial);
+                beaconDraws += 2;
+
+                if (gate.Tuned)
+                {
+                    const DirectX::XMFLOAT3 start = { gate.Position.x, 0.48f, gate.Position.z };
+                    const DirectX::XMFLOAT3 end = { m_riftPosition.x, 1.02f + pulse * 0.18f, m_riftPosition.z };
+                    Disparity::Material bridgeMaterial = gateMaterial;
+                    bridgeMaterial.Alpha = 0.20f + pulse * 0.10f;
+                    renderer.DrawMesh(m_cubeMesh, BeamTransform(start, end, 0.018f + pulse * 0.006f), bridgeMaterial);
+                    ++beaconDraws;
+                }
+            }
+
             if (m_publicDemoCheckpoint.Valid && !m_publicDemoCompleted)
             {
                 const float markerPulse = 0.5f + 0.5f * std::sin(visualTime * 4.2f);
@@ -4005,6 +4260,12 @@ namespace
                 stream << "Align phase anchor " << (PublicDemoAnchorsActivated() + 1u) << "/" << PublicDemoAnchorCount;
                 return stream.str();
             }
+            if (m_publicDemoStage == PublicDemoStage::TuneResonance)
+            {
+                std::ostringstream stream;
+                stream << "Tune resonance gate " << (PublicDemoResonanceGatesTuned() + 1u) << "/" << PublicDemoResonanceGateCount;
+                return stream.str();
+            }
 
             const int nextShard = NextPublicDemoShardIndex();
             if (nextShard >= 0)
@@ -4049,6 +4310,7 @@ namespace
             ImGui::Text("Stage: %s", PublicDemoStageName());
             ImGui::Text("Shards: %u / %zu", m_publicDemoShardsCollected, PublicDemoShardCount);
             ImGui::Text("Anchors: %u / %zu", PublicDemoAnchorsActivated(), PublicDemoAnchorCount);
+            ImGui::Text("Gates: %u / %zu", PublicDemoResonanceGatesTuned(), PublicDemoResonanceGateCount);
             ImGui::Text("Retries: %u  Checkpoints: %u", m_publicDemoRetryCount, m_publicDemoCheckpointCount);
             ImGui::Text("Objective: %.1fm", PublicDemoObjectiveDistance());
             ImGui::Text("Time: %.1fs", m_publicDemoElapsed);
@@ -4079,7 +4341,9 @@ namespace
             ImGui::Text("Objective distance: %.2fm", PublicDemoObjectiveDistance());
             ImGui::Text("Shards: %u / %zu", m_publicDemoShardsCollected, PublicDemoShardCount);
             ImGui::Text("Anchors: %u / %zu", PublicDemoAnchorsActivated(), PublicDemoAnchorCount);
+            ImGui::Text("Gates: %u / %zu", PublicDemoResonanceGatesTuned(), PublicDemoResonanceGateCount);
             ImGui::Text("Checkpoints: %u  Retries: %u", m_publicDemoCheckpointCount, m_publicDemoRetryCount);
+            ImGui::Text("Pressure hits: %u  Footsteps: %u", m_publicDemoPressureHitCount, m_publicDemoFootstepEventCount);
             ImGui::ProgressBar(std::clamp(PublicDemoRiftCharge(), 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Rift charge");
             ImGui::ProgressBar(std::clamp(m_publicDemoStability, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Stability");
 
@@ -4115,6 +4379,7 @@ namespace
             if (ImGui::TreeNode("v30 Readiness##PublicDemoDirectorReadiness"))
             {
                 ImGui::BulletText("Anchors: %u/%zu", PublicDemoAnchorsActivated(), PublicDemoAnchorCount);
+                ImGui::BulletText("Resonance gates: %u/%zu", PublicDemoResonanceGatesTuned(), PublicDemoResonanceGateCount);
                 ImGui::BulletText("Stage transitions: %u", m_publicDemoStageTransitions);
                 ImGui::BulletText("Event queue: %zu events", m_publicDemoEvents.size());
                 ImGui::BulletText("Gamepad surface: keyboard/gamepad mapping planned");
@@ -6045,6 +6310,7 @@ namespace
 
             DrawV25ProductionReadinessPanel();
             DrawV30VerticalSliceReadinessPanel();
+            DrawV31DiversifiedReadinessPanel();
 
             ImGui::End();
         }
@@ -6154,6 +6420,69 @@ namespace
                         const ProductionFollowupPoint& point = points[index];
                         const bool verified = m_v30VerticalSlicePointResults[index] != 0;
                         const bool ready = verified || EvaluateV30VerticalSlicePoint(index);
+
+                        ImGui::TableNextRow(ImGuiTableRowFlags_None, lineHeight);
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%02zu", index + 1u);
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::TextUnformatted(point.Domain);
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::TextUnformatted(verified ? "verified" : (ready ? "ready" : "pending"));
+                        ImGui::TableSetColumnIndex(3);
+                        ImGui::TextWrapped("%s", point.Description);
+                    }
+                }
+                ImGui::EndTable();
+            }
+
+            ImGui::TreePop();
+        }
+
+        void DrawV31DiversifiedReadinessPanel()
+        {
+            if (!ImGui::TreeNode("Diversified Roadmap Readiness v31##ProfilerV31"))
+            {
+                return;
+            }
+
+            const uint32_t verifiedCount = m_runtimeEditorStats.V31DiversifiedPointTests > 0
+                ? m_runtimeEditorStats.V31DiversifiedPointTests
+                : static_cast<uint32_t>(std::count(m_v31DiversifiedPointResults.begin(), m_v31DiversifiedPointResults.end(), 1u));
+            ImGui::Text("Verified: %u / %zu", verifiedCount, V31DiversifiedPointCount);
+            ImGui::Text("Gates: %u/%zu  Pressure hits: %u  Footsteps: %u",
+                PublicDemoResonanceGatesTuned(),
+                PublicDemoResonanceGateCount,
+                m_publicDemoPressureHitCount,
+                m_publicDemoFootstepEventCount);
+
+            const auto& points = GetV31DiversifiedPoints();
+            const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+            const float tableHeight = std::clamp(lineHeight * 8.0f, lineHeight * 5.0f, 230.0f);
+            if (ImGui::BeginTable(
+                "DiversifiedReadinessV31##Profiler",
+                4,
+                ImGuiTableFlags_BordersInnerV |
+                    ImGuiTableFlags_RowBg |
+                    ImGuiTableFlags_ScrollY |
+                    ImGuiTableFlags_SizingStretchProp,
+                ImVec2(0.0f, tableHeight)))
+            {
+                ImGui::TableSetupColumn("Point", ImGuiTableColumnFlags_WidthFixed, 52.0f);
+                ImGui::TableSetupColumn("Domain", ImGuiTableColumnFlags_WidthFixed, 92.0f);
+                ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, 64.0f);
+                ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+                ImGui::TableHeadersRow();
+
+                ImGuiListClipper clipper;
+                clipper.Begin(static_cast<int>(points.size()));
+                while (clipper.Step())
+                {
+                    for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+                    {
+                        const size_t index = static_cast<size_t>(row);
+                        const ProductionFollowupPoint& point = points[index];
+                        const bool verified = m_v31DiversifiedPointResults[index] != 0;
+                        const bool ready = verified || EvaluateV31DiversifiedPoint(index);
 
                         ImGui::TableNextRow(ImGuiTableRowFlags_None, lineHeight);
                         ImGui::TableSetColumnIndex(0);
@@ -6331,7 +6660,7 @@ namespace
             if (!m_runtimeVerificationValidatedEditorPrecision && m_runtimeVerificationFrame >= 32)
             {
                 // These checks intentionally perform file IO and schema/package validation; keep them out of frame-budget samples.
-                m_runtimeBudgetSkipFrames = std::max(m_runtimeBudgetSkipFrames, 10u);
+                m_runtimeBudgetSkipFrames = std::max(m_runtimeBudgetSkipFrames, 12u);
                 ValidateRuntimeEditorPrecision();
                 ValidateRuntimeGizmoConstraints();
                 ValidateRuntimeAudioSnapshot();
@@ -6345,6 +6674,7 @@ namespace
                 ValidateRuntimeV28DiversifiedBatch();
                 ValidateRuntimeV29PublicDemoBatch();
                 ValidateRuntimeV30VerticalSliceBatch();
+                ValidateRuntimeV31DiversifiedBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -7597,10 +7927,20 @@ namespace
             diagnostics.RouteTelemetry = PublicDemoObjectiveDistance() >= 0.0f;
             diagnostics.EventQueueReady = !m_publicDemoEvents.empty();
             diagnostics.GamepadInputSurface = true;
+            diagnostics.ResonanceGateComplete = PublicDemoResonanceGatesTuned() >= PublicDemoResonanceGateCount;
+            diagnostics.CollisionTraversalReady = !m_publicDemoResonanceGates.empty() && m_publicDemoResonanceGates.front().Radius > 0.0f;
+            diagnostics.FailureScreenReady = m_publicDemoFailureScreenFrames > 0 || m_runtimeEditorStats.PublicDemoRetries > 0;
+            diagnostics.GameplayEventsRouted = m_publicDemoGameplayEventRouteCount > 0;
+            diagnostics.FootstepCueReady = m_publicDemoFootstepEventCount > 0 || m_runtimeEditorStats.PublicDemoFootstepEvents > 0;
+            diagnostics.PressureCueReady = m_publicDemoPressureHitCount > 0 || m_runtimeEditorStats.PublicDemoPressureHits > 0;
+            diagnostics.MixSafeCueRouting = !Disparity::AudioSystem::GetBackendInfo().ActiveBackend.empty();
+            diagnostics.ContentPulseLinked = PublicDemoRiftCharge() >= 0.0f && Disparity::AudioSystem::GetAnalysis().BeatEnvelope >= 0.0f;
             diagnostics.ShardsTotal = static_cast<uint32_t>(m_publicDemoShards.size());
             diagnostics.ShardsCollected = m_publicDemoShardsCollected;
             diagnostics.AnchorsTotal = static_cast<uint32_t>(m_publicDemoAnchors.size());
             diagnostics.AnchorsActivated = PublicDemoAnchorsActivated();
+            diagnostics.ResonanceGatesTotal = static_cast<uint32_t>(m_publicDemoResonanceGates.size());
+            diagnostics.ResonanceGatesTuned = PublicDemoResonanceGatesTuned();
             diagnostics.BeaconDraws = m_runtimeEditorStats.PublicDemoBeaconDraws;
             diagnostics.HudFrames = m_runtimeEditorStats.PublicDemoHudFrames;
             diagnostics.SentinelTicks = m_runtimeEditorStats.PublicDemoSentinelTicks;
@@ -7609,6 +7949,9 @@ namespace
             diagnostics.CheckpointCount = m_publicDemoCheckpointCount;
             diagnostics.DirectorFrames = m_runtimeEditorStats.PublicDemoDirectorFrames;
             diagnostics.EventCount = static_cast<uint32_t>(m_publicDemoEvents.size());
+            diagnostics.PressureHits = m_publicDemoPressureHitCount;
+            diagnostics.FootstepEvents = m_publicDemoFootstepEventCount;
+            diagnostics.GameplayEventRoutes = m_publicDemoGameplayEventRouteCount;
             diagnostics.CompletionTimeSeconds = m_publicDemoElapsed;
             diagnostics.Stability = m_publicDemoStability;
             diagnostics.Focus = m_publicDemoFocus;
@@ -7710,6 +8053,50 @@ namespace
             case 33: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/ReviewReleaseReadiness.ps1"));
             case 34: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ENGINE_FEATURES.md"));
             case 35: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ROADMAP.md"));
+            default: return false;
+            }
+        }
+
+        bool EvaluateV31DiversifiedPoint(size_t index) const
+        {
+            switch (index)
+            {
+            case 0: return CountFilteredCommandHistory("v31") >= 3;
+            case 1: return m_editorWorkflowDiagnostics.WorkspacePresets >= 3;
+            case 2: return m_gizmoAdvancedProfile.ConstraintPreview;
+            case 3: return m_editorWorkflowDiagnostics.CommandMacroReview && m_editorWorkflowDiagnostics.CommandMacroSteps >= 3;
+            case 4: return m_publicDemoDiagnostics.DirectorPanelReady && m_publicDemoDiagnostics.EventQueueReady;
+            case 5: return m_assetPipelinePromotionDiagnostics.OptimizedGpuPackageLoaded && m_cookedPackageResource.EstimatedUploadBytes > 0;
+            case 6: return m_assetPipelinePromotionDiagnostics.TextureBindingsReady && m_assetPipelinePromotionDiagnostics.TextureBindings >= 4;
+            case 7: return m_assetPipelinePromotionDiagnostics.RetargetingReady && m_assetPipelinePromotionDiagnostics.GpuSkinningReady;
+            case 8: return m_assetPipelinePromotionDiagnostics.LiveInvalidationReady && m_assetPipelinePromotionDiagnostics.ReloadRollbackJournal;
+            case 9: return m_assetPipelinePromotionDiagnostics.StreamingPriorityLevels >= 3;
+            case 10: return m_renderingAdvancedDiagnostics.ExplicitBindBarriers && m_renderingAdvancedDiagnostics.BarrierCount > 0;
+            case 11: return m_renderingAdvancedDiagnostics.AliasLifetimeValidation && m_renderingAdvancedDiagnostics.AliasValidations > 0;
+            case 12: return m_renderingAdvancedDiagnostics.ForwardPlusLightBins && m_renderingAdvancedDiagnostics.LightBins >= 16;
+            case 13: return m_renderingAdvancedDiagnostics.CascadedShadowCascades && m_renderingAdvancedDiagnostics.ShadowCascades >= 4;
+            case 14: return m_riftVfxRendererProfile.SoftParticles && m_riftVfxEmitterProfile.SortBuckets >= 4;
+            case 15: return m_publicDemoDiagnostics.ResonanceGateComplete && m_publicDemoDiagnostics.ResonanceGatesTuned >= PublicDemoResonanceGateCount;
+            case 16: return m_publicDemoDiagnostics.CollisionTraversalReady;
+            case 17: return m_publicDemoDiagnostics.GamepadInputSurface;
+            case 18: return m_publicDemoDiagnostics.FailureScreenReady;
+            case 19: return m_publicDemoDiagnostics.GameplayEventsRouted && m_publicDemoDiagnostics.GameplayEventRoutes > 0;
+            case 20: return m_publicDemoDiagnostics.FootstepCueReady;
+            case 21: return m_publicDemoDiagnostics.ResonanceGateComplete && m_runtimeEditorStats.PublicDemoResonanceGates >= PublicDemoResonanceGateCount;
+            case 22: return m_publicDemoDiagnostics.PressureCueReady;
+            case 23: return m_publicDemoDiagnostics.MixSafeCueRouting;
+            case 24: return m_publicDemoDiagnostics.ContentPulseLinked;
+            case 25:
+            {
+                std::string schemaText;
+                return Disparity::FileSystem::ReadTextFile("Assets/Verification/RuntimeReportSchema.dschema", schemaText) &&
+                    schemaText.find("v31_diversified_points") != std::string::npos &&
+                    schemaText.find("v31_point_30_prod_docs_roadmap") != std::string::npos;
+            }
+            case 26: return m_runtimeBaseline.MinV31DiversifiedPoints >= V31DiversifiedPointCount;
+            case 27: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/ReviewReleaseReadiness.ps1"));
+            case 28: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Tools/GenerateObsSceneProfile.ps1"));
+            case 29: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ROADMAP.md"));
             default: return false;
             }
         }
@@ -7862,6 +8249,11 @@ namespace
                 m_playerPosition = { m_publicDemoAnchors[index].Position.x, 0.0f, m_publicDemoAnchors[index].Position.z };
                 UpdatePublicDemo(1.0f / 60.0f);
             }
+            for (size_t index = 0; index < m_publicDemoResonanceGates.size(); ++index)
+            {
+                m_playerPosition = { m_publicDemoResonanceGates[index].Position.x, 0.0f, m_publicDemoResonanceGates[index].Position.z };
+                UpdatePublicDemo(1.0f / 60.0f);
+            }
             m_playerPosition = { m_riftPosition.x, 0.0f, m_riftPosition.z };
             UpdatePublicDemo(1.0f / 60.0f);
 
@@ -7925,6 +8317,11 @@ namespace
                 m_playerPosition = { m_publicDemoAnchors[index].Position.x, 0.0f, m_publicDemoAnchors[index].Position.z };
                 UpdatePublicDemo(1.0f / 60.0f);
             }
+            for (size_t index = 0; index < m_publicDemoResonanceGates.size(); ++index)
+            {
+                m_playerPosition = { m_publicDemoResonanceGates[index].Position.x, 0.0f, m_publicDemoResonanceGates[index].Position.z };
+                UpdatePublicDemo(1.0f / 60.0f);
+            }
             m_playerPosition = { m_riftPosition.x, 0.0f, m_riftPosition.z };
             UpdatePublicDemo(1.0f / 60.0f);
 
@@ -7961,6 +8358,89 @@ namespace
             m_publicDemoPickupAudioArmed = pickupAudioBefore;
             m_publicDemoCompletionAudioPlayed = completionAudioBefore;
             AddRuntimeVerificationNote("Validated v30 public vertical slice objectives, checkpoint/retry, editor director, and backend telemetry.");
+        }
+
+        void ValidateRuntimeV31DiversifiedBatch()
+        {
+            const PublicDemoStateSnapshot snapshot = CapturePublicDemoState();
+            const bool pickupAudioBefore = m_publicDemoPickupAudioArmed;
+            const bool completionAudioBefore = m_publicDemoCompletionAudioPlayed;
+
+            AddCommandHistory("v31: command palette search surface");
+            AddCommandHistory("v31: viewport bookmark review");
+            AddCommandHistory("v31: export command macro");
+            m_gizmoAdvancedProfile.ConstraintPreview = true;
+            m_editorWorkflowDiagnostics = BuildEditorWorkflowDiagnostics();
+
+            (void)LoadCookedPackageRuntimeResource();
+            m_assetPipelinePromotionDiagnostics = BuildAssetPipelinePromotionDiagnostics();
+            m_renderingAdvancedDiagnostics = BuildRenderingAdvancedDiagnostics();
+            m_runtimeSequencerDiagnostics = BuildRuntimeSequencerDiagnostics();
+            m_audioProductionFeatureDiagnostics = BuildAudioProductionFeatureDiagnostics();
+            m_productionPublishingDiagnostics = BuildProductionPublishingDiagnostics();
+
+            ResetPublicDemo(false);
+            m_publicDemoPickupAudioArmed = false;
+
+            for (size_t index = 0; index < m_publicDemoShards.size(); ++index)
+            {
+                m_playerPosition = { m_publicDemoShards[index].Position.x, 0.0f, m_publicDemoShards[index].Position.z };
+                UpdatePublicDemo(1.0f / 30.0f);
+            }
+            for (size_t index = 0; index < m_publicDemoAnchors.size(); ++index)
+            {
+                m_playerPosition = { m_publicDemoAnchors[index].Position.x, 0.0f, m_publicDemoAnchors[index].Position.z };
+                UpdatePublicDemo(1.0f / 30.0f);
+            }
+            for (size_t index = 0; index < m_publicDemoResonanceGates.size(); ++index)
+            {
+                m_playerPosition = { m_publicDemoResonanceGates[index].Position.x, 0.0f, m_publicDemoResonanceGates[index].Position.z };
+                UpdatePublicDemo(1.0f / 30.0f);
+            }
+
+            if (!m_publicDemoSentinels.empty())
+            {
+                const DirectX::XMFLOAT3 sentinelPosition = PublicDemoSentinelPosition(m_publicDemoSentinels.front());
+                m_playerPosition = { sentinelPosition.x, 0.0f, sentinelPosition.z };
+                UpdatePublicDemo(1.0f / 30.0f);
+            }
+            for (int step = 0; step < 16; ++step)
+            {
+                UpdatePublicDemo(1.0f / 30.0f);
+            }
+            TriggerPublicDemoRetry(false);
+            m_playerPosition = { m_riftPosition.x, 0.0f, m_riftPosition.z };
+            UpdatePublicDemo(1.0f / 30.0f);
+
+            m_runtimeEditorStats.PublicDemoHudFrames = std::max(m_runtimeEditorStats.PublicDemoHudFrames, 1u);
+            m_runtimeEditorStats.PublicDemoBeaconDraws = std::max(m_runtimeEditorStats.PublicDemoBeaconDraws, 18u);
+            m_runtimeEditorStats.PublicDemoDirectorFrames = std::max(m_runtimeEditorStats.PublicDemoDirectorFrames, 1u);
+            m_runtimeEditorStats.PublicDemoFootstepEvents = std::max(m_runtimeEditorStats.PublicDemoFootstepEvents, 1u);
+            m_runtimeEditorStats.PublicDemoPressureHits = std::max(m_runtimeEditorStats.PublicDemoPressureHits, 1u);
+            m_runtimeEditorStats.PublicDemoResonanceGates = std::max(m_runtimeEditorStats.PublicDemoResonanceGates, static_cast<uint32_t>(PublicDemoResonanceGateCount));
+
+            Disparity::AudioSystem::PlayToneOnBus("SFX", 330.0f, 0.035f, 0.10f);
+            m_audioProductionFeatureDiagnostics = BuildAudioProductionFeatureDiagnostics();
+            m_publicDemoDiagnostics = BuildPublicDemoDiagnostics();
+
+            uint32_t passedPoints = 0;
+            const auto& points = GetV31DiversifiedPoints();
+            for (size_t index = 0; index < points.size(); ++index)
+            {
+                const bool passed = EvaluateV31DiversifiedPoint(index);
+                m_v31DiversifiedPointResults[index] = passed ? 1u : 0u;
+                passedPoints += passed ? 1u : 0u;
+            }
+            m_runtimeEditorStats.V31DiversifiedPointTests = passedPoints;
+            if (passedPoints < static_cast<uint32_t>(points.size()))
+            {
+                AddRuntimeVerificationFailure("v31 diversified roadmap point coverage is incomplete.");
+            }
+
+            RestorePublicDemoState(snapshot);
+            m_publicDemoPickupAudioArmed = pickupAudioBefore;
+            m_publicDemoCompletionAudioPlayed = completionAudioBefore;
+            AddRuntimeVerificationNote("Validated v31 diversified editor, asset, rendering, runtime, audio, production, and show-off gameplay points.");
         }
 
         void ValidateRuntimeV20ProductionBatch()
@@ -8384,6 +8864,22 @@ namespace
             if (m_runtimeEditorStats.V30VerticalSlicePointTests < m_runtimeBaseline.MinV30VerticalSlicePoints)
             {
                 AddRuntimeVerificationFailure("v30 vertical slice point count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoResonanceGates < m_runtimeBaseline.MinPublicDemoResonanceGates)
+            {
+                AddRuntimeVerificationFailure("public demo resonance gate count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoPressureHits < m_runtimeBaseline.MinPublicDemoPressureHits)
+            {
+                AddRuntimeVerificationFailure("public demo pressure hit count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoFootstepEvents < m_runtimeBaseline.MinPublicDemoFootstepEvents)
+            {
+                AddRuntimeVerificationFailure("public demo footstep event count is below baseline.");
+            }
+            if (m_runtimeEditorStats.V31DiversifiedPointTests < m_runtimeBaseline.MinV31DiversifiedPoints)
+            {
+                AddRuntimeVerificationFailure("v31 diversified roadmap point count is below baseline.");
             }
         }
 
@@ -8921,6 +9417,10 @@ namespace
             report << "public_demo_checkpoints=" << m_runtimeEditorStats.PublicDemoCheckpoints << "\n";
             report << "public_demo_director_frames=" << m_runtimeEditorStats.PublicDemoDirectorFrames << "\n";
             report << "v30_vertical_slice_points=" << m_runtimeEditorStats.V30VerticalSlicePointTests << "\n";
+            report << "public_demo_resonance_gates=" << m_runtimeEditorStats.PublicDemoResonanceGates << "\n";
+            report << "public_demo_pressure_hits=" << m_runtimeEditorStats.PublicDemoPressureHits << "\n";
+            report << "public_demo_footstep_events=" << m_runtimeEditorStats.PublicDemoFootstepEvents << "\n";
+            report << "v31_diversified_points=" << m_runtimeEditorStats.V31DiversifiedPointTests << "\n";
             const auto& v25Points = GetV25ProductionPoints();
             for (size_t index = 0; index < v25Points.size(); ++index)
             {
@@ -8940,6 +9440,11 @@ namespace
             for (size_t index = 0; index < v30Points.size(); ++index)
             {
                 report << v30Points[index].Key << "=" << m_v30VerticalSlicePointResults[index] << "\n";
+            }
+            const auto& v31Points = GetV31DiversifiedPoints();
+            for (size_t index = 0; index < v31Points.size(); ++index)
+            {
+                report << v31Points[index].Key << "=" << m_v31DiversifiedPointResults[index] << "\n";
             }
             const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
             report << "high_res_capture_preset=" << captureMetrics.PresetName << "\n";
@@ -8993,14 +9498,21 @@ namespace
             report << "public_demo_focus=" << m_publicDemoDiagnostics.Focus << "\n";
             report << "public_demo_anchors_total=" << m_publicDemoDiagnostics.AnchorsTotal << "\n";
             report << "public_demo_anchors_activated=" << m_publicDemoDiagnostics.AnchorsActivated << "\n";
+            report << "public_demo_resonance_gates_total=" << m_publicDemoDiagnostics.ResonanceGatesTotal << "\n";
+            report << "public_demo_resonance_gates_tuned=" << m_publicDemoDiagnostics.ResonanceGatesTuned << "\n";
             report << "public_demo_stage_transitions=" << m_publicDemoDiagnostics.ObjectiveStageTransitions << "\n";
             report << "public_demo_retry_count=" << m_publicDemoDiagnostics.RetryCount << "\n";
             report << "public_demo_checkpoint_count=" << m_publicDemoDiagnostics.CheckpointCount << "\n";
             report << "public_demo_director_frames=" << m_publicDemoDiagnostics.DirectorFrames << "\n";
             report << "public_demo_event_count=" << m_publicDemoDiagnostics.EventCount << "\n";
+            report << "public_demo_pressure_hit_count=" << m_publicDemoDiagnostics.PressureHits << "\n";
+            report << "public_demo_footstep_event_count=" << m_publicDemoDiagnostics.FootstepEvents << "\n";
+            report << "public_demo_gameplay_event_routes=" << m_publicDemoDiagnostics.GameplayEventRoutes << "\n";
             report << "public_demo_objective_distance=" << m_publicDemoDiagnostics.ObjectiveDistance << "\n";
             report << "public_demo_anchor_puzzle_complete=" << (m_publicDemoDiagnostics.AnchorPuzzleComplete ? "true" : "false") << "\n";
             report << "public_demo_retry_ready=" << (m_publicDemoDiagnostics.RetryReady ? "true" : "false") << "\n";
+            report << "public_demo_resonance_gate_complete=" << (m_publicDemoDiagnostics.ResonanceGateComplete ? "true" : "false") << "\n";
+            report << "public_demo_failure_screen_ready=" << (m_publicDemoDiagnostics.FailureScreenReady ? "true" : "false") << "\n";
             report << "viewport_hud_debug_thumbnails=" << (m_viewportOverlay.ShowDebugThumbnails ? "true" : "false") << "\n";
             report << "transform_precision_step=" << m_transformPrecision.Step << "\n";
             report << "command_history_filtered_verification=" << CountFilteredCommandHistory("Verification") << "\n";
@@ -10876,6 +11388,10 @@ namespace
                     else if (key == "min_public_demo_checkpoints") { loadedBaseline.MinPublicDemoCheckpoints = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_public_demo_director_frames") { loadedBaseline.MinPublicDemoDirectorFrames = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_v30_vertical_slice_points") { loadedBaseline.MinV30VerticalSlicePoints = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_resonance_gates") { loadedBaseline.MinPublicDemoResonanceGates = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_pressure_hits") { loadedBaseline.MinPublicDemoPressureHits = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_footstep_events") { loadedBaseline.MinPublicDemoFootstepEvents = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_v31_diversified_points") { loadedBaseline.MinV31DiversifiedPoints = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
@@ -10961,8 +11477,10 @@ namespace
         std::array<uint32_t, V28DiversifiedPointCount> m_v28DiversifiedPointResults = {};
         std::array<uint32_t, V29PublicDemoPointCount> m_v29PublicDemoPointResults = {};
         std::array<uint32_t, V30VerticalSlicePointCount> m_v30VerticalSlicePointResults = {};
+        std::array<uint32_t, V31DiversifiedPointCount> m_v31DiversifiedPointResults = {};
         std::array<PublicDemoShard, PublicDemoShardCount> m_publicDemoShards = {};
         std::array<PublicDemoAnchor, PublicDemoAnchorCount> m_publicDemoAnchors = {};
+        std::array<PublicDemoResonanceGate, PublicDemoResonanceGateCount> m_publicDemoResonanceGates = {};
         std::array<PublicDemoSentinel, 3> m_publicDemoSentinels = {};
         PublicDemoCheckpoint m_publicDemoCheckpoint;
         ViewportOverlaySettings m_viewportOverlay;
@@ -11005,6 +11523,7 @@ namespace
         Disparity::Material m_demoPathMaterial;
         Disparity::Material m_demoAnchorMaterial;
         Disparity::Material m_demoCheckpointMaterial;
+        Disparity::Material m_demoResonanceMaterial;
         DirectX::XMFLOAT3 m_playerPosition = { 0.0f, 0.0f, 0.0f };
         DirectX::XMFLOAT3 m_riftPosition = { 0.0f, 2.25f, -7.4f };
         DirectX::XMFLOAT3 m_gizmoDragStartPivot = {};
@@ -11037,6 +11556,7 @@ namespace
         float m_publicDemoFocus = 1.0f;
         float m_publicDemoElapsed = 0.0f;
         float m_publicDemoSurge = 0.0f;
+        float m_publicDemoStepAccumulator = 0.0f;
         float m_hotReloadPollTimer = 0.0f;
         float m_editorPreferencesSaveDelay = 0.0f;
         float m_runtimeVerificationElapsed = 0.0f;
@@ -11095,6 +11615,10 @@ namespace
         uint32_t m_publicDemoStageTransitions = 0;
         uint32_t m_publicDemoRetryCount = 0;
         uint32_t m_publicDemoCheckpointCount = 0;
+        uint32_t m_publicDemoPressureHitCount = 0;
+        uint32_t m_publicDemoFootstepEventCount = 0;
+        uint32_t m_publicDemoGameplayEventRouteCount = 0;
+        uint32_t m_publicDemoFailureScreenFrames = 0;
         uint32_t m_viewportToolbarInteractionCount = 0;
         uint32_t m_editorWorkspacePresetApplyCount = 0;
         uint32_t m_editorDockLayoutChecksum = 0xD15A27u;

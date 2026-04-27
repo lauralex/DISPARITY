@@ -1,6 +1,14 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v30 versions of many requested followups, including a small public vertical slice for capture and demos. The next milestones should keep rotating through gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+The current engine now has functional v31 versions of many requested followups, including a small public vertical slice for capture and demos. The next milestones should keep rotating through gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+
+## v31 Completed Diversified Roadmap Batch
+
+- Added `Assets/Verification/V31DiversifiedBatch.dfollowups`, a thirty-point roadmap batch with five points each for Editor, Asset Pipeline, Rendering, Runtime, Audio, and Production.
+- The public demo now extends the v30 shard/anchor route with two resonance gates before extraction. Gates draw readable ground rings, vertical glyphs, and tuned bridge beams into the rift for public capture.
+- Runtime/gameplay telemetry now tracks resonance-gate tuning, pressure hits, footstep cadence events, failure/retry presentation, and gameplay event-routing counts.
+- The Profiler includes a v31 diversified readiness table, while runtime reports, baselines, schema checks, release-readiness review, performance history, and manifest review all require the new v31 counters and point metrics.
+- The batch promotes concrete surfaces across the roadmap: command-palette/bookmark/macro telemetry, package upload/material/skinning/invalidation readiness, render bind/alias/light/shadow/VFX diagnostics, runtime collision/controller/failure routing, audio cue routing/content pulses, and production schema/baseline/OBS/docs gates.
 
 ## v30 Completed Vertical Slice Batch
 
@@ -195,8 +203,8 @@ The current engine now has functional v30 versions of many requested followups, 
 
 ## Runtime
 
-- Turn the v30 vertical slice into a more game-like demo with collision-backed traversal, a failure/retry screen, controller/gamepad gameplay, a title/menu-to-gameplay flow, and more expressive objective gates.
-- Add animation-state placeholders, footstep/pickup/anchor/completion events, pressure-hit feedback, objective-gate affordances, and clearer success/failure telemetry for the playable demo.
+- Turn the v31 vertical slice into a more game-like demo with true collision-backed traversal, controller/gamepad gameplay, a title/menu-to-gameplay flow, a visible failure/retry screen, and more expressive objective gates.
+- Replace the current telemetry-level footstep/pickup/anchor/resonance/completion events with authored animation states, content sounds, pressure-hit feedback, and objective-gate affordances for the playable demo.
 - Extend the job-system async IO helper into asset streaming, cancellation, priorities, file watching, and frame pacing diagnostics.
 - Add serialization versioning, save-game separation, and deterministic scene IDs.
 - Add physics, collision queries, controller movement, animation-driven character logic, and gameplay event routing.
