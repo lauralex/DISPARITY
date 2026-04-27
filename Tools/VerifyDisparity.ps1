@@ -235,7 +235,7 @@ Invoke-Step "Baseline approval manifest" {
 }
 
 Invoke-Step "Signed baseline update approval" {
-    & (Join-Path $PSScriptRoot "ApproveVerificationUpdate.ps1") -Reason "v23 verification dry-run"
+    & (Join-Path $PSScriptRoot "ApproveVerificationUpdate.ps1") -Reason "v24 verification dry-run"
     $approvalPath = Join-Path $root "Saved\Verification\baseline_update_approval.json"
     $approval = Get-Content -LiteralPath $approvalPath -Raw | ConvertFrom-Json
     if (!$approval.git_head -or !$approval.git_signature_status -or [int]$approval.file_count -le 0) {
@@ -291,6 +291,14 @@ if (!$SkipPackage) {
     Invoke-Step "Installer payload manifest" {
         & (Join-Path $PSScriptRoot "CreateDisparityInstaller.ps1") -PackagePath (Join-Path $root "dist\DISPARITY-Release") -CreateArchive
         & (Join-Path $PSScriptRoot "CreateDisparityBootstrapper.ps1") -PackagePath (Join-Path $root "dist\DISPARITY-Release")
+    }
+
+    Invoke-Step "Release readiness manifest" {
+        & (Join-Path $PSScriptRoot "ReviewReleaseReadiness.ps1") `
+            -PackagePath (Join-Path $root "dist\DISPARITY-Release") `
+            -InstallerPath (Join-Path $root "dist\Installer") `
+            -ObsProfilePath (Join-Path $root "Saved\Trailer\OBS\DISPARITY-Trailer-Scene.json") `
+            -RuntimeReportSchemaPath (Join-Path $root "Assets\Verification\RuntimeReportSchema.dschema")
     }
 
     if (!$SkipRuntime) {

@@ -1,6 +1,20 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v23 versions of many requested followups. The next milestones should deepen the new graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification scaffolds into fully durable production systems.
+The current engine now has functional v24 versions of many requested followups. The next milestones should deepen the new graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification scaffolds into fully durable production systems.
+
+## v24 Completed Production Batch
+
+- The viewport diagnostic HUD now has explicit enable/pin controls, per-row visibility toggles, and object-ID/depth debug thumbnail swatches over the renderer-owned editor texture.
+- Inspector transform tooling now includes a `Transform Precision` section with editable nudge step plus pivot/orientation diagnostics, and the 3D gizmo uses that precision step for translate/rotate/scale changes.
+- The Profiler command history is filterable so undo/redo and editor-action audits stay readable in longer sessions.
+- Runtime report schema checks moved into `Assets/Verification/RuntimeReportSchema.dschema`, which lets new required metrics be reviewed as content instead of duplicating hardcoded script lists.
+- `Assets/Cinematics/Showcase.dshot` moved to v6 with clip lanes, nested sequence names, hold durations, and shot role metadata. The Shot Director exposes those fields and runtime verification validates them.
+- Runtime VFX verification now has an explicit renderer-profile surface for soft particles, depth fade, sorting, GPU simulation, motion vectors, and temporal reprojection capacity.
+- Cooked package verification now promotes optimized package metadata into a runtime GPU-resource readiness surface with mesh/material/animation counts and estimated upload bytes.
+- Asset dependency invalidation is now covered by runtime verification using the asset database dependency graph.
+- Audio verification now includes calibration metadata for reference peak/RMS levels plus meter attack/release settings.
+- Release readiness review now validates package, installer/bootstrapper, symbol, OBS, and runtime-schema artifacts through `Tools/ReviewReleaseReadiness.ps1`.
+- Runtime baselines, baseline review, runtime reports, and performance history now require all ten v24 batch counters.
 
 ## v23 Completed Production Batch
 
@@ -100,18 +114,18 @@ The current engine now has functional v23 versions of many requested followups. 
 
 ## Editor
 
-- Add small object-ID/depth debug thumbnails to the viewport HUD and let artists pin or hide individual overlay rows.
 - Add click-through viewport toolbar controls for camera mode, render debug mode, capture state, object-ID/depth overlays, and high-resolution tile state on top of the dedicated ImGui viewport texture.
-- Expand the current mesh/ring/plane gizmo handles with depth-aware hover occlusion, constraint previews, numerical transform entry, pivot/orientation controls, and richer object-ID handle metadata.
-- Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command filters, and a filterable command history panel.
+- Persist viewport HUD row visibility, panel layout, transform precision, and command-history filters as editor preferences.
+- Expand the current mesh/ring/plane gizmo handles with depth-aware hover occlusion, constraint previews, numerical transform entry, richer pivot/orientation editing, and richer object-ID handle metadata.
+- Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command categories, history export, and reviewable command macros.
 - Promote the new prefab variant/parent/nested metadata into nested-prefab instancing, multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
 
 ## Asset Pipeline
 
-- Promote the structured `.dglbpack` runtime metadata loader into real optimized GPU mesh/material/animation resources.
+- Promote the structured `.dglbpack` runtime metadata loader from v24 readiness metadata into real optimized GPU mesh/material/animation resources.
 - Promote exported texture slots into real texture binding for normal, metallic-roughness, emissive, and occlusion maps instead of metadata-only persistence.
 - Expand the new blend/skinning API into animation clips, skeleton assets, retargeting, state machines, and GPU skinning constant/structured-buffer uploads.
-- Use the dependency graph for live hot-reload invalidation so reloading one source asset updates all dependent GPU/runtime resources, not only verification metadata.
+- Use the dependency graph for live hot-reload invalidation so reloading one source asset updates all dependent GPU/runtime resources, with invalidation previews and reload-safe rollback.
 
 ## Rendering
 
@@ -119,8 +133,8 @@ The current engine now has functional v23 versions of many requested followups. 
 - Add GPU frustum/occlusion culling and real clustered or Forward+ light binning.
 - Replace the single shadow-map coverage mode with true cascaded shadow maps.
 - Add normal/depth pre-pass options, SSR/SSGI experiments, motion vectors, and a more correct temporal AA resolve beyond the current FXAA-style resolve plus history blend.
-- Move the v23 tent-resolved high-resolution proof from source-frame resampling to true tiled offscreen rendering with per-tile camera jitter, selectable resolve filters, optional EXR output, and async capture compression workers.
-- Upgrade the runtime particle/ribbon VFX resources into a dedicated renderer with soft particles, GPU simulation buffers, per-emitter sorting controls, motion vectors, and temporal reprojection.
+- Move the high-resolution proof from source-frame resampling to true tiled offscreen rendering with per-tile camera jitter, selectable resolve filters, optional EXR output, and async capture compression workers.
+- Upgrade the v24 VFX renderer profile into a dedicated renderer with soft particles, GPU simulation buffers, per-emitter sorting controls, motion vectors, and temporal reprojection.
 - Add motion vectors, temporal VFX reprojection, better TAA resolve, and exposure curves tuned for trailer captures.
 - Investigate a DX12 or Vulkan backend once the DX11 renderer has a stable render graph contract.
 
@@ -130,17 +144,17 @@ The current engine now has functional v23 versions of many requested followups. 
 - Add serialization versioning, save-game separation, and deterministic scene IDs.
 - Add physics, collision queries, controller movement, animation-driven character logic, and gameplay event routing.
 - Add scripting reload boundaries, script state preservation, and a safer script asset format.
-- Promote v5 shot metadata into a real sequencer with curve editing, clip lanes, shot thumbnails, bookmarks, nested sequences, undoable edits, and non-modal preview scrubbing.
+- Promote v6 shot metadata into a real sequencer with curve editing, clip lanes, shot thumbnails, bookmarks, nested sequences, clip blending, undoable edits, and non-modal preview scrubbing.
 
 ## Audio
 
-- Replace the production-counter audio proof with real XAudio2 mixer voices, streamed music assets, spatial emitter components, attenuation-curve assets, calibrated meters, and content-driven amplitude analysis that drives VFX pulses from actual audio buffers.
+- Replace the production-counter/calibration audio proof with real XAudio2 mixer voices, streamed music assets, spatial emitter components, attenuation-curve assets, calibrated meters, and content-driven amplitude analysis that drives VFX pulses from actual audio buffers.
 
 ## Production
 
 - Add more committed per-GPU/driver golden tolerance profiles from real verification machines and tighter local overrides.
 - Promote signed baseline update approvals into a review command that updates goldens/performance thresholds with explicit approver intent and stores an auditable diff package.
-- Promote v23 runtime report schema assertions into a reusable schema manifest so new verification counters can be reviewed without editing PowerShell in multiple places.
+- Promote the v24 runtime report schema manifest into a versioned schema validation system with compatibility checks and explicit review diffs.
 - Run packaged runtime smoke tests by default on a dedicated interactive desktop runner.
-- Replace the bootstrapper command with an actual installer executable and publish symbols through a real symbol server endpoint.
+- Replace the release-readiness/bootstrapper command with an actual installer executable and publish symbols through a real symbol server endpoint.
 - Expand OBS scene/profile generation into real OBS WebSocket automation, watermark toggles, capture metadata approval, and packaged vertical-slice launch presets.

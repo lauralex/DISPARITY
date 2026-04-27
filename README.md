@@ -54,7 +54,7 @@ Editor UI:
 - `Viewport`: enable the independent editor camera, frame the player/selection, choose gizmo translate/rotate/scale and world/local space, inspect the live GPU-pick/capture diagnostics HUD, and use right-drag plus WASD/QE to move without driving gameplay input.
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw draggable, camera-scaled 3D axis/ring/plane gizmo handles in the viewport.
 - `Assets`: reload scene/script, toggle hot reload, inspect the asset database and dependency graph, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
-- `Shot Director`: edit, add, save, reload, capture, thumbnail, and preview-scrub v5 `.dshot` trailer keys without leaving the running editor.
+- `Shot Director`: edit, add, save, reload, capture, thumbnail, and preview-scrub v6 `.dshot` trailer keys without leaving the running editor.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters/production counters, and store/recall a mixer snapshot.
 
@@ -295,16 +295,26 @@ Editor UI:
 - Runtime reports and performance history include viewport overlay tests, high-resolution resolve tests, GPU-pick stale frame age, last GPU-picked object, resolve filter, and resolve sample count.
 - `RuntimeVerifyDisparity.ps1` asserts the v23 report schema directly, and performance summaries compare frame-time regressions against both the previous run and recent median to reduce noise from one-off OS scheduling spikes.
 
+## Engine v24 Production Followups Implemented
+
+- Ten followup batches landed together: viewport HUD controls/thumbnails, transform precision controls, filterable command history, runtime schema manifests, v6 Shot Director sequencing metadata, VFX renderer profile validation, cooked package GPU-resource promotion metadata, dependency-invalidation verification, audio meter calibration metadata, and release-readiness manifests.
+- The viewport diagnostics HUD can be enabled, pinned, trimmed row-by-row, and supplemented with object-ID/depth debug thumbnails.
+- `Inspector > Transform Precision` exposes nudge step, pivot mode, and orientation mode; the 3D gizmo now uses the editable precision step for translate/rotate/scale nudges.
+- The Profiler command-history panel is filterable, which keeps long editor sessions easier to audit.
+- `Assets/Cinematics/Showcase.dshot` is now v6 with clip lanes, nested sequence names, hold time, and shot role metadata for the next sequencer pass.
+- Runtime reports, runtime baselines, performance history, and `Assets/Verification/RuntimeReportSchema.dschema` now require the ten v24 counters so future verification metrics can be reviewed through an asset instead of hardcoded script edits.
+- `Tools/ReviewReleaseReadiness.ps1` checks packaged manifests, installer/bootstrapper output, symbol manifests, OBS profile metadata, and the runtime report schema before release artifacts are considered complete.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Promote graph-owned resource diagnostics into explicit DX11 bind/unbind barriers, real alias lifetime validation, GPU culling, Forward+ lighting, cascaded shadows, and stronger temporal AA.
-- Move the v23 high-resolution capture proof from source-frame tent resampling to true tiled offscreen supersampling with per-tile camera jitter, selectable resolve filters, EXR output, and async compression workers.
-- Add object-ID/depth thumbnails plus pin/hide controls to the viewport diagnostics HUD.
-- Replace cooked package metadata loading with optimized GPU mesh/material/animation resources, live dependency invalidation, runtime streaming, retargeting, and GPU skinning palette uploads.
-- Promote nested prefab metadata into multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
-- Replace audio production counters with real XAudio2 mixer voices, streamed music assets, spatial emitter components, attenuation-curve assets, calibrated meters, and content-driven VFX pulses.
-- Expand v5 Shot Director metadata into a full sequencer with curve editing, clip lanes, shot thumbnails, nested sequences, and undoable edits.
-- Promote rift particle/ribbon resources into a dedicated GPU VFX renderer with soft particles, emitter sorting controls, motion vectors, and temporal reprojection.
-- Replace bootstrapper/symbol-server plans with actual publishing/install artifacts, run packaged runtime smoke on interactive CI runners, and expand OBS metadata into OBS WebSocket automation.
+- Promote graph-owned resource diagnostics into explicit DX11 bind/unbind barriers, real alias lifetime validation, GPU culling, Forward+ lighting, cascaded shadows, motion vectors, and stronger temporal AA.
+- Move the high-resolution capture proof from resolved source-frame sampling to true tiled offscreen supersampling with per-tile camera jitter, selectable resolve filters, EXR output, and async compression workers.
+- Turn the v24 viewport HUD settings into a click-through toolbar over the editor viewport texture with persistent per-user layout/preferences.
+- Replace cooked package metadata promotion with real optimized GPU mesh/material/animation uploads, live dependency invalidation, runtime streaming, retargeting, and GPU skinning palette buffers.
+- Promote nested prefab metadata into multi-object override diffing, recursive dependency-aware apply/revert, undo grouping, and dependency-aware scene reloads.
+- Replace audio calibration counters with real XAudio2 mixer voices, streamed music assets, spatial emitter components, attenuation-curve assets, calibrated meters, and content-driven VFX pulses.
+- Expand v6 Shot Director metadata into a full sequencer with curve editing, clip lanes, thumbnails, nested sequences, clip blending, and undoable edits.
+- Promote rift particle/ribbon profiles into a dedicated GPU VFX renderer with soft particles, emitter sorting controls, motion vectors, temporal reprojection, and debug visualizers.
+- Replace release readiness manifests, bootstrapper plans, and symbol-server plans with signed publishing/install artifacts, interactive CI runtime gates, and OBS WebSocket automation.

@@ -14,6 +14,7 @@ Current shape:
 - Renderer backend is DirectX 11.
 - Dependency policy now allows the vendored Dear ImGui docking branch in `ThirdParty/imgui`; otherwise prefer Win32, DirectX 11, DirectXMath, WIC/WinMM, and the Windows SDK.
 - Geometry includes procedural primitives, procedural terrain, and a glTF 2.0 scene loader path for static mesh primitives, double-sided material metadata, material texture binding, node instancing, skin metadata, joint/weight attributes, and animation sampler data.
+- Editor/runtime v24 builds on v23 with ten production followup batches: configurable/pinnable viewport HUD rows plus object-ID/depth debug thumbnails, transform precision controls for gizmo nudging, filterable command history, assetized runtime report schema assertions in `Assets/Verification/RuntimeReportSchema.dschema`, v6 `.dshot` clip-lane/nested-sequence/hold/role metadata, VFX renderer profile validation, cooked package GPU-resource readiness metadata, dependency-invalidation verification, audio meter calibration metadata, release-readiness manifests, v24 baseline counters, and performance-history schema/release counters.
 - Editor/runtime v23 builds on v22 with an in-viewport diagnostic HUD over the renderer-owned editor texture, last GPU-picked object/depth/stale-age display, readback cache/latency overlay rows, high-resolution capture tile/resolve status, schema v2 high-resolution capture manifests, a row-buffered tent-like 2x capture resolve, v23 runtime report schema assertions, baseline-required viewport overlay/high-resolution resolve coverage, and median-aware performance trend gating.
 - Editor/runtime v22 builds on v21 with GPU-pick hover-cache and latency histogram diagnostics, v5 `.dshot` easing/renderer-track/audio-track/thumbnail metadata, generated Shot Director thumbnails, non-modal preview scrubbing coverage, graph-owned high-resolution capture color/resolve resources plus capture manifests, runtime particle/ribbon VFX resources with depth fade and temporal-history counters, cooked `DSGLBPK2` package runtime-resource validation, nested prefab verification, production-style audio mixer/spatial/content-pulse counters, signed baseline update approval manifests, cooked package review tooling, symbol publishing, an installer bootstrapper command, OBS scene/profile metadata generation, and CI artifact paths for the new manifests.
 - Editor/runtime v21 builds on v20 with graph-handle resource binding for renderer passes, non-blocking async object-ID/depth readback slots, v4 `.dshot` camera spline/timeline/thumbnail metadata, Shot Director spline controls, rift VFX GPU-simulation/motion-vector/temporal-reprojection counters, a dynamically loaded XAudio2 generated-tone path with WinMM fallback, async 2x capture worker coverage, structured `DSGLBPK2` `.dglbpack` glTF package manifests, Git-signature-aware baseline approval metadata, interactive CI plans, package artifact workflow inputs, bootstrapper/symbol-server plans, and crash upload retry/backoff.
@@ -39,7 +40,7 @@ Current shape:
 - `DisparityGame/Source/DisparityGame.cpp`: first third-person walking prototype, editor viewport diagnostics HUD, runtime verification scenario coverage, showcase/trailer mode orchestration, and high-resolution capture resolve workflow.
 - `Assets/Shaders/Basic.hlsl`: runtime-compiled scene shader.
 - `Assets/Shaders/PostProcess.hlsl`: runtime-compiled HDR tone-mapping pass.
-- `Assets/Cinematics/Showcase.dshot`: authored v5 trailer/photo camera keys with spline, timeline-lane, editable easing, renderer/audio tracks, and thumbnail metadata for repeatable public capture.
+- `Assets/Cinematics/Showcase.dshot`: authored v6 trailer/photo camera keys with spline, timeline-lane, editable easing, renderer/audio tracks, thumbnail metadata, clip lanes, nested sequence names, hold times, and shot-role metadata for repeatable public capture.
 - `Assets/Scenes/Prototype.dscene`: serialized prototype scene.
 - `Assets/Verification/RuntimeSuites.dverify`: runtime verification suite manifest.
 - `Assets/Verification/Prototype.dreplay`: deterministic runtime verification replay asset.
@@ -54,6 +55,7 @@ Current shape:
 - `Assets/Verification/PostDebugBaseline.dverify`: post-debug runtime capture/performance/scenario baseline asset.
 - `Assets/Verification/AssetReloadBaseline.dverify`: asset reload runtime capture/performance/scenario baseline asset.
 - `Assets/Verification/GizmoDragBaseline.dverify`: gizmo drag runtime capture/performance/scenario baseline asset.
+- `Assets/Verification/RuntimeReportSchema.dschema`: required runtime-report metric schema used by the verification wrapper.
 - `Assets/Verification/Goldens/*.ppm`: suite-specific golden thumbnails used by runtime verification.
 - `Assets/Verification/GoldenProfiles/Default.dgoldenprofile`: default golden comparison tolerance profile.
 - `Assets/Verification/PerformanceBaselines.dperf`: committed suite-level performance thresholds for trend comparison.
@@ -69,19 +71,20 @@ Current shape:
 - `Tools/CollectCrashReports.ps1`: local crash upload manifest/bundle helper.
 - `Tools/UploadCrashReports.ps1`: crash upload dry-run/transport helper with retry/backoff.
 - `Tools/SmokeTestDisparity.ps1`: launch, window-detect, resize/hotkey, and close runtime smoke helper.
-- `Tools/RuntimeVerifyDisparity.ps1`: launches `DisparityGame.exe --verify-runtime`, waits for the runtime PASS/FAIL report, verifies capture output, asserts the v23 report schema, records performance history, and fails on non-zero exit.
+- `Tools/RuntimeVerifyDisparity.ps1`: launches `DisparityGame.exe --verify-runtime`, waits for the runtime PASS/FAIL report, verifies capture output, asserts the report metrics listed in `Assets/Verification/RuntimeReportSchema.dschema`, records performance history, and fails on non-zero exit.
 - `Tools/VerifyDisparity.ps1`: full local verification gate for static and runtime checks.
 - `Tools/TestImGuiIds.ps1`: static Dear ImGui literal label check that fails on duplicate widget IDs or empty labels in editor windows.
 - `Tools/CompareCaptureDisparity.ps1`: downsamples PPM captures and compares or updates golden thumbnails, including diff thumbnail output.
-- `Tools/ReviewVerificationBaselines.ps1`: checks baseline assets for required capture/render-graph/editor-target/golden/v23 coverage fields and runs performance summaries.
+- `Tools/ReviewVerificationBaselines.ps1`: checks baseline assets for required capture/render-graph/editor-target/golden/v24 coverage fields and runs performance summaries.
 - `Tools/ApproveVerificationBaseline.ps1`: writes a local approval manifest with hashes for verification baselines, performance baselines, golden profiles, golden thumbnails, and Git signature metadata.
 - `Tools/ApproveVerificationUpdate.ps1`: writes signed baseline/golden update intent metadata for verification changes.
 - `Tools/GenerateInteractiveCiPlan.ps1`: writes `Saved/CI/interactive_ci_plan.json` for interactive GPU runners, packaged smoke, artifacts, runtime suites, and trailer/OBS capture expectations.
-- `Tools/SummarizePerformanceHistory.ps1`: prints recent CPU/GPU and scenario trend summaries grouped by suite/executable, includes v23 viewport/high-resolve counters, and compares previous-run plus recent-median deltas against committed performance baselines.
+- `Tools/SummarizePerformanceHistory.ps1`: prints recent CPU/GPU and scenario trend summaries grouped by suite/executable, includes viewport/high-resolve/schema/release counters, and compares previous-run plus recent-median deltas against committed performance baselines.
 - `Tools/IndexDisparitySymbols.ps1`: writes symbol manifests and symbol-server publish plans for packaged PDB payloads.
 - `Tools/PublishDisparitySymbols.ps1`: copies packaged PDBs into `dist/SymbolServer` and writes `symbol_publish_manifest.json`.
 - `Tools/CreateDisparityInstaller.ps1`: writes installer payload manifests, bootstrapper plans, and optional installer payload zips.
 - `Tools/CreateDisparityBootstrapper.ps1`: writes `dist/Installer/DISPARITY-InstallerBootstrapper.cmd`.
+- `Tools/ReviewReleaseReadiness.ps1`: validates package, installer/bootstrapper, symbols, OBS profile, and runtime-report schema manifests, then writes `Saved/Release/release_readiness_manifest.json`.
 - `.github/workflows/windows-build.yml`: GitHub Actions static verification through `Tools/VerifyDisparity.ps1 -SkipRuntime`, plus opt-in `workflow_dispatch` package, packaged-smoke, artifact-upload, and runtime gates for interactive runners.
 - `ThirdParty/imgui`: vendored Dear ImGui source and Win32/DX11 backends.
 - `Docs/ENGINE_FEATURES.md`: current feature/testing guide.
@@ -109,7 +112,7 @@ Runtime verification mode:
 .\bin\x64\Debug\DisparityGame.exe --verify-runtime --verify-frames=90
 ```
 
-It writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, loads a `.dreplay` asset, compares against a `.dverify` baseline, exercises deterministic player/camera input playback, scene reload, runtime scene save, renderer post-debug cycling, cinematic showcase mode, authored trailer/photo mode, graph-owned async 2x high-resolution capture with schema v2/tent resolve metadata, selection cycling, stable-ID object/gizmo picks, gizmo transform constraints, audio mixer snapshots, async text IO, material texture-slot persistence, prefab variant and nested-prefab metadata, cooked package loading, shot-director easing/bookmarks/splines/timeline tracks/thumbnails/preview scrubbing, XAudio2 backend state, production audio counters, audio analysis, animation blending/skinning palette helpers, rift VFX draw/beat-pulse/system/GPU-simulation/depth-fade counters, draw-call counters, render-graph validation, render-graph allocation/alias/dispatch/callback/barrier/resource-binding/high-resolution-capture diagnostics, async object-ID readback ring/hover-cache/latency-histogram/viewport-overlay diagnostics, dedicated editor viewport/object-ID/object-depth target readiness, image stats, and CPU/GPU/pass performance budgets, then exits with code `0` for PASS or `20` for FAIL. `Tools/RuntimeVerifyDisparity.ps1` also compares the capture against the baseline's golden thumbnail through an adapter-specific profile when present or the default golden profile unless `-DisableGoldenComparison` is used, and fails fast if required v23 report metrics are missing.
+It writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/runtime_capture.ppm`, loads a `.dreplay` asset, compares against a `.dverify` baseline, exercises deterministic player/camera input playback, scene reload, runtime scene save, renderer post-debug cycling, cinematic showcase mode, authored trailer/photo mode, graph-owned async 2x high-resolution capture with schema v2/tent resolve metadata, selection cycling, stable-ID object/gizmo picks, gizmo transform constraints, viewport HUD controls/debug thumbnails, transform precision controls, filterable command history, audio mixer snapshots, audio meter calibration, async text IO, material texture-slot persistence, prefab variant and nested-prefab metadata, cooked package loading/GPU-resource promotion, asset dependency invalidation, shot-director easing/bookmarks/splines/timeline tracks/thumbnails/preview scrubbing/v6 sequencing metadata, XAudio2 backend state, production audio counters, audio analysis, animation blending/skinning palette helpers, VFX renderer profile counters, rift VFX draw/beat-pulse/system/GPU-simulation/depth-fade counters, draw-call counters, render-graph validation, render-graph allocation/alias/dispatch/callback/barrier/resource-binding/high-resolution-capture diagnostics, async object-ID readback ring/hover-cache/latency-histogram/viewport-overlay diagnostics, dedicated editor viewport/object-ID/object-depth target readiness, release readiness coverage, image stats, and CPU/GPU/pass performance budgets, then exits with code `0` for PASS or `20` for FAIL. `Tools/RuntimeVerifyDisparity.ps1` also compares the capture against the baseline's golden thumbnail through an adapter-specific profile when present or the default golden profile unless `-DisableGoldenComparison` is used, and fails fast if required report metrics from `Assets/Verification/RuntimeReportSchema.dschema` are missing.
 
 ## Current Controls
 
@@ -145,7 +148,7 @@ It writes `Saved/Verification/runtime_verify.txt`, captures `Saved/Verification/
 
 ## Verified Baseline
 
-On 2026-04-27 after the v23 production followup implementation pass:
+On 2026-04-27 after the v24 production followup implementation pass:
 
 - `Debug|x64` built successfully with 0 warnings and 0 errors.
 - `Release|x64` built successfully with 0 warnings and 0 errors.
@@ -153,13 +156,13 @@ On 2026-04-27 after the v23 production followup implementation pass:
 - `Tools/TestImGuiIds.ps1` completed successfully and is wired into `Tools/VerifyDisparity.ps1`.
 - `Assets/Shaders/Basic.hlsl` and `Assets/Shaders/PostProcess.hlsl` compiled successfully for `VSMain` and `PSMain` with `fxc`.
 - `Tools/SmokeTestDisparity.ps1 -Configuration Debug -ExerciseWindow` launched `DisparityGame.exe`, found the window, resized it, sent basic editor hotkeys, kept it alive for 3 seconds, and closed it cleanly.
-- `Tools/VerifyDisparity.ps1` completed successfully for v23; it now includes v23 runtime report schema assertions, viewport-overlay and high-resolution-resolve baseline coverage, cooked package review, Git-signature-aware baseline approval metadata checks, signed baseline update approval intent, trailer launch/OBS plan generation, symbol publishing, installer bootstrapper generation, and median-aware performance trend review.
+- `Tools/VerifyDisparity.ps1` completed successfully for v24; it now includes assetized runtime report schema assertions, ten v24 production-batch counters, viewport-HUD/debug-thumbnail baseline coverage, transform precision checks, command-history filtering checks, v6 Shot Director metadata checks, VFX profile checks, cooked GPU-resource readiness checks, dependency invalidation checks, audio calibration checks, release-readiness review, cooked package review, Git-signature-aware baseline approval metadata checks, signed baseline update approval intent, trailer launch/OBS plan generation, symbol publishing, installer bootstrapper generation, and median-aware performance trend review.
 - `Tools/CookDisparityAssets.ps1 -Configuration Debug -BinaryPackages -Clean` produced `Saved/CookedAssets/manifest.dcook` plus `.dassetbin` package records and a structured `DSGLBPK2` package for `Assets/Meshes/SampleTriangle.gltf` with mesh/primitive/material/node/animation/buffer metadata.
 - `Tools/ReviewCookedPackages.ps1` produced `Saved/CookedAssets/package_review.json` and validated optimized package runtime-loadability metadata.
 - `Tools/LaunchTrailerCapture.ps1 -Configuration Debug -NoLaunch` produced `Saved/Trailer/trailer_launch_preset.json` for trailer/showcase capture setup.
 - `Tools/GenerateObsSceneProfile.ps1` produced `Saved/Trailer/OBS/DISPARITY-Trailer-Scene.json` for public recording setup.
 - `Tools/CollectCrashReports.ps1 -DryRun` produced `Saved/CrashUploads/crash_upload_manifest.json`, and `Tools/UploadCrashReports.ps1 -DryRun` validated the transport dry run.
-- `Tools/ReviewVerificationBaselines.ps1 -ListGoldenProfiles` validated required baseline keys, including v23 viewport-overlay and high-resolution-resolve coverage, printed available golden profiles, and recognized the committed default plus known adapter profile set.
+- `Tools/ReviewVerificationBaselines.ps1 -ListGoldenProfiles` validated required baseline keys, including all v24 production-batch counters, printed available golden profiles, and recognized the committed default plus known adapter profile set.
 - `Tools/ApproveVerificationBaseline.ps1 -DryRun` produces `Saved/Verification/baseline_approval.json` with hashes plus Git signature status, signer/key metadata, and optional `-RequireSignedHead` enforcement.
 - `Tools/ApproveVerificationUpdate.ps1` produces `Saved/Verification/baseline_update_approval.json` with explicit update intent, Git signature status, and verification file hashes.
 - `Tools/PackageDisparity.ps1 -Configuration Release -IncludeSymbols -CreateArchive` produced `dist/DISPARITY-Release`, `package_manifest.json`, symbols when PDBs are available, and a zip artifact.
@@ -167,10 +170,11 @@ On 2026-04-27 after the v23 production followup implementation pass:
 - `Tools/PublishDisparitySymbols.ps1` produces `dist/SymbolServer/symbol_publish_manifest.json`.
 - `Tools/CreateDisparityInstaller.ps1 -CreateArchive` produces `dist/Installer/DISPARITY-SetupManifest.json`, `DISPARITY-BootstrapperPlan.json`, and an installer payload zip.
 - `Tools/CreateDisparityBootstrapper.ps1` produces `dist/Installer/DISPARITY-InstallerBootstrapper.cmd`.
+- `Tools/ReviewReleaseReadiness.ps1` produces `Saved/Release/release_readiness_manifest.json` and validates package, installer/bootstrapper, symbol, OBS, and runtime schema artifacts.
 - `Tools/SmokeTestDisparity.ps1 -ExecutablePath .\dist\DISPARITY-Release\DisparityGame.exe -ExerciseWindow` launched the packaged build, found/resized/exercised the window, and closed it cleanly.
-- `Tools/VerifyDisparity.ps1` produced PASS packaged runtime reports, captures, golden comparisons, showcase/trailer/high-res/VFX/beat/audio-analysis/Shot-Director/async-IO/animation-skinning/render-graph-callback/GPU-pick-histogram/cooked-package/nested-prefab/audio-production/viewport-overlay/high-resolve coverage, and local performance history rows for all six suites against `dist\DISPARITY-Release\DisparityGame.exe`.
+- `Tools/VerifyDisparity.ps1` produced PASS packaged runtime reports, captures, golden comparisons, showcase/trailer/high-res/VFX/beat/audio-analysis/Shot-Director/async-IO/animation-skinning/render-graph-callback/GPU-pick-histogram/cooked-package/nested-prefab/audio-production/viewport-overlay/high-resolve/viewport-HUD/transform-precision/command-history/schema/shot-sequencer/VFX-profile/cooked-GPU/dependency-invalidation/audio-calibration/release-readiness coverage, and local performance history rows for all six suites against `dist\DISPARITY-Release\DisparityGame.exe`.
 - `Tools/SummarizePerformanceHistory.ps1 -BaselinePath Assets/Verification/PerformanceBaselines.dperf` completed successfully as part of `Tools/VerifyDisparity.ps1`, including previous-run and recent-median CPU/GPU regression reporting.
-- The v23 pass was verified with `Tools/VerifyDisparity.ps1`; run `git status --short` and review the signed commit output before pushing.
+- The v24 pass was verified with `Tools/VerifyDisparity.ps1`; run `git status --short` and review the signed commit output before pushing.
 
 After feature work, run `powershell -ExecutionPolicy Bypass -File .\Tools\VerifyDisparity.ps1` and `git status --short` before declaring the repo healthy.
 
@@ -178,12 +182,12 @@ After feature work, run `powershell -ExecutionPolicy Bypass -File .\Tools\Verify
 
 Good next steps for making the engine more modern and AAA-like:
 
-- Add object-ID/depth debug thumbnails and pin/hide controls to the v23 viewport diagnostic HUD.
-- Move the v23 tent-resolved 2x proof from source-frame resampling to true tiled offscreen rendering with per-tile camera jitter, selectable resolve filters, EXR output, and async compression workers.
-- Expand v5 Shot Director metadata into a real sequencer with curve editing, clip lanes, shot thumbnails, nested sequences, and undoable edits.
-- Promote the VFX runtime particle/ribbon resources into a dedicated renderer with soft particles, GPU buffers, emitter sorting controls, motion vectors, and temporal VFX reprojection.
-- Add more committed per-adapter golden profiles from real verification hardware and turn baseline approval manifests into signed baseline update approvals.
+- Persist viewport HUD row visibility, transform precision, editor layout, and command-history filters as editor preferences.
+- Move the current 2x proof from source-frame resampling to true tiled offscreen rendering with per-tile camera jitter, selectable resolve filters, EXR output, and async compression workers.
+- Expand v6 Shot Director metadata into a real sequencer with curve editing, clip lanes, shot thumbnails, nested sequences, clip blending, and undoable edits.
+- Promote the VFX runtime profile into a dedicated renderer with soft particles, GPU buffers, emitter sorting controls, motion vectors, temporal VFX reprojection, and debug visualizers.
+- Add more committed per-adapter golden profiles from real verification hardware and turn baseline approval manifests into signed baseline update approvals with auditable diffs.
 - Load `DSGLBPK2` packages as optimized GPU mesh/material/animation resources, add live runtime dependency invalidation, retargeting, and real GPU skinning palette uploads.
 - Promote prefab variant/parent/nested metadata into nested prefab instancing, multi-object override diffing, dependency-aware recursive apply/revert, and undo grouping.
-- Replace the audio production counters with real XAudio2 mixer voices, streamed music assets, spatial emitter components, attenuation-curve assets, calibrated meters, and content-driven VFX pulses.
-- Replace bootstrapper/symbol-server plans with actual publishing/install artifacts, run packaged runtime smoke tests on interactive CI runners, and expand OBS metadata into OBS WebSocket scene/profile automation.
+- Replace the audio production/calibration counters with real XAudio2 mixer voices, streamed music assets, spatial emitter components, attenuation-curve assets, calibrated meters, and content-driven VFX pulses.
+- Replace release-readiness/bootstrapper/symbol-server plans with actual publishing/install artifacts, run packaged runtime smoke tests on interactive CI runners, and expand OBS metadata into OBS WebSocket scene/profile automation.

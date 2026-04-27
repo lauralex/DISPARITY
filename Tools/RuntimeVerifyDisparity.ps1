@@ -11,6 +11,7 @@ param(
     [string]$ReplayPath = "Assets/Verification/Prototype.dreplay",
     [string]$BaselinePath = "Assets/Verification/RuntimeBaseline.dverify",
     [string]$GoldenProfilePath = "Assets/Verification/GoldenProfiles/Default.dgoldenprofile",
+    [string]$ReportSchemaPath = "Assets/Verification/RuntimeReportSchema.dschema",
     [string]$HistoryPath = "",
     [switch]$DisableCapture,
     [switch]$DisableInputPlayback,
@@ -195,10 +196,10 @@ function Get-ReportMetrics {
     return $metrics
 }
 
-function Assert-RuntimeReportSchema {
-    param([hashtable]$Metrics)
+function Get-RequiredReportMetrics {
+    param([string]$SchemaPath)
 
-    $requiredMetrics = @(
+    $defaults = @(
         "version",
         "frames",
         "viewport_overlay_tests",
@@ -208,9 +209,38 @@ function Assert-RuntimeReportSchema {
         "high_res_resolve_samples"
     )
 
+    $resolvedSchemaPath = Resolve-VerificationPath -Path $SchemaPath
+    if (!(Test-Path -LiteralPath $resolvedSchemaPath)) {
+        Write-Host "Runtime report schema manifest not found at $resolvedSchemaPath; using built-in defaults"
+        return $defaults
+    }
+
+    $metrics = @()
+    foreach ($line in Get-Content -LiteralPath $resolvedSchemaPath) {
+        $trimmed = $line.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith("#")) {
+            continue
+        }
+
+        $metrics += $trimmed
+    }
+
+    if ($metrics.Count -eq 0) {
+        throw "Runtime report schema manifest $resolvedSchemaPath did not define any metrics."
+    }
+
+    return $metrics
+}
+
+function Assert-RuntimeReportSchema {
+    param(
+        [hashtable]$Metrics,
+        [string[]]$RequiredMetrics
+    )
+
     foreach ($metric in $requiredMetrics) {
         if (!$Metrics.ContainsKey($metric) -or [string]::IsNullOrWhiteSpace([string]$Metrics[$metric])) {
-            throw "Runtime verification report is missing required v23 metric '$metric'."
+            throw "Runtime verification report is missing required schema metric '$metric'."
         }
     }
 
@@ -279,7 +309,8 @@ if (!$DisableCapture -and !(Test-Path -LiteralPath $capturePath)) {
 }
 
 $metrics = Get-ReportMetrics -Report $report
-Assert-RuntimeReportSchema -Metrics $metrics
+$requiredReportMetrics = Get-RequiredReportMetrics -SchemaPath $ReportSchemaPath
+Assert-RuntimeReportSchema -Metrics $metrics -RequiredMetrics $requiredReportMetrics
 
 if (!$DisableCapture -and !$DisableGoldenComparison) {
     $resolvedBaselinePath = Resolve-VerificationPath -Path $BaselinePath
@@ -348,7 +379,7 @@ if (!$DisablePerfHistory) {
         New-Item -ItemType Directory -Force -Path $historyParent | Out-Null
     }
 
-    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance,playback_net_distance,editor_pick_tests,editor_pick_failures,gizmo_pick_tests,gizmo_pick_failures,gizmo_drag_tests,gizmo_drag_failures,scene_reload_tests,scene_save_tests,post_debug_view_tests,showcase_frames,trailer_frames,high_res_capture_tests,rift_vfx_draws,rift_vfx_gpu_simulation_batches,rift_vfx_motion_vector_candidates,rift_vfx_temporal_reprojection_samples,rift_vfx_depth_fade_particles,audio_beat_pulses,audio_snapshot_tests,async_io_tests,material_texture_slot_tests,prefab_variant_tests,shot_director_tests,shot_spline_tests,shot_timeline_track_tests,shot_thumbnail_tests,shot_preview_scrub_tests,audio_analysis_tests,xaudio2_backend_tests,vfx_system_tests,gpu_vfx_simulation_tests,animation_skinning_tests,gpu_pick_hover_cache_tests,gpu_pick_latency_histogram_tests,graph_high_res_capture_tests,cooked_package_tests,asset_invalidation_tests,nested_prefab_tests,audio_production_tests,viewport_overlay_tests,high_res_resolve_tests,render_graph_allocations,render_graph_aliased_resources,render_graph_barriers,render_graph_resource_bindings,render_graph_bind_hits,render_graph_bind_misses,render_graph_callbacks_bound,render_graph_callbacks_executed,render_graph_dispatch_valid,object_id_readback_ring_size,object_id_readback_pending,object_id_readback_requests,object_id_readback_completions,object_id_readback_latency_frames,object_id_readback_busy_skips,gpu_pick_cache_hits,gpu_pick_latency_samples,gpu_pick_stale_frames,graph_high_res_capture_targets,graph_high_res_capture_tiles,graph_high_res_capture_msaa_samples,graph_high_res_capture_passes,high_res_resolve_filter,high_res_resolve_samples,editor_viewport_ready,editor_viewport_presented_in_imgui,editor_object_id_ready,editor_object_depth_ready,audio_xaudio2_available,audio_xaudio2_initialized,audio_analysis_peak,audio_analysis_beat_envelope,audio_mixer_voices_created,audio_spatial_emitters,audio_analysis_content_pulses"
+    $historyHeader = "timestamp,suite,executable,version,frames,cpu_frame_max_ms,cpu_frame_avg_ms,gpu_frame_max_ms,gpu_frame_avg_ms,pass_cpu_max_ms,pass_cpu_max_name,pass_gpu_max_ms,pass_gpu_max_name,capture_average_luma,capture_checksum,playback_distance,playback_net_distance,editor_pick_tests,editor_pick_failures,gizmo_pick_tests,gizmo_pick_failures,gizmo_drag_tests,gizmo_drag_failures,scene_reload_tests,scene_save_tests,post_debug_view_tests,showcase_frames,trailer_frames,high_res_capture_tests,rift_vfx_draws,rift_vfx_gpu_simulation_batches,rift_vfx_motion_vector_candidates,rift_vfx_temporal_reprojection_samples,rift_vfx_depth_fade_particles,audio_beat_pulses,audio_snapshot_tests,async_io_tests,material_texture_slot_tests,prefab_variant_tests,shot_director_tests,shot_spline_tests,shot_timeline_track_tests,shot_thumbnail_tests,shot_preview_scrub_tests,audio_analysis_tests,xaudio2_backend_tests,vfx_system_tests,gpu_vfx_simulation_tests,animation_skinning_tests,gpu_pick_hover_cache_tests,gpu_pick_latency_histogram_tests,graph_high_res_capture_tests,cooked_package_tests,asset_invalidation_tests,nested_prefab_tests,audio_production_tests,viewport_overlay_tests,high_res_resolve_tests,viewport_hud_control_tests,transform_precision_tests,command_history_filter_tests,runtime_schema_manifest_tests,shot_sequencer_tests,vfx_renderer_profile_tests,cooked_gpu_resource_tests,dependency_invalidation_tests,audio_meter_calibration_tests,release_readiness_tests,render_graph_allocations,render_graph_aliased_resources,render_graph_barriers,render_graph_resource_bindings,render_graph_bind_hits,render_graph_bind_misses,render_graph_callbacks_bound,render_graph_callbacks_executed,render_graph_dispatch_valid,object_id_readback_ring_size,object_id_readback_pending,object_id_readback_requests,object_id_readback_completions,object_id_readback_latency_frames,object_id_readback_busy_skips,gpu_pick_cache_hits,gpu_pick_latency_samples,gpu_pick_stale_frames,graph_high_res_capture_targets,graph_high_res_capture_tiles,graph_high_res_capture_msaa_samples,graph_high_res_capture_passes,high_res_resolve_filter,high_res_resolve_samples,editor_viewport_ready,editor_viewport_presented_in_imgui,editor_object_id_ready,editor_object_depth_ready,audio_xaudio2_available,audio_xaudio2_initialized,audio_analysis_peak,audio_analysis_beat_envelope,audio_mixer_voices_created,audio_spatial_emitters,audio_analysis_content_pulses"
     if (Test-Path -LiteralPath $HistoryPath) {
         $currentHeader = Get-Content -LiteralPath $HistoryPath -First 1
         if ($currentHeader -ne $historyHeader) {
@@ -422,6 +453,16 @@ if (!$DisablePerfHistory) {
         $metrics["audio_production_tests"],
         $metrics["viewport_overlay_tests"],
         $metrics["high_res_resolve_tests"],
+        $metrics["viewport_hud_control_tests"],
+        $metrics["transform_precision_tests"],
+        $metrics["command_history_filter_tests"],
+        $metrics["runtime_schema_manifest_tests"],
+        $metrics["shot_sequencer_tests"],
+        $metrics["vfx_renderer_profile_tests"],
+        $metrics["cooked_gpu_resource_tests"],
+        $metrics["dependency_invalidation_tests"],
+        $metrics["audio_meter_calibration_tests"],
+        $metrics["release_readiness_tests"],
         $metrics["render_graph_allocations"],
         $metrics["render_graph_aliased_resources"],
         $metrics["render_graph_barriers"],

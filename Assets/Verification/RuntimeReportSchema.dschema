@@ -1,0 +1,24 @@
+# Required runtime verification report metrics.
+# One metric key per line. RuntimeVerifyDisparity.ps1 fails when any key is missing.
+version
+frames
+viewport_overlay_tests
+high_res_resolve_tests
+gpu_pick_stale_frames
+high_res_resolve_filter
+high_res_resolve_samples
+viewport_hud_control_tests
+transform_precision_tests
+command_history_filter_tests
+runtime_schema_manifest_tests
+shot_sequencer_tests
+vfx_renderer_profile_tests
+cooked_gpu_resource_tests
+dependency_invalidation_tests
+audio_meter_calibration_tests
+release_readiness_tests
+cooked_package_gpu_ready
+cooked_package_gpu_meshes
+cooked_package_gpu_upload_bytes
+shot_sequencer_v6_keys
+vfx_renderer_temporal_reprojection

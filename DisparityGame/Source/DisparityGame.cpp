@@ -22,6 +22,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <unordered_map>
 #include <utility>
@@ -640,6 +641,10 @@ namespace
             std::string RendererTrack = "post_stack";
             std::string AudioTrack = "cue";
             std::string ThumbnailPath;
+            std::string ClipLane = "camera_main";
+            std::string NestedSequence = "main";
+            float HoldSeconds = 0.0f;
+            std::string ShotRole = "establishing";
         };
 
         struct GpuPickVisualizationState
@@ -681,6 +686,7 @@ namespace
         struct CookedPackageRuntimeResource
         {
             bool Loaded = false;
+            bool GpuReady = false;
             uint32_t Meshes = 0;
             uint32_t Primitives = 0;
             uint32_t Materials = 0;
@@ -688,6 +694,10 @@ namespace
             uint32_t Animations = 0;
             uint32_t Skins = 0;
             uint32_t Dependencies = 0;
+            uint32_t GpuMeshResources = 0;
+            uint32_t GpuMaterialResources = 0;
+            uint32_t AnimationClips = 0;
+            uint64_t EstimatedUploadBytes = 0;
             std::filesystem::path Path;
         };
 
@@ -721,6 +731,43 @@ namespace
             uint32_t MsaaSamples = 4;
             uint32_t ResolveSamples = 4;
             std::string ResolveFilter = "tent";
+        };
+
+        struct ViewportOverlaySettings
+        {
+            bool Enabled = true;
+            bool ShowGpuPick = true;
+            bool ShowReadback = true;
+            bool ShowCapture = true;
+            bool ShowDebugThumbnails = true;
+            bool Pinned = true;
+        };
+
+        struct TransformPrecisionState
+        {
+            float Step = 0.05f;
+            int PivotMode = 0;
+            int OrientationMode = 0;
+        };
+
+        struct RiftVfxRendererProfile
+        {
+            bool SoftParticles = true;
+            bool DepthFade = true;
+            bool Sorted = true;
+            bool GpuSimulation = true;
+            bool MotionVectors = true;
+            bool TemporalReprojection = true;
+            uint32_t MaxParticles = 512;
+            uint32_t MaxRibbons = 96;
+        };
+
+        struct AudioMeterCalibrationProfile
+        {
+            float ReferencePeakDb = -12.0f;
+            float ReferenceRmsDb = -18.0f;
+            float AttackMs = 8.0f;
+            float ReleaseMs = 120.0f;
         };
 
         struct RuntimeBaseline
@@ -766,6 +813,16 @@ namespace
             uint32_t MinAudioProductionTests = 1;
             uint32_t MinViewportOverlayTests = 1;
             uint32_t MinHighResResolveTests = 1;
+            uint32_t MinViewportHudControlTests = 1;
+            uint32_t MinTransformPrecisionTests = 1;
+            uint32_t MinCommandHistoryFilterTests = 1;
+            uint32_t MinRuntimeSchemaManifestTests = 1;
+            uint32_t MinShotSequencerTests = 1;
+            uint32_t MinVfxRendererProfileTests = 1;
+            uint32_t MinCookedGpuResourceTests = 1;
+            uint32_t MinDependencyInvalidationTests = 1;
+            uint32_t MinAudioMeterCalibrationTests = 1;
+            uint32_t MinReleaseReadinessTests = 1;
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -891,6 +948,16 @@ namespace
             uint32_t AudioProductionTests = 0;
             uint32_t ViewportOverlayTests = 0;
             uint32_t HighResResolveTests = 0;
+            uint32_t ViewportHudControlTests = 0;
+            uint32_t TransformPrecisionTests = 0;
+            uint32_t CommandHistoryFilterTests = 0;
+            uint32_t RuntimeSchemaManifestTests = 0;
+            uint32_t ShotSequencerTests = 0;
+            uint32_t VfxRendererProfileTests = 0;
+            uint32_t CookedGpuResourceTests = 0;
+            uint32_t DependencyInvalidationTests = 0;
+            uint32_t AudioMeterCalibrationTests = 0;
+            uint32_t ReleaseReadinessTests = 0;
         };
 
         void InitializeMaterials()
@@ -1847,6 +1914,10 @@ namespace
                     if (fields.size() > 16 && !fields[16].empty()) { key.RendererTrack = fields[16]; }
                     if (fields.size() > 17 && !fields[17].empty()) { key.AudioTrack = fields[17]; }
                     if (fields.size() > 18 && !fields[18].empty()) { key.ThumbnailPath = fields[18]; }
+                    if (fields.size() > 19 && !fields[19].empty()) { key.ClipLane = fields[19]; }
+                    if (fields.size() > 20 && !fields[20].empty()) { key.NestedSequence = fields[20]; }
+                    if (fields.size() > 21 && !fields[21].empty()) { key.HoldSeconds = std::stof(fields[21]); }
+                    if (fields.size() > 22 && !fields[22].empty()) { key.ShotRole = fields[22]; }
                 }
                 catch (...)
                 {
@@ -1883,8 +1954,8 @@ namespace
                 return false;
             }
 
-            file << "# DISPARITY cinematic shot track v5\n";
-            file << "# key time|position(x,y,z)|target(x,y,z)|focus|dof_strength|lens_dirt|letterbox|ease_in|ease_out|renderer_pulse|audio_cue|bookmark|spline|lane|thumbnail_tint|easing_curve|renderer_track|audio_track|thumbnail_path\n";
+            file << "# DISPARITY cinematic shot track v6\n";
+            file << "# key time|position(x,y,z)|target(x,y,z)|focus|dof_strength|lens_dirt|letterbox|ease_in|ease_out|renderer_pulse|audio_cue|bookmark|spline|lane|thumbnail_tint|easing_curve|renderer_track|audio_track|thumbnail_path|clip_lane|nested_sequence|hold_seconds|shot_role\n";
             for (const TrailerShotKey& key : m_trailerKeys)
             {
                 file << "key "
@@ -1906,7 +1977,11 @@ namespace
                     << key.EasingCurve << '|'
                     << key.RendererTrack << '|'
                     << key.AudioTrack << '|'
-                    << key.ThumbnailPath << '\n';
+                    << key.ThumbnailPath << '|'
+                    << key.ClipLane << '|'
+                    << key.NestedSequence << '|'
+                    << key.HoldSeconds << '|'
+                    << key.ShotRole << '\n';
             }
 
             return file.good();
@@ -2697,6 +2772,30 @@ namespace
             return Names[std::min<uint32_t>(index, static_cast<uint32_t>(Names.size() - 1u))];
         }
 
+        const char* TransformPivotModeName() const
+        {
+            static constexpr std::array<const char*, 3> Names = { "Selection", "Median", "World origin" };
+            return Names[std::clamp(m_transformPrecision.PivotMode, 0, static_cast<int>(Names.size() - 1))];
+        }
+
+        const char* TransformOrientationModeName() const
+        {
+            static constexpr std::array<const char*, 3> Names = { "World", "Local", "View" };
+            return Names[std::clamp(m_transformPrecision.OrientationMode, 0, static_cast<int>(Names.size() - 1))];
+        }
+
+        size_t CountFilteredCommandHistory(std::string_view filter) const
+        {
+            if (filter.empty())
+            {
+                return m_commandHistory.size();
+            }
+
+            return static_cast<size_t>(std::count_if(m_commandHistory.begin(), m_commandHistory.end(), [filter](const std::string& command) {
+                return command.find(filter) != std::string::npos;
+            }));
+        }
+
         uint32_t GpuPickStaleFrames() const
         {
             if (!m_gpuPickVisualization.HasCache || m_gpuPickVisualization.LastResolvedFrame == 0)
@@ -2722,40 +2821,54 @@ namespace
             }
             lines.push_back(modeLine.str());
 
-            std::ostringstream pickLine;
-            pickLine << "GPU ";
-            if (m_gpuPickVisualization.HasCache)
+            if (m_viewportOverlay.ShowGpuPick)
             {
-                pickLine << (m_gpuPickVisualization.LastObjectName.empty() ? "None" : m_gpuPickVisualization.LastObjectName)
-                    << " id " << m_gpuPickVisualization.LastObjectId
-                    << " z " << std::fixed << std::setprecision(3) << m_gpuPickVisualization.LastDepth
-                    << " age " << GpuPickStaleFrames() << "f";
+                std::ostringstream pickLine;
+                pickLine << "GPU ";
+                if (m_gpuPickVisualization.HasCache)
+                {
+                    pickLine << (m_gpuPickVisualization.LastObjectName.empty() ? "None" : m_gpuPickVisualization.LastObjectName)
+                        << " id " << m_gpuPickVisualization.LastObjectId
+                        << " z " << std::fixed << std::setprecision(3) << m_gpuPickVisualization.LastDepth
+                        << " age " << GpuPickStaleFrames() << "f";
+                }
+                else
+                {
+                    pickLine << "not sampled";
+                }
+                lines.push_back(pickLine.str());
             }
-            else
+
+            if (m_viewportOverlay.ShowReadback)
             {
-                pickLine << "not sampled";
+                std::ostringstream latencyLine;
+                latencyLine << "Readback pending " << m_gpuPickVisualization.PendingSlots
+                    << " latency " << m_gpuPickVisualization.LastLatencyFrames
+                    << "f hits " << m_gpuPickVisualization.CacheHits
+                    << " misses " << m_gpuPickVisualization.CacheMisses;
+                lines.push_back(latencyLine.str());
             }
-            lines.push_back(pickLine.str());
 
-            std::ostringstream latencyLine;
-            latencyLine << "Readback pending " << m_gpuPickVisualization.PendingSlots
-                << " latency " << m_gpuPickVisualization.LastLatencyFrames
-                << "f hits " << m_gpuPickVisualization.CacheHits
-                << " misses " << m_gpuPickVisualization.CacheMisses;
-            lines.push_back(latencyLine.str());
-
-            const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
-            std::ostringstream captureLine;
-            captureLine << "Capture "
-                << (m_highResCapturePending ? (m_highResCaptureWorkerStarted ? "resolving" : "queued") : "idle")
-                << " tiles " << m_highResCaptureTilesWritten << "/" << captureMetrics.Tiles
-                << " " << captureMetrics.ResolveFilter << "x" << captureMetrics.ResolveSamples;
-            lines.push_back(captureLine.str());
+            if (m_viewportOverlay.ShowCapture)
+            {
+                const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
+                std::ostringstream captureLine;
+                captureLine << "Capture "
+                    << (m_highResCapturePending ? (m_highResCaptureWorkerStarted ? "resolving" : "queued") : "idle")
+                    << " tiles " << m_highResCaptureTilesWritten << "/" << captureMetrics.Tiles
+                    << " " << captureMetrics.ResolveFilter << "x" << captureMetrics.ResolveSamples;
+                lines.push_back(captureLine.str());
+            }
             return lines;
         }
 
         void DrawViewportOverlay(const ImVec2& imageMin, const ImVec2& imageSize)
         {
+            if (!m_viewportOverlay.Enabled)
+            {
+                return;
+            }
+
             const std::vector<std::string> lines = BuildViewportOverlayLines();
             if (lines.empty() || imageSize.x <= 0.0f || imageSize.y <= 0.0f)
             {
@@ -2792,6 +2905,20 @@ namespace
                 const ImVec2 max(min.x + barWidth - 2.0f, overlayMax.y - 1.0f);
                 drawList->AddRectFilled(min, max, color, 1.0f);
             }
+
+            if (m_viewportOverlay.ShowDebugThumbnails)
+            {
+                const ImVec2 thumbMin(overlayMax.x + 8.0f, overlayMin.y);
+                const ImVec2 thumbSize(58.0f, 36.0f);
+                const float depth = std::clamp(m_gpuPickVisualization.LastDepth, 0.0f, 1.0f);
+                const uint32_t objectTint = 40u + (m_gpuPickVisualization.LastObjectId % 180u);
+                drawList->AddRectFilled(thumbMin, ImVec2(thumbMin.x + thumbSize.x, thumbMin.y + thumbSize.y), IM_COL32(objectTint, 100, 230, 210), 3.0f);
+                drawList->AddRect(thumbMin, ImVec2(thumbMin.x + thumbSize.x, thumbMin.y + thumbSize.y), IM_COL32(235, 244, 255, 190), 3.0f);
+                const ImVec2 depthMin(thumbMin.x, thumbMin.y + thumbSize.y + 5.0f);
+                const ImU32 depthColor = IM_COL32(static_cast<int>(depth * 255.0f), static_cast<int>(depth * 255.0f), static_cast<int>(depth * 255.0f), 220);
+                drawList->AddRectFilled(depthMin, ImVec2(depthMin.x + thumbSize.x, depthMin.y + 10.0f), depthColor, 2.0f);
+                drawList->AddText(ImVec2(thumbMin.x, depthMin.y + 13.0f), IM_COL32(235, 244, 255, 235), m_viewportOverlay.Pinned ? "Pinned" : "Live");
+            }
         }
 
         void DrawViewportPanel()
@@ -2820,6 +2947,19 @@ namespace
             }
             ImGui::SameLine();
             ImGui::TextDisabled("%s", m_highResCaptureOutputPath.empty() ? "No capture" : m_highResCaptureOutputPath.string().c_str());
+            if (ImGui::TreeNode("Viewport HUD"))
+            {
+                ImGui::Checkbox("Enabled##ViewportHUD", &m_viewportOverlay.Enabled);
+                ImGui::SameLine();
+                ImGui::Checkbox("Pinned##ViewportHUD", &m_viewportOverlay.Pinned);
+                ImGui::Checkbox("GPU pick row##ViewportHUD", &m_viewportOverlay.ShowGpuPick);
+                ImGui::SameLine();
+                ImGui::Checkbox("Readback row##ViewportHUD", &m_viewportOverlay.ShowReadback);
+                ImGui::Checkbox("Capture row##ViewportHUD", &m_viewportOverlay.ShowCapture);
+                ImGui::SameLine();
+                ImGui::Checkbox("Debug thumbnails##ViewportHUD", &m_viewportOverlay.ShowDebugThumbnails);
+                ImGui::TreePop();
+            }
             ImGui::Checkbox("Editor camera", &m_editorCameraEnabled);
             if (ImGui::Button("Frame Selection"))
             {
@@ -2938,6 +3078,7 @@ namespace
                 bool changed = false;
                 changed |= ImGui::DragFloat3("Player position", &m_playerPosition.x, 0.05f);
                 changed |= ImGui::DragFloat("Yaw", &m_playerYaw, 0.02f);
+                changed |= DrawTransformPrecisionControls();
                 changed |= DrawPlayerGizmo();
                 changed |= DrawMaterialEditor("Body Material", m_playerBodyMaterial);
                 if (changed)
@@ -2956,6 +3097,7 @@ namespace
                 changed |= ImGui::DragFloat3("Object position", &selected.Object.TransformData.Position.x, 0.05f);
                 changed |= ImGui::DragFloat3("Rotation", &selected.Object.TransformData.Rotation.x, 0.02f);
                 changed |= ImGui::DragFloat3("Scale", &selected.Object.TransformData.Scale.x, 0.05f, 0.05f, 50.0f);
+                changed |= DrawTransformPrecisionControls();
                 changed |= DrawTransformGizmo(selected.Object.TransformData);
                 changed |= DrawMaterialEditor("Material", selected.Object.MaterialData);
                 DrawPrefabOverridesPanel(selected);
@@ -2984,33 +3126,49 @@ namespace
             return changed;
         }
 
+        bool DrawTransformPrecisionControls()
+        {
+            bool changed = false;
+            if (ImGui::TreeNode("Transform Precision"))
+            {
+                changed |= ImGui::DragFloat("Nudge step##TransformPrecision", &m_transformPrecision.Step, 0.01f, 0.01f, 2.0f, "%.2f");
+                const char* pivotModes[] = { "Selection", "Median", "World origin" };
+                changed |= ImGui::Combo("Pivot##TransformPrecision", &m_transformPrecision.PivotMode, pivotModes, IM_ARRAYSIZE(pivotModes));
+                const char* orientationModes[] = { "World", "Local", "View" };
+                changed |= ImGui::Combo("Orientation##TransformPrecision", &m_transformPrecision.OrientationMode, orientationModes, IM_ARRAYSIZE(orientationModes));
+                ImGui::Text("Active: %s / %s", TransformPivotModeName(), TransformOrientationModeName());
+                ImGui::TreePop();
+            }
+            return changed;
+        }
+
         bool DrawTransformGizmo(Disparity::Transform& transform)
         {
             bool changed = false;
-            constexpr float Step = 0.25f;
+            const float step = std::clamp(m_transformPrecision.Step, 0.01f, 2.0f);
             if (ImGui::TreeNode("Transform Gizmo"))
             {
                 ImGui::TextUnformatted("Move");
-                changed |= AxisButton("-X", transform.Position.x, -Step);
+                changed |= AxisButton("-X", transform.Position.x, -step);
                 ImGui::SameLine();
-                changed |= AxisButton("+X", transform.Position.x, Step);
+                changed |= AxisButton("+X", transform.Position.x, step);
                 ImGui::SameLine();
-                changed |= AxisButton("-Y", transform.Position.y, -Step);
+                changed |= AxisButton("-Y", transform.Position.y, -step);
                 ImGui::SameLine();
-                changed |= AxisButton("+Y", transform.Position.y, Step);
+                changed |= AxisButton("+Y", transform.Position.y, step);
                 ImGui::SameLine();
-                changed |= AxisButton("-Z", transform.Position.z, -Step);
+                changed |= AxisButton("-Z", transform.Position.z, -step);
                 ImGui::SameLine();
-                changed |= AxisButton("+Z", transform.Position.z, Step);
+                changed |= AxisButton("+Z", transform.Position.z, step);
 
                 ImGui::TextUnformatted("Scale");
-                changed |= AxisButton("S-", transform.Scale.y, -0.1f, 0.05f);
+                changed |= AxisButton("S-", transform.Scale.y, -step * 0.4f, 0.05f);
                 ImGui::SameLine();
-                changed |= AxisButton("S+", transform.Scale.y, 0.1f, 0.05f);
+                changed |= AxisButton("S+", transform.Scale.y, step * 0.4f, 0.05f);
                 ImGui::SameLine();
-                changed |= AxisButton("Yaw-", transform.Rotation.y, -0.08f);
+                changed |= AxisButton("Yaw-", transform.Rotation.y, -step * 0.32f);
                 ImGui::SameLine();
-                changed |= AxisButton("Yaw+", transform.Rotation.y, 0.08f);
+                changed |= AxisButton("Yaw+", transform.Rotation.y, step * 0.32f);
                 ImGui::TreePop();
             }
 
@@ -3455,6 +3613,53 @@ namespace
                     {
                         ImGui::TextUnformatted(key.Bookmark.c_str());
                     }
+                    const char* clipLanes[] = { "camera_main", "vfx_insert", "title_card" };
+                    int clipLaneIndex = 0;
+                    for (int optionIndex = 0; optionIndex < IM_ARRAYSIZE(clipLanes); ++optionIndex)
+                    {
+                        if (key.ClipLane == clipLanes[optionIndex])
+                        {
+                            clipLaneIndex = optionIndex;
+                            break;
+                        }
+                    }
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    if (ImGui::Combo("Clip Lane", &clipLaneIndex, clipLanes, IM_ARRAYSIZE(clipLanes)))
+                    {
+                        key.ClipLane = clipLanes[clipLaneIndex];
+                    }
+                    const char* nestedSequences[] = { "main", "rift_reveal", "loop" };
+                    int nestedSequenceIndex = 0;
+                    for (int optionIndex = 0; optionIndex < IM_ARRAYSIZE(nestedSequences); ++optionIndex)
+                    {
+                        if (key.NestedSequence == nestedSequences[optionIndex])
+                        {
+                            nestedSequenceIndex = optionIndex;
+                            break;
+                        }
+                    }
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    if (ImGui::Combo("Nested", &nestedSequenceIndex, nestedSequences, IM_ARRAYSIZE(nestedSequences)))
+                    {
+                        key.NestedSequence = nestedSequences[nestedSequenceIndex];
+                    }
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::DragFloat("Hold", &key.HoldSeconds, 0.01f, 0.0f, 2.0f, "%.2f");
+                    const char* shotRoles[] = { "establishing", "hero", "detail", "transition", "loop" };
+                    int shotRoleIndex = 0;
+                    for (int optionIndex = 0; optionIndex < IM_ARRAYSIZE(shotRoles); ++optionIndex)
+                    {
+                        if (key.ShotRole == shotRoles[optionIndex])
+                        {
+                            shotRoleIndex = optionIndex;
+                            break;
+                        }
+                    }
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    if (ImGui::Combo("Role", &shotRoleIndex, shotRoles, IM_ARRAYSIZE(shotRoles)))
+                    {
+                        key.ShotRole = shotRoles[shotRoleIndex];
+                    }
                     ImGui::PopID();
                 }
 
@@ -3791,8 +3996,15 @@ namespace
 
             if (ImGui::TreeNode("Command History"))
             {
+                ImGui::InputText("Filter##CommandHistory", m_commandHistoryFilter.data(), m_commandHistoryFilter.size());
+                const std::string_view filter(m_commandHistoryFilter.data());
+                ImGui::Text("Showing %zu / %zu", CountFilteredCommandHistory(filter), m_commandHistory.size());
                 for (const std::string& command : m_commandHistory)
                 {
+                    if (!filter.empty() && command.find(filter) == std::string::npos)
+                    {
+                        continue;
+                    }
                     ImGui::BulletText("%s", command.c_str());
                 }
                 ImGui::TreePop();
@@ -3965,6 +4177,7 @@ namespace
                 ValidateRuntimeV20ProductionBatch();
                 ValidateRuntimeV22ProductionBatch();
                 ValidateRuntimeV23ProductionBatch();
+                ValidateRuntimeV24ProductionBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -4412,6 +4625,14 @@ namespace
             resource.Animations = ExtractPackageInteger(text, "animation_count");
             resource.Skins = ExtractPackageInteger(text, "skin_count");
             resource.Dependencies = ExtractPackageInteger(text, "dependency_count");
+            resource.GpuMeshResources = resource.Primitives;
+            resource.GpuMaterialResources = resource.Materials;
+            resource.AnimationClips = resource.Animations;
+            resource.EstimatedUploadBytes =
+                static_cast<uint64_t>(resource.Primitives) * 65536ull +
+                static_cast<uint64_t>(resource.Materials) * 4096ull +
+                static_cast<uint64_t>(resource.Animations) * 8192ull;
+            resource.GpuReady = resource.Loaded && resource.GpuMeshResources > 0 && resource.GpuMaterialResources > 0;
             resource.Path = resolvedPath;
             m_cookedPackageResource = resource;
             return resource.Loaded;
@@ -4532,6 +4753,129 @@ namespace
             }
 
             AddRuntimeVerificationNote("Validated v23 viewport overlay and high-resolution resolve systems.");
+        }
+
+        void ValidateRuntimeV24ProductionBatch()
+        {
+            const ViewportOverlaySettings overlaySnapshot = m_viewportOverlay;
+            ++m_runtimeEditorStats.ViewportHudControlTests;
+            if (!overlaySnapshot.Enabled ||
+                !overlaySnapshot.ShowGpuPick ||
+                !overlaySnapshot.ShowReadback ||
+                !overlaySnapshot.ShowCapture ||
+                !overlaySnapshot.ShowDebugThumbnails ||
+                BuildViewportOverlayLines().size() < 4)
+            {
+                AddRuntimeVerificationFailure("viewport HUD control validation failed.");
+            }
+
+            ++m_runtimeEditorStats.TransformPrecisionTests;
+            if (m_transformPrecision.Step <= 0.0f ||
+                std::string(TransformPivotModeName()).empty() ||
+                std::string(TransformOrientationModeName()).empty())
+            {
+                AddRuntimeVerificationFailure("transform precision control validation failed.");
+            }
+
+            if (m_commandHistory.empty())
+            {
+                m_commandHistory.push_back("Verification Command History Probe");
+            }
+            ++m_runtimeEditorStats.CommandHistoryFilterTests;
+            if (CountFilteredCommandHistory("Verification") == 0 ||
+                CountFilteredCommandHistory("") != m_commandHistory.size())
+            {
+                AddRuntimeVerificationFailure("command history filter validation failed.");
+            }
+
+            std::string schemaText;
+            ++m_runtimeEditorStats.RuntimeSchemaManifestTests;
+            if (!Disparity::FileSystem::ReadTextFile("Assets/Verification/RuntimeReportSchema.dschema", schemaText) ||
+                schemaText.find("viewport_hud_control_tests") == std::string::npos ||
+                schemaText.find("release_readiness_tests") == std::string::npos)
+            {
+                AddRuntimeVerificationFailure("runtime report schema manifest validation failed.");
+            }
+
+            ++m_runtimeEditorStats.ShotSequencerTests;
+            const size_t sequencedKeys = static_cast<size_t>(std::count_if(m_trailerKeys.begin(), m_trailerKeys.end(), [](const TrailerShotKey& key) {
+                return !key.ClipLane.empty() && !key.NestedSequence.empty() && !key.ShotRole.empty();
+            }));
+            const bool hasHold = std::any_of(m_trailerKeys.begin(), m_trailerKeys.end(), [](const TrailerShotKey& key) {
+                return key.HoldSeconds > 0.0f;
+            });
+            if (sequencedKeys != m_trailerKeys.size() || !hasHold)
+            {
+                AddRuntimeVerificationFailure("shot sequencer v6 metadata validation failed.");
+            }
+
+            ++m_runtimeEditorStats.VfxRendererProfileTests;
+            if (!m_riftVfxRendererProfile.SoftParticles ||
+                !m_riftVfxRendererProfile.DepthFade ||
+                !m_riftVfxRendererProfile.Sorted ||
+                !m_riftVfxRendererProfile.GpuSimulation ||
+                !m_riftVfxRendererProfile.MotionVectors ||
+                !m_riftVfxRendererProfile.TemporalReprojection ||
+                m_riftVfxRendererProfile.MaxParticles < m_lastRiftVfxStats.Particles ||
+                m_riftVfxRendererProfile.MaxRibbons < m_lastRiftVfxStats.Ribbons)
+            {
+                AddRuntimeVerificationFailure("rift VFX renderer profile validation failed.");
+            }
+
+            ++m_runtimeEditorStats.CookedGpuResourceTests;
+            if (!m_cookedPackageResource.Loaded)
+            {
+                (void)LoadCookedPackageRuntimeResource();
+            }
+            if (!m_cookedPackageResource.GpuReady ||
+                m_cookedPackageResource.GpuMeshResources == 0 ||
+                m_cookedPackageResource.GpuMaterialResources == 0 ||
+                m_cookedPackageResource.EstimatedUploadBytes == 0)
+            {
+                AddRuntimeVerificationFailure("cooked package GPU resource promotion validation failed.");
+            }
+
+            ++m_runtimeEditorStats.DependencyInvalidationTests;
+            const bool scannedAssets = m_assetDatabase.Scan("Assets");
+            const auto dependencyGraph = m_assetDatabase.BuildDependencyGraph();
+            const bool hasDependencyEdges = std::any_of(m_assetDatabase.GetRecords().begin(), m_assetDatabase.GetRecords().end(), [](const Disparity::AssetRecord& record) {
+                return !record.Dependencies.empty();
+            });
+            if (!scannedAssets || dependencyGraph.empty() || !hasDependencyEdges)
+            {
+                AddRuntimeVerificationFailure("asset dependency invalidation validation failed.");
+            }
+
+            const Disparity::AudioAnalysis analysis = Disparity::AudioSystem::GetAnalysis();
+            const float peakDb = analysis.Peak > 0.0001f ? 20.0f * std::log10(analysis.Peak) : -96.0f;
+            const float rmsDb = analysis.Rms > 0.0001f ? 20.0f * std::log10(analysis.Rms) : -96.0f;
+            ++m_runtimeEditorStats.AudioMeterCalibrationTests;
+            if (!std::isfinite(peakDb) ||
+                !std::isfinite(rmsDb) ||
+                m_audioMeterCalibration.AttackMs <= 0.0f ||
+                m_audioMeterCalibration.ReleaseMs <= m_audioMeterCalibration.AttackMs)
+            {
+                AddRuntimeVerificationFailure("audio meter calibration validation failed.");
+            }
+
+            ++m_runtimeEditorStats.ReleaseReadinessTests;
+            const std::array<std::filesystem::path, 6> releaseChecklist = {
+                std::filesystem::path("Tools/VerifyDisparity.ps1"),
+                std::filesystem::path("Tools/ReviewReleaseReadiness.ps1"),
+                std::filesystem::path("Tools/RuntimeVerifyDisparity.ps1"),
+                std::filesystem::path("Assets/Verification/RuntimeReportSchema.dschema"),
+                std::filesystem::path("Docs/ENGINE_FEATURES.md"),
+                std::filesystem::path("Docs/ROADMAP.md")
+            };
+            const bool releaseChecklistReady = std::all_of(releaseChecklist.begin(), releaseChecklist.end(), [](const std::filesystem::path& path) {
+                return std::filesystem::exists(Disparity::FileSystem::FindAssetPath(path));
+            });
+            if (!releaseChecklistReady)
+            {
+                AddRuntimeVerificationFailure("release readiness checklist validation failed.");
+            }
+
+            AddRuntimeVerificationNote("Validated ten v24 production batches.");
         }
 
         void ValidateRuntimeV20ProductionBatch()
@@ -4815,6 +5159,46 @@ namespace
             if (m_runtimeEditorStats.HighResResolveTests < m_runtimeBaseline.MinHighResResolveTests)
             {
                 AddRuntimeVerificationFailure("high-resolution resolve test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.ViewportHudControlTests < m_runtimeBaseline.MinViewportHudControlTests)
+            {
+                AddRuntimeVerificationFailure("viewport HUD control test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.TransformPrecisionTests < m_runtimeBaseline.MinTransformPrecisionTests)
+            {
+                AddRuntimeVerificationFailure("transform precision test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.CommandHistoryFilterTests < m_runtimeBaseline.MinCommandHistoryFilterTests)
+            {
+                AddRuntimeVerificationFailure("command history filter test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.RuntimeSchemaManifestTests < m_runtimeBaseline.MinRuntimeSchemaManifestTests)
+            {
+                AddRuntimeVerificationFailure("runtime schema manifest test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.ShotSequencerTests < m_runtimeBaseline.MinShotSequencerTests)
+            {
+                AddRuntimeVerificationFailure("shot sequencer test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.VfxRendererProfileTests < m_runtimeBaseline.MinVfxRendererProfileTests)
+            {
+                AddRuntimeVerificationFailure("VFX renderer profile test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.CookedGpuResourceTests < m_runtimeBaseline.MinCookedGpuResourceTests)
+            {
+                AddRuntimeVerificationFailure("cooked GPU resource test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.DependencyInvalidationTests < m_runtimeBaseline.MinDependencyInvalidationTests)
+            {
+                AddRuntimeVerificationFailure("dependency invalidation test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.AudioMeterCalibrationTests < m_runtimeBaseline.MinAudioMeterCalibrationTests)
+            {
+                AddRuntimeVerificationFailure("audio meter calibration test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.ReleaseReadinessTests < m_runtimeBaseline.MinReleaseReadinessTests)
+            {
+                AddRuntimeVerificationFailure("release readiness test count is below baseline.");
             }
         }
 
@@ -5304,14 +5688,35 @@ namespace
             report << "audio_production_tests=" << m_runtimeEditorStats.AudioProductionTests << "\n";
             report << "viewport_overlay_tests=" << m_runtimeEditorStats.ViewportOverlayTests << "\n";
             report << "high_res_resolve_tests=" << m_runtimeEditorStats.HighResResolveTests << "\n";
+            report << "viewport_hud_control_tests=" << m_runtimeEditorStats.ViewportHudControlTests << "\n";
+            report << "transform_precision_tests=" << m_runtimeEditorStats.TransformPrecisionTests << "\n";
+            report << "command_history_filter_tests=" << m_runtimeEditorStats.CommandHistoryFilterTests << "\n";
+            report << "runtime_schema_manifest_tests=" << m_runtimeEditorStats.RuntimeSchemaManifestTests << "\n";
+            report << "shot_sequencer_tests=" << m_runtimeEditorStats.ShotSequencerTests << "\n";
+            report << "vfx_renderer_profile_tests=" << m_runtimeEditorStats.VfxRendererProfileTests << "\n";
+            report << "cooked_gpu_resource_tests=" << m_runtimeEditorStats.CookedGpuResourceTests << "\n";
+            report << "dependency_invalidation_tests=" << m_runtimeEditorStats.DependencyInvalidationTests << "\n";
+            report << "audio_meter_calibration_tests=" << m_runtimeEditorStats.AudioMeterCalibrationTests << "\n";
+            report << "release_readiness_tests=" << m_runtimeEditorStats.ReleaseReadinessTests << "\n";
             const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
             report << "high_res_resolve_filter=" << captureMetrics.ResolveFilter << "\n";
             report << "high_res_resolve_samples=" << captureMetrics.ResolveSamples << "\n";
+            report << "viewport_hud_debug_thumbnails=" << (m_viewportOverlay.ShowDebugThumbnails ? "true" : "false") << "\n";
+            report << "transform_precision_step=" << m_transformPrecision.Step << "\n";
+            report << "command_history_filtered_verification=" << CountFilteredCommandHistory("Verification") << "\n";
+            report << "shot_sequencer_v6_keys=" << m_trailerKeys.size() << "\n";
+            report << "vfx_renderer_soft_particles=" << (m_riftVfxRendererProfile.SoftParticles ? "true" : "false") << "\n";
+            report << "vfx_renderer_temporal_reprojection=" << (m_riftVfxRendererProfile.TemporalReprojection ? "true" : "false") << "\n";
             report << "cooked_package_loaded=" << (m_cookedPackageResource.Loaded ? "true" : "false") << "\n";
             report << "cooked_package_path=" << m_cookedPackageResource.Path.string() << "\n";
             report << "cooked_package_meshes=" << m_cookedPackageResource.Meshes << "\n";
             report << "cooked_package_primitives=" << m_cookedPackageResource.Primitives << "\n";
             report << "cooked_package_materials=" << m_cookedPackageResource.Materials << "\n";
+            report << "cooked_package_gpu_ready=" << (m_cookedPackageResource.GpuReady ? "true" : "false") << "\n";
+            report << "cooked_package_gpu_meshes=" << m_cookedPackageResource.GpuMeshResources << "\n";
+            report << "cooked_package_gpu_upload_bytes=" << m_cookedPackageResource.EstimatedUploadBytes << "\n";
+            report << "audio_meter_reference_peak_db=" << m_audioMeterCalibration.ReferencePeakDb << "\n";
+            report << "audio_meter_reference_rms_db=" << m_audioMeterCalibration.ReferenceRmsDb << "\n";
             report << "cpu_frame_samples=" << m_runtimeBudgetStats.CpuSamples << "\n";
             report << "cpu_frame_max_ms=" << m_runtimeBudgetStats.CpuFrameMaxMs << "\n";
             report << "cpu_frame_avg_ms=" << m_runtimeBudgetStats.CpuFrameAverageMs << "\n";
@@ -7134,6 +7539,16 @@ namespace
                     else if (key == "min_audio_production_tests") { loadedBaseline.MinAudioProductionTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_viewport_overlay_tests") { loadedBaseline.MinViewportOverlayTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_high_res_resolve_tests") { loadedBaseline.MinHighResResolveTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_viewport_hud_control_tests") { loadedBaseline.MinViewportHudControlTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_transform_precision_tests") { loadedBaseline.MinTransformPrecisionTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_command_history_filter_tests") { loadedBaseline.MinCommandHistoryFilterTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_runtime_schema_manifest_tests") { loadedBaseline.MinRuntimeSchemaManifestTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_shot_sequencer_tests") { loadedBaseline.MinShotSequencerTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_vfx_renderer_profile_tests") { loadedBaseline.MinVfxRendererProfileTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_cooked_gpu_resource_tests") { loadedBaseline.MinCookedGpuResourceTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_dependency_invalidation_tests") { loadedBaseline.MinDependencyInvalidationTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_audio_meter_calibration_tests") { loadedBaseline.MinAudioMeterCalibrationTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_release_readiness_tests") { loadedBaseline.MinReleaseReadinessTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
@@ -7197,6 +7612,10 @@ namespace
         RuntimeBaseline m_runtimeBaseline;
         GpuPickVisualizationState m_gpuPickVisualization;
         RiftVfxSystemStats m_lastRiftVfxStats;
+        RiftVfxRendererProfile m_riftVfxRendererProfile;
+        ViewportOverlaySettings m_viewportOverlay;
+        TransformPrecisionState m_transformPrecision;
+        AudioMeterCalibrationProfile m_audioMeterCalibration;
         CookedPackageRuntimeResource m_cookedPackageResource;
         Disparity::FrameCaptureResult m_runtimeCapture;
         Disparity::Entity m_playerEntity = 0;
@@ -7310,6 +7729,7 @@ namespace
         std::string m_lastPickStatus = "None";
         std::string m_lastGpuPickStatus = "Not sampled";
         std::string m_gizmoStatus = "Idle";
+        std::array<char, 64> m_commandHistoryFilter = {};
         std::filesystem::path m_highResCaptureSourcePath;
         std::filesystem::path m_highResCaptureOutputPath;
         std::filesystem::path m_highResCaptureNativePngPath;
