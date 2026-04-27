@@ -40,6 +40,8 @@ Controls:
 - `F7`: toggle cinematic showcase mode, hide the editor, boost post-processing, and orbit the animated DISPARITY rift for capture-friendly footage.
 - `F8`: toggle trailer/photo mode with authored camera shots from `Assets/Cinematics/Showcase.dshot`, depth of field, lens dirt, and title-safe guide overlays.
 - `F9`: capture the current presented frame and write a source PPM, source PNG, async 2x PPM photo, and schema v3 high-resolution capture manifest under `Saved/Captures`.
+- `F10`: reset the public playable demo, returning all rift shards, sentinels, extraction state, and HUD objectives to their start state.
+- Hold `Shift` while using `WASD` in the playable demo to sprint. Collect all six rift shards, avoid sentinel pressure, then return to the extraction beacon to complete the loop.
 - `Ctrl+Z` / `Ctrl+Y`: undo and redo editor-side scene/player/renderer edits.
 - `Ctrl+C` / `Ctrl+V` / `Ctrl+D` / `Delete`: copy, paste, duplicate, or delete the selected scene object.
 - When the mouse is released with `Tab`, left-click the viewport to pick objects. Hold `Ctrl` while clicking or selecting in the hierarchy to multi-select. The editor tries GPU object-ID readback first and falls back to CPU ray tests.
@@ -322,10 +324,20 @@ Editor UI:
 - Runtime and audio diagnostics now cover sequencer editing/readiness, keyboard preview bindings, undoable shot edits, real-content pulse inputs, streamed-music layer readiness, spatial emitter authoring, attenuation assets, and calibrated mixer metering.
 - Production tooling now reviews both v25 and v28 followup manifests, requires v28 category counters in every runtime baseline, records v28 performance-history columns, checks release-readiness schema coverage, and reports the new category counters in summaries.
 
+## Engine v29 Public Demo Batch Implemented
+
+- The prototype now has a small public playable loop layered into the showpiece scene: collect six visible rift shards, manage stability/focus pressure, and return to the extraction beacon for a completion beat.
+- New public-demo visuals include shard beacons, path markers, sentinel patrol pressure, extraction gate feedback, rift charge intensification, HUD objectives, and stronger completion feedback that reads well in capture.
+- `F10` resets the loop while the game is running, and runtime verification exercises a deterministic full completion route.
+- `Assets/Verification/V29PublicDemo.dfollowups` tracks thirty public-demo readiness points across gameplay, visuals, HUD, audio feedback, capture, verification, and production hygiene.
+- Runtime reports, baselines, release-readiness review, performance history, and the schema manifest now require public-demo counters including shard pickups, HUD frames, beacon draws, completion, and all thirty `v29_point_*` metrics.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
+- Turn the v29 shard loop into a richer vertical slice with a short objective chain, light traversal puzzle, fail/retry states, gamepad support, and a menu-to-gameplay flow for public demos.
+- Add real player feedback: animation states, footsteps, pickup/completion sounds through the production audio path, screen-space hit/pressure cues, and content-driven rift pulses.
 - Promote v28 graph-owned rendering diagnostics into actual DX11 pass execution: explicit bind/unbind barriers, alias lifetime validation, GPU culling, Forward+ lighting, cascaded shadows, motion-vector rendering, and stronger temporal AA.
 - Move the high-resolution capture proof from resolved source-frame sampling to true tiled offscreen supersampling with per-tile camera jitter, selectable resolve filters, real EXR output, and real async compression workers.
 - Turn editor profile import/export/diff and workspace presets into a versioned per-project preference system with dock-layout files, schema migration, conflict-safe merge, and checked-in team defaults.

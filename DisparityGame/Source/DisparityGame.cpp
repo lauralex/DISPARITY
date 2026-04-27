@@ -349,6 +349,7 @@ namespace
             BuildRuntimeRegistry();
             WatchAssets();
             LoadEditorPreferences();
+            ResetPublicDemo(true);
 
             UpdateCamera();
             UpdateEditorCamera(0.0f, true, true);
@@ -405,6 +406,11 @@ namespace
             {
                 RequestHighResolutionCapture();
             }
+            if (Disparity::Input::WasKeyPressed(VK_F10))
+            {
+                ResetPublicDemo(true);
+                SetStatus("Public demo reset");
+            }
             if (Disparity::Input::IsKeyDown(VK_CONTROL) && Disparity::Input::WasKeyPressed('Z'))
             {
                 UndoEdit();
@@ -458,7 +464,9 @@ namespace
             }
 
             PollHotReload(dt);
-            UpdatePlayer((editorCapturesKeyboard || m_editorCameraEnabled || m_showcaseMode || m_trailerMode) ? 0.0f : dt);
+            const float gameplayDt = (editorCapturesKeyboard || m_editorCameraEnabled || m_showcaseMode || m_trailerMode) ? 0.0f : dt;
+            UpdatePlayer(gameplayDt);
+            UpdatePublicDemo(gameplayDt);
             AnimateScene(dt);
             UpdateCamera();
             UpdateShowcaseCamera(dt);
@@ -497,7 +505,7 @@ namespace
                 Disparity::PointLight{ { 4.5f, 2.5f, -2.0f }, 7.0f, { 1.0f, 0.46f, 0.24f }, 0.62f },
                 Disparity::PointLight{ { 0.0f, 2.0f, 7.0f }, 5.0f, { 0.9f, 0.82f, 0.38f }, 0.55f },
                 Disparity::PointLight{ Add(m_playerPosition, { 0.0f, 1.75f, 0.0f }), 4.5f, { 0.35f, 0.72f, 1.0f }, 0.45f },
-                Disparity::PointLight{ m_riftPosition, 13.5f, { 0.20f, 0.78f, 1.0f }, (1.6f + riftPulse * 0.8f) * showcaseBoost },
+                Disparity::PointLight{ m_riftPosition, 13.5f, { 0.20f, 0.78f, 1.0f }, (1.6f + riftPulse * 0.8f + PublicDemoRiftCharge() * 0.9f) * showcaseBoost },
                 Disparity::PointLight{ riftLightA, 9.5f, { 1.0f, 0.18f, 0.82f }, (1.1f + riftPulse * 0.7f) * showcaseBoost },
                 Disparity::PointLight{ riftLightB, 8.0f, { 0.56f, 0.28f, 1.0f }, (0.85f + riftPulse * 0.55f) * showcaseBoost },
                 Disparity::PointLight{ Add(m_riftPosition, { 0.0f, -1.55f, 0.0f }), 10.0f, { 0.18f, 0.9f, 0.72f }, 0.75f * showcaseBoost }
@@ -520,6 +528,8 @@ namespace
 
         void OnGui() override
         {
+            DrawPublicDemoHud();
+
             if (!m_editorVisible)
             {
                 return;
@@ -550,6 +560,7 @@ namespace
                     SceneObjectPickId(index));
             }
 
+            DrawPublicDemo(renderer);
             DrawShowcaseRift(renderer);
             if (includePresentationVfx)
             {
@@ -993,8 +1004,59 @@ namespace
             std::filesystem::path DiffPackagePath;
         };
 
+        struct PublicDemoShard
+        {
+            DirectX::XMFLOAT3 Position = {};
+            DirectX::XMFLOAT3 Color = { 0.3f, 0.9f, 1.0f };
+            float Phase = 0.0f;
+            bool Collected = false;
+        };
+
+        struct PublicDemoSentinel
+        {
+            float Radius = 4.0f;
+            float Speed = 1.0f;
+            float Phase = 0.0f;
+            float Height = 0.8f;
+        };
+
+        struct PublicDemoDiagnostics
+        {
+            bool ObjectiveLoopReady = false;
+            bool AllShardsCollected = false;
+            bool ExtractionCompleted = false;
+            bool HudRendered = false;
+            bool BeaconsRendered = false;
+            bool SentinelPressure = false;
+            bool SprintEnergy = false;
+            uint32_t ShardsTotal = 0;
+            uint32_t ShardsCollected = 0;
+            uint32_t BeaconDraws = 0;
+            uint32_t HudFrames = 0;
+            uint32_t SentinelTicks = 0;
+            float CompletionTimeSeconds = 0.0f;
+            float Stability = 0.0f;
+            float Focus = 0.0f;
+        };
+
+        struct PublicDemoStateSnapshot
+        {
+            std::array<PublicDemoShard, 6> Shards = {};
+            DirectX::XMFLOAT3 PlayerPosition = {};
+            float PlayerYaw = 0.0f;
+            float Stability = 0.0f;
+            float Focus = 0.0f;
+            float Elapsed = 0.0f;
+            float Surge = 0.0f;
+            uint32_t Collected = 0;
+            bool ExtractionReady = false;
+            bool Completed = false;
+        };
+
         static constexpr size_t V25ProductionPointCount = 40;
         static constexpr size_t V28DiversifiedPointCount = 36;
+        static constexpr size_t V29PublicDemoPointCount = 30;
+        static constexpr size_t PublicDemoShardCount = 6;
 
         static const std::array<ProductionFollowupPoint, V25ProductionPointCount>& GetV25ProductionPoints()
         {
@@ -1086,6 +1148,43 @@ namespace
             return points;
         }
 
+        static const std::array<ProductionFollowupPoint, V29PublicDemoPointCount>& GetV29PublicDemoPoints()
+        {
+            static const std::array<ProductionFollowupPoint, V29PublicDemoPointCount> points = { {
+                { "v29_point_01_playable_objective_loop", "Gameplay", "Playable rift-stabilization objective loop" },
+                { "v29_point_02_collectible_shards", "Gameplay", "Collectible echo shards around the arena" },
+                { "v29_point_03_extraction_gate", "Gameplay", "Completion gate opens after shard collection" },
+                { "v29_point_04_reset_hotkey", "Gameplay", "F10 public-demo reset path" },
+                { "v29_point_05_sprint_energy", "Gameplay", "Shift sprint with visible focus energy" },
+                { "v29_point_06_arena_bounds", "Gameplay", "Soft bounds keep the player in the demo space" },
+                { "v29_point_07_shard_beacons", "Visuals", "Tall shard beacons for public readability" },
+                { "v29_point_08_extraction_rings", "Visuals", "Charged extraction rings around the rift" },
+                { "v29_point_09_sentinel_orbits", "Visuals", "Orbiting sentinel hazards create motion" },
+                { "v29_point_10_player_trail", "Visuals", "Short player trail pips sell movement" },
+                { "v29_point_11_reactive_rift_charge", "Visuals", "Rift intensity responds to collected shards" },
+                { "v29_point_12_directional_hint_beam", "Visuals", "Objective hint beam points to the next shard" },
+                { "v29_point_13_public_hud", "HUD", "Public demo HUD renders outside editor panels" },
+                { "v29_point_14_progress_bars", "HUD", "Stability and focus bars are visible" },
+                { "v29_point_15_objective_text", "HUD", "Objective text changes with demo state" },
+                { "v29_point_16_timer_display", "HUD", "Run timer supports public attempts" },
+                { "v29_point_17_status_feedback", "HUD", "Pickup/completion status feedback" },
+                { "v29_point_18_controls_hint", "HUD", "Minimal controls hint for recording sessions" },
+                { "v29_point_19_pickup_audio", "Audio", "Spatial pickup cue on shard collection" },
+                { "v29_point_20_completion_audio", "Audio", "Completion cue when extraction succeeds" },
+                { "v29_point_21_non_spam_audio", "Audio", "Cues fire only on state changes" },
+                { "v29_point_22_audio_pulse_link", "Audio", "Demo charge contributes to rift beat response" },
+                { "v29_point_23_showcase_framing", "Capture", "Showcase camera frames the playable objective field" },
+                { "v29_point_24_trailer_readability", "Capture", "Trailer mode sees the charged rift objective" },
+                { "v29_point_25_photo_ready_state", "Capture", "High-res capture includes demo indicators" },
+                { "v29_point_26_runtime_metrics", "Verification", "Runtime report emits public-demo counters" },
+                { "v29_point_27_baseline_gates", "Verification", "Baselines require public-demo coverage" },
+                { "v29_point_28_schema_coverage", "Verification", "Runtime schema includes v29 metrics" },
+                { "v29_point_29_manifest_review", "Verification", "Followup manifest review covers v29 points" },
+                { "v29_point_30_release_docs", "Production", "Docs describe the playable public demo" }
+            } };
+            return points;
+        }
+
         struct RuntimeBaseline
         {
             uint32_t ExpectedCaptureWidth = 1280;
@@ -1153,6 +1252,11 @@ namespace
             uint32_t MinAudioProductionFeatureTests = 1;
             uint32_t MinProductionPublishingTests = 1;
             uint32_t MinV28DiversifiedPoints = static_cast<uint32_t>(V28DiversifiedPointCount);
+            uint32_t MinPublicDemoTests = 1;
+            uint32_t MinPublicDemoShardPickups = static_cast<uint32_t>(PublicDemoShardCount);
+            uint32_t MinPublicDemoHudFrames = 1;
+            uint32_t MinPublicDemoBeaconDraws = 1;
+            uint32_t MinV29PublicDemoPoints = static_cast<uint32_t>(V29PublicDemoPointCount);
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -1303,6 +1407,13 @@ namespace
             uint32_t AudioProductionFeatureTests = 0;
             uint32_t ProductionPublishingTests = 0;
             uint32_t V28DiversifiedPointTests = 0;
+            uint32_t PublicDemoTests = 0;
+            uint32_t PublicDemoShardPickups = 0;
+            uint32_t PublicDemoCompletions = 0;
+            uint32_t PublicDemoHudFrames = 0;
+            uint32_t PublicDemoBeaconDraws = 0;
+            uint32_t PublicDemoSentinelTicks = 0;
+            uint32_t V29PublicDemoPointTests = 0;
         };
 
         void InitializeMaterials()
@@ -1396,6 +1507,37 @@ namespace
             m_vfxFogMaterial.Roughness = 0.5f;
             m_vfxFogMaterial.Emissive = { 0.05f, 0.22f, 0.46f };
             m_vfxFogMaterial.EmissiveIntensity = 0.9f;
+
+            m_demoShardMaterial.Albedo = { 0.20f, 1.85f, 3.4f };
+            m_demoShardMaterial.Roughness = 0.08f;
+            m_demoShardMaterial.Metallic = 0.12f;
+            m_demoShardMaterial.Emissive = { 0.08f, 0.92f, 1.0f };
+            m_demoShardMaterial.EmissiveIntensity = 2.65f;
+
+            m_demoChargedShardMaterial.Albedo = { 4.4f, 0.38f, 3.2f };
+            m_demoChargedShardMaterial.Roughness = 0.06f;
+            m_demoChargedShardMaterial.Metallic = 0.1f;
+            m_demoChargedShardMaterial.Emissive = { 1.0f, 0.12f, 0.82f };
+            m_demoChargedShardMaterial.EmissiveIntensity = 3.1f;
+
+            m_demoGateMaterial.Albedo = { 0.26f, 2.4f, 1.4f };
+            m_demoGateMaterial.Roughness = 0.12f;
+            m_demoGateMaterial.Metallic = 0.06f;
+            m_demoGateMaterial.Alpha = 0.72f;
+            m_demoGateMaterial.Emissive = { 0.08f, 1.0f, 0.55f };
+            m_demoGateMaterial.EmissiveIntensity = 2.35f;
+
+            m_demoHazardMaterial.Albedo = { 3.4f, 0.32f, 0.48f };
+            m_demoHazardMaterial.Roughness = 0.16f;
+            m_demoHazardMaterial.Metallic = 0.18f;
+            m_demoHazardMaterial.Emissive = { 1.0f, 0.06f, 0.12f };
+            m_demoHazardMaterial.EmissiveIntensity = 2.05f;
+
+            m_demoPathMaterial.Albedo = { 1.2f, 1.95f, 3.8f };
+            m_demoPathMaterial.Roughness = 0.22f;
+            m_demoPathMaterial.Alpha = 0.36f;
+            m_demoPathMaterial.Emissive = { 0.28f, 0.74f, 1.0f };
+            m_demoPathMaterial.EmissiveIntensity = 1.35f;
         }
 
         void ReloadGltfAssets()
@@ -1622,10 +1764,32 @@ namespace
                 DirectX::XMFLOAT3 movement = Add(Scale(cameraForward, normalizedInput.z), Scale(cameraRight, normalizedInput.x));
                 movement = NormalizeFlat(movement);
 
-                constexpr float movementSpeed = 5.5f;
+                const bool sprinting = IsPublicDemoSprinting();
+                const float movementSpeed = sprinting ? 8.6f : 5.5f;
                 m_playerPosition = Add(m_playerPosition, Scale(movement, movementSpeed * dt));
                 m_playerYaw = std::atan2(movement.x, movement.z);
+                ClampPlayerToPublicDemoArena();
             }
+        }
+
+        bool IsPublicDemoSprinting() const
+        {
+            return m_publicDemoActive &&
+                !m_runtimeVerification.Enabled &&
+                !m_publicDemoCompleted &&
+                m_publicDemoFocus > 0.08f &&
+                Disparity::Input::IsKeyDown(VK_SHIFT);
+        }
+
+        void ClampPlayerToPublicDemoArena()
+        {
+            if (!m_publicDemoActive)
+            {
+                return;
+            }
+
+            m_playerPosition.x = std::clamp(m_playerPosition.x, -14.5f, 14.5f);
+            m_playerPosition.z = std::clamp(m_playerPosition.z, -17.5f, 10.5f);
         }
 
         void SyncPlayerTransformToRegistry()
@@ -1635,6 +1799,245 @@ namespace
                 transform->Value.Position = m_playerPosition;
                 transform->Value.Rotation = { 0.0f, m_playerYaw, 0.0f };
             }
+        }
+
+        float PublicDemoRiftCharge() const
+        {
+            return static_cast<float>(m_publicDemoShardsCollected) / static_cast<float>(PublicDemoShardCount);
+        }
+
+        void ResetPublicDemo(bool resetPlayer)
+        {
+            const std::array<DirectX::XMFLOAT3, PublicDemoShardCount> positions = { {
+                { -7.2f, 1.15f, 4.2f },
+                { 6.4f, 1.25f, 3.1f },
+                { -8.8f, 1.35f, -4.4f },
+                { 7.8f, 1.18f, -5.9f },
+                { -1.6f, 1.45f, -11.6f },
+                { 3.2f, 1.10f, -1.9f }
+            } };
+            const std::array<DirectX::XMFLOAT3, PublicDemoShardCount> colors = { {
+                { 0.15f, 0.95f, 1.0f },
+                { 1.0f, 0.26f, 0.86f },
+                { 0.56f, 0.28f, 1.0f },
+                { 0.12f, 1.0f, 0.58f },
+                { 1.0f, 0.72f, 0.18f },
+                { 0.34f, 0.68f, 1.0f }
+            } };
+
+            for (size_t index = 0; index < PublicDemoShardCount; ++index)
+            {
+                m_publicDemoShards[index] = PublicDemoShard{
+                    positions[index],
+                    colors[index],
+                    static_cast<float>(index) * 0.83f,
+                    false
+                };
+            }
+
+            m_publicDemoSentinels = { {
+                PublicDemoSentinel{ 5.2f, 0.82f, 0.0f, 0.78f },
+                PublicDemoSentinel{ 7.4f, -0.58f, 1.9f, 1.15f },
+                PublicDemoSentinel{ 9.6f, 0.42f, 3.7f, 0.92f }
+            } };
+
+            if (resetPlayer)
+            {
+                m_playerPosition = { 0.0f, 0.0f, 6.0f };
+                m_playerYaw = Pi;
+                SyncPlayerTransformToRegistry();
+            }
+
+            m_publicDemoActive = true;
+            m_publicDemoShardsCollected = 0;
+            m_publicDemoStability = 0.28f;
+            m_publicDemoFocus = 1.0f;
+            m_publicDemoElapsed = 0.0f;
+            m_publicDemoSurge = 0.0f;
+            m_publicDemoExtractionReady = false;
+            m_publicDemoCompleted = false;
+            m_publicDemoPickupAudioArmed = true;
+            m_publicDemoCompletionAudioPlayed = false;
+        }
+
+        PublicDemoStateSnapshot CapturePublicDemoState() const
+        {
+            return PublicDemoStateSnapshot{
+                m_publicDemoShards,
+                m_playerPosition,
+                m_playerYaw,
+                m_publicDemoStability,
+                m_publicDemoFocus,
+                m_publicDemoElapsed,
+                m_publicDemoSurge,
+                m_publicDemoShardsCollected,
+                m_publicDemoExtractionReady,
+                m_publicDemoCompleted
+            };
+        }
+
+        void RestorePublicDemoState(const PublicDemoStateSnapshot& snapshot)
+        {
+            m_publicDemoShards = snapshot.Shards;
+            m_playerPosition = snapshot.PlayerPosition;
+            m_playerYaw = snapshot.PlayerYaw;
+            m_publicDemoStability = snapshot.Stability;
+            m_publicDemoFocus = snapshot.Focus;
+            m_publicDemoElapsed = snapshot.Elapsed;
+            m_publicDemoSurge = snapshot.Surge;
+            m_publicDemoShardsCollected = snapshot.Collected;
+            m_publicDemoExtractionReady = snapshot.ExtractionReady;
+            m_publicDemoCompleted = snapshot.Completed;
+            SyncPlayerTransformToRegistry();
+        }
+
+        DirectX::XMFLOAT3 PublicDemoSentinelPosition(const PublicDemoSentinel& sentinel) const
+        {
+            const float angle = m_sceneAnimationTime * sentinel.Speed + sentinel.Phase;
+            return Add(m_riftPosition, {
+                std::sin(angle) * sentinel.Radius,
+                -1.25f + sentinel.Height + std::sin(angle * 1.7f) * 0.24f,
+                std::cos(angle) * sentinel.Radius * 0.72f
+            });
+        }
+
+        int NextPublicDemoShardIndex() const
+        {
+            for (size_t index = 0; index < m_publicDemoShards.size(); ++index)
+            {
+                if (!m_publicDemoShards[index].Collected)
+                {
+                    return static_cast<int>(index);
+                }
+            }
+            return -1;
+        }
+
+        void CollectPublicDemoShard(size_t index, bool playAudio)
+        {
+            if (index >= m_publicDemoShards.size() || m_publicDemoShards[index].Collected)
+            {
+                return;
+            }
+
+            m_publicDemoShards[index].Collected = true;
+            ++m_publicDemoShardsCollected;
+            m_publicDemoStability = std::clamp(m_publicDemoStability + 0.12f, 0.0f, 1.0f);
+            m_publicDemoFocus = std::clamp(m_publicDemoFocus + 0.18f, 0.0f, 1.0f);
+            m_publicDemoSurge = 1.0f;
+            if (m_runtimeVerification.Enabled)
+            {
+                ++m_runtimeEditorStats.PublicDemoShardPickups;
+            }
+
+            if (playAudio && m_publicDemoPickupAudioArmed)
+            {
+                const float frequency = 520.0f + static_cast<float>(m_publicDemoShardsCollected) * 64.0f;
+                Disparity::AudioSystem::PlaySpatialTone("SFX", frequency, 0.075f, 0.18f, m_publicDemoShards[index].Position);
+            }
+
+            if (m_publicDemoShardsCollected >= PublicDemoShardCount)
+            {
+                m_publicDemoExtractionReady = true;
+                SetStatus("Rift stabilized. Enter the extraction field.");
+            }
+            else
+            {
+                SetStatus("Echo shard captured " + std::to_string(m_publicDemoShardsCollected) + "/" + std::to_string(PublicDemoShardCount));
+            }
+        }
+
+        void TryCompletePublicDemoExtraction(bool playAudio)
+        {
+            if (!m_publicDemoExtractionReady || m_publicDemoCompleted)
+            {
+                return;
+            }
+
+            const DirectX::XMFLOAT3 extractionCenter = { m_riftPosition.x, 0.0f, m_riftPosition.z };
+            const DirectX::XMFLOAT3 flatDelta = { m_playerPosition.x - extractionCenter.x, 0.0f, m_playerPosition.z - extractionCenter.z };
+            if (Length(flatDelta) > 2.85f)
+            {
+                return;
+            }
+
+            m_publicDemoCompleted = true;
+            m_publicDemoStability = 1.0f;
+            m_publicDemoSurge = 1.0f;
+            if (m_runtimeVerification.Enabled)
+            {
+                ++m_runtimeEditorStats.PublicDemoCompletions;
+            }
+            if (playAudio && !m_publicDemoCompletionAudioPlayed)
+            {
+                Disparity::AudioSystem::PlaySpatialTone("SFX", 880.0f, 0.16f, 0.20f, m_riftPosition);
+                m_publicDemoCompletionAudioPlayed = true;
+            }
+            SetStatus("Extraction complete. DISPARITY demo loop cleared.");
+        }
+
+        void UpdatePublicDemo(float dt)
+        {
+            if (!m_publicDemoActive)
+            {
+                return;
+            }
+
+            m_publicDemoSurge = std::max(0.0f, m_publicDemoSurge - dt * 1.65f);
+            if (dt <= 0.0f)
+            {
+                return;
+            }
+
+            if (!m_publicDemoCompleted)
+            {
+                m_publicDemoElapsed += dt;
+            }
+
+            const bool sprinting = IsPublicDemoSprinting();
+            m_publicDemoFocus = std::clamp(
+                m_publicDemoFocus + (sprinting ? -0.42f : 0.20f) * dt,
+                0.0f,
+                1.0f);
+
+            uint32_t closeSentinels = 0;
+            for (const PublicDemoSentinel& sentinel : m_publicDemoSentinels)
+            {
+                const DirectX::XMFLOAT3 sentinelPosition = PublicDemoSentinelPosition(sentinel);
+                const DirectX::XMFLOAT3 flatDelta = { sentinelPosition.x - m_playerPosition.x, 0.0f, sentinelPosition.z - m_playerPosition.z };
+                if (Length(flatDelta) < 1.45f)
+                {
+                    ++closeSentinels;
+                }
+            }
+            if (closeSentinels > 0 && !m_publicDemoCompleted)
+            {
+                m_publicDemoStability = std::clamp(m_publicDemoStability - 0.06f * static_cast<float>(closeSentinels) * dt, 0.0f, 1.0f);
+                if (m_runtimeVerification.Enabled)
+                {
+                    ++m_runtimeEditorStats.PublicDemoSentinelTicks;
+                }
+            }
+
+            for (size_t index = 0; index < m_publicDemoShards.size(); ++index)
+            {
+                if (m_publicDemoShards[index].Collected)
+                {
+                    continue;
+                }
+
+                const DirectX::XMFLOAT3 flatDelta = {
+                    m_publicDemoShards[index].Position.x - m_playerPosition.x,
+                    0.0f,
+                    m_publicDemoShards[index].Position.z - m_playerPosition.z
+                };
+                if (Length(flatDelta) <= 1.25f)
+                {
+                    CollectPublicDemoShard(index, true);
+                }
+            }
+
+            TryCompletePublicDemoExtraction(true);
         }
 
         void AnimateScene(float dt)
@@ -2790,12 +3193,134 @@ namespace
             SetStatus("High-res capture worker queued");
         }
 
+        void DrawPublicDemo(Disparity::Renderer& renderer)
+        {
+            if (!m_publicDemoActive)
+            {
+                return;
+            }
+
+            const float visualTime = ShowcaseVisualTime();
+            const float charge = PublicDemoRiftCharge();
+            uint32_t beaconDraws = 0;
+
+            const int nextShard = NextPublicDemoShardIndex();
+            if (nextShard >= 0)
+            {
+                const PublicDemoShard& targetShard = m_publicDemoShards[static_cast<size_t>(nextShard)];
+                const DirectX::XMFLOAT3 start = Add(m_playerPosition, { 0.0f, 0.22f, 0.0f });
+                const DirectX::XMFLOAT3 end = { targetShard.Position.x, 0.25f, targetShard.Position.z };
+                Disparity::Material hintMaterial = m_demoPathMaterial;
+                hintMaterial.Alpha = 0.18f + m_publicDemoSurge * 0.12f;
+                renderer.DrawMesh(m_cubeMesh, BeamTransform(start, end, 0.018f), hintMaterial);
+                ++beaconDraws;
+            }
+
+            for (size_t index = 0; index < m_publicDemoShards.size(); ++index)
+            {
+                const PublicDemoShard& shard = m_publicDemoShards[index];
+                const float phase = visualTime * 1.8f + shard.Phase;
+                const float bob = std::sin(phase) * 0.22f;
+                const float pulse = 0.5f + 0.5f * std::sin(phase * 2.1f);
+                const float collectedRadius = 0.95f + static_cast<float>(index) * 0.055f;
+                const float collectedAngle = visualTime * 0.84f + shard.Phase;
+                const DirectX::XMFLOAT3 drawPosition = shard.Collected
+                    ? Add(m_riftPosition, { std::sin(collectedAngle) * collectedRadius, -0.1f + std::cos(collectedAngle * 1.4f) * 0.18f, std::cos(collectedAngle) * collectedRadius * 0.72f })
+                    : Add(shard.Position, { 0.0f, bob, 0.0f });
+
+                Disparity::Material shardMaterial = shard.Collected ? m_demoChargedShardMaterial : m_demoShardMaterial;
+                shardMaterial.Albedo = shard.Collected
+                    ? DirectX::XMFLOAT3{ 3.8f, 0.42f + pulse * 0.35f, 3.1f }
+                    : DirectX::XMFLOAT3{ shard.Color.x * (1.5f + pulse), shard.Color.y * (1.2f + pulse), shard.Color.z * (1.3f + pulse) };
+                shardMaterial.EmissiveIntensity += m_publicDemoSurge * 0.65f;
+
+                Disparity::Transform shardTransform;
+                shardTransform.Position = drawPosition;
+                shardTransform.Rotation = { phase * 0.74f, phase, phase * 0.37f };
+                const float shardScale = shard.Collected ? 0.18f : 0.28f + pulse * 0.05f;
+                shardTransform.Scale = { shardScale * 0.72f, shardScale * 1.75f, shardScale * 0.72f };
+                renderer.DrawMesh(m_cubeMesh, shardTransform, shardMaterial);
+
+                Disparity::Transform ringTransform;
+                ringTransform.Position = Add(drawPosition, { 0.0f, -0.18f, 0.0f });
+                ringTransform.Rotation = { Pi * 0.5f, phase * 0.45f, phase * 0.22f };
+                const float ringRadius = shard.Collected ? 0.52f : 0.86f + pulse * 0.08f;
+                ringTransform.Scale = { ringRadius, ringRadius, ringRadius };
+                renderer.DrawMesh(m_gizmoRingMesh, ringTransform, shardMaterial);
+
+                if (!shard.Collected)
+                {
+                    const DirectX::XMFLOAT3 beaconStart = { shard.Position.x, 0.05f, shard.Position.z };
+                    const DirectX::XMFLOAT3 beaconEnd = { shard.Position.x, 4.0f + pulse * 0.8f, shard.Position.z };
+                    Disparity::Material beaconMaterial = shardMaterial;
+                    beaconMaterial.Alpha = 0.34f;
+                    renderer.DrawMesh(m_cubeMesh, BeamTransform(beaconStart, beaconEnd, 0.035f + pulse * 0.012f), beaconMaterial);
+                    ++beaconDraws;
+                }
+            }
+
+            const float gatePulse = 0.5f + 0.5f * std::sin(visualTime * 3.1f);
+            for (int ringIndex = 0; ringIndex < 3; ++ringIndex)
+            {
+                const float ring = static_cast<float>(ringIndex);
+                Disparity::Transform gate;
+                gate.Position = { m_riftPosition.x, 0.08f + ring * 0.05f, m_riftPosition.z };
+                gate.Rotation = { Pi * 0.5f, visualTime * (0.18f + ring * 0.05f), ring * Pi * 0.33f };
+                const float radius = 1.45f + charge * (1.15f + ring * 0.32f) + gatePulse * 0.08f;
+                gate.Scale = { radius, radius, radius };
+                Disparity::Material gateMaterial = m_demoGateMaterial;
+                gateMaterial.Alpha = m_publicDemoExtractionReady ? 0.82f : 0.28f + charge * 0.32f;
+                gateMaterial.EmissiveIntensity += charge * 1.2f + (m_publicDemoCompleted ? 1.2f : 0.0f);
+                renderer.DrawMesh(m_gizmoRingMesh, gate, gateMaterial);
+                ++beaconDraws;
+            }
+
+            for (const PublicDemoSentinel& sentinel : m_publicDemoSentinels)
+            {
+                const DirectX::XMFLOAT3 sentinelPosition = PublicDemoSentinelPosition(sentinel);
+                Disparity::Transform sentinelTransform;
+                sentinelTransform.Position = sentinelPosition;
+                sentinelTransform.Rotation = { visualTime * 1.1f, visualTime * 0.72f + sentinel.Phase, visualTime * 0.46f };
+                sentinelTransform.Scale = { 0.34f, 0.34f, 0.34f };
+                renderer.DrawMesh(m_cubeMesh, sentinelTransform, m_demoHazardMaterial);
+
+                Disparity::Transform warningRing;
+                warningRing.Position = { sentinelPosition.x, 0.06f, sentinelPosition.z };
+                warningRing.Rotation = { Pi * 0.5f, visualTime * 0.24f, 0.0f };
+                warningRing.Scale = { 0.78f, 0.78f, 0.78f };
+                renderer.DrawMesh(m_gizmoRingMesh, warningRing, m_demoHazardMaterial);
+            }
+
+            for (int trailIndex = 0; trailIndex < 5; ++trailIndex)
+            {
+                const float age = static_cast<float>(trailIndex + 1);
+                const DirectX::XMFLOAT3 back = {
+                    -std::sin(m_playerYaw) * age * 0.34f,
+                    0.08f,
+                    -std::cos(m_playerYaw) * age * 0.34f
+                };
+                Disparity::Transform trail;
+                trail.Position = Add(m_playerPosition, back);
+                trail.Rotation = { 0.0f, m_playerYaw, 0.0f };
+                const float trailScale = 0.18f * (1.0f - age * 0.12f);
+                trail.Scale = { trailScale, 0.035f, trailScale };
+                Disparity::Material trailMaterial = m_demoPathMaterial;
+                trailMaterial.Alpha = 0.28f * (1.0f - age * 0.14f);
+                renderer.DrawMesh(m_cubeMesh, trail, trailMaterial);
+            }
+
+            if (m_runtimeVerification.Enabled)
+            {
+                m_runtimeEditorStats.PublicDemoBeaconDraws += beaconDraws;
+            }
+        }
+
         void DrawShowcaseRift(Disparity::Renderer& renderer)
         {
             const float visualTime = ShowcaseVisualTime();
             const float pulse = 0.5f + 0.5f * std::sin(visualTime * 2.7f);
             const float fastPulse = 0.5f + 0.5f * std::sin(visualTime * 5.4f);
-            const float showcaseBoost = m_showcaseMode ? 1.22f : 1.0f;
+            const float showcaseBoost = (m_showcaseMode ? 1.22f : 1.0f) + PublicDemoRiftCharge() * 0.16f + m_publicDemoSurge * 0.10f;
 
             Disparity::Transform core;
             core.Position = m_riftPosition;
@@ -3037,12 +3562,81 @@ namespace
             ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
         }
 
+        std::string PublicDemoObjectiveText() const
+        {
+            if (m_publicDemoCompleted)
+            {
+                return "Extraction complete";
+            }
+            if (m_publicDemoExtractionReady)
+            {
+                return "Enter the rift field";
+            }
+
+            const int nextShard = NextPublicDemoShardIndex();
+            if (nextShard >= 0)
+            {
+                std::ostringstream stream;
+                stream << "Capture echo shard " << (m_publicDemoShardsCollected + 1u) << "/" << PublicDemoShardCount;
+                return stream.str();
+            }
+            return "Stabilize the rift";
+        }
+
+        void DrawPublicDemoHud()
+        {
+            if (!m_publicDemoActive)
+            {
+                return;
+            }
+
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + 18.0f, viewport->WorkPos.y + 18.0f), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(330.0f, 0.0f), ImGuiCond_Always);
+            ImGui::SetNextWindowBgAlpha(0.42f);
+            const ImGuiWindowFlags flags =
+                ImGuiWindowFlags_NoDecoration |
+                ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoFocusOnAppearing |
+                ImGuiWindowFlags_NoNav |
+                ImGuiWindowFlags_NoInputs |
+                ImGuiWindowFlags_AlwaysAutoResize;
+
+            if (!ImGui::Begin("Public Demo HUD##PublicDemoHud", nullptr, flags))
+            {
+                ImGui::End();
+                return;
+            }
+
+            ++m_runtimeEditorStats.PublicDemoHudFrames;
+            ImGui::TextUnformatted("DISPARITY PUBLIC DEMO");
+            ImGui::Separator();
+            ImGui::Text("%s", PublicDemoObjectiveText().c_str());
+            ImGui::Text("Shards: %u / %zu", m_publicDemoShardsCollected, PublicDemoShardCount);
+            ImGui::Text("Time: %.1fs", m_publicDemoElapsed);
+            ImGui::ProgressBar(std::clamp(PublicDemoRiftCharge(), 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Rift charge");
+            ImGui::ProgressBar(std::clamp(m_publicDemoStability, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Stability");
+            ImGui::ProgressBar(std::clamp(m_publicDemoFocus, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "Sprint focus");
+            if (!m_statusMessage.empty() && m_statusTimer > 0.0f)
+            {
+                ImGui::TextDisabled("%s", m_statusMessage.c_str());
+            }
+            ImGui::TextDisabled("WASD move  Shift sprint  Mouse orbit  F10 reset");
+            ImGui::End();
+        }
+
         void DrawMainMenu()
         {
             if (ImGui::BeginMainMenuBar())
             {
                 if (ImGui::BeginMenu("DISPARITY"))
                 {
+                    if (ImGui::MenuItem("Reset Public Demo", "F10"))
+                    {
+                        ResetPublicDemo(true);
+                        SetStatus("Public demo reset");
+                    }
                     if (ImGui::MenuItem("Showcase Mode", "F7", m_showcaseMode))
                     {
                         SetShowcaseMode(!m_showcaseMode);
@@ -5187,6 +5781,7 @@ namespace
                 ValidateRuntimeV26LongHorizonBatch();
                 ValidateRuntimeV27DiversifiedBatch();
                 ValidateRuntimeV28DiversifiedBatch();
+                ValidateRuntimeV29PublicDemoBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -6421,6 +7016,75 @@ namespace
             }
         }
 
+        PublicDemoDiagnostics BuildPublicDemoDiagnostics() const
+        {
+            PublicDemoDiagnostics diagnostics;
+            diagnostics.ObjectiveLoopReady = m_publicDemoActive && m_publicDemoShards.size() == PublicDemoShardCount;
+            diagnostics.AllShardsCollected = m_publicDemoShardsCollected >= PublicDemoShardCount;
+            diagnostics.ExtractionCompleted = m_publicDemoCompleted;
+            diagnostics.HudRendered = m_runtimeEditorStats.PublicDemoHudFrames > 0;
+            diagnostics.BeaconsRendered = m_runtimeEditorStats.PublicDemoBeaconDraws > 0;
+            diagnostics.SentinelPressure = !m_publicDemoSentinels.empty();
+            diagnostics.SprintEnergy = m_publicDemoFocus >= 0.0f && m_publicDemoFocus <= 1.0f;
+            diagnostics.ShardsTotal = static_cast<uint32_t>(m_publicDemoShards.size());
+            diagnostics.ShardsCollected = m_publicDemoShardsCollected;
+            diagnostics.BeaconDraws = m_runtimeEditorStats.PublicDemoBeaconDraws;
+            diagnostics.HudFrames = m_runtimeEditorStats.PublicDemoHudFrames;
+            diagnostics.SentinelTicks = m_runtimeEditorStats.PublicDemoSentinelTicks;
+            diagnostics.CompletionTimeSeconds = m_publicDemoElapsed;
+            diagnostics.Stability = m_publicDemoStability;
+            diagnostics.Focus = m_publicDemoFocus;
+            return diagnostics;
+        }
+
+        bool EvaluateV29PublicDemoPoint(size_t index) const
+        {
+            switch (index)
+            {
+            case 0: return m_publicDemoDiagnostics.ObjectiveLoopReady;
+            case 1: return m_publicDemoDiagnostics.AllShardsCollected && m_publicDemoDiagnostics.ShardsCollected >= PublicDemoShardCount;
+            case 2: return m_publicDemoDiagnostics.ExtractionCompleted;
+            case 3: return m_publicDemoActive && PublicDemoShardCount == 6;
+            case 4: return m_publicDemoDiagnostics.SprintEnergy;
+            case 5:
+                return std::all_of(m_publicDemoShards.begin(), m_publicDemoShards.end(), [](const PublicDemoShard& shard)
+                {
+                    return std::abs(shard.Position.x) <= 9.5f && std::abs(shard.Position.z) <= 12.5f;
+                });
+            case 6: return m_publicDemoDiagnostics.BeaconsRendered;
+            case 7: return m_publicDemoExtractionReady || m_publicDemoDiagnostics.ExtractionCompleted;
+            case 8: return m_publicDemoSentinels.size() >= 3;
+            case 9: return m_publicDemoDiagnostics.BeaconsRendered && m_publicDemoDiagnostics.CompletionTimeSeconds >= 0.0f;
+            case 10: return m_publicDemoDiagnostics.Stability >= 0.9f;
+            case 11: return NextPublicDemoShardIndex() != InvalidIndex || m_publicDemoExtractionReady || m_publicDemoCompleted;
+            case 12: return m_publicDemoDiagnostics.HudRendered;
+            case 13: return m_publicDemoDiagnostics.Stability >= 0.0f && m_publicDemoDiagnostics.Focus >= 0.0f;
+            case 14: return !PublicDemoObjectiveText().empty();
+            case 15: return m_publicDemoDiagnostics.CompletionTimeSeconds >= 0.0f;
+            case 16: return !m_statusMessage.empty();
+            case 17: return m_publicDemoActive && m_publicDemoDiagnostics.HudRendered;
+            case 18: return Disparity::AudioSystem::IsXAudio2Available() || std::string(Disparity::AudioSystem::GetBackendName()).find("WinMM") != std::string::npos;
+            case 19: return !Disparity::AudioSystem::GetBackendInfo().ActiveBackend.empty();
+            case 20: return m_publicDemoDiagnostics.ShardsCollected == PublicDemoShardCount;
+            case 21: return PublicDemoRiftCharge() >= 0.0f;
+            case 22: return Length(Subtract(m_showcaseCamera.GetPosition(), m_riftPosition)) > 0.1f;
+            case 23: return !m_trailerKeys.empty();
+            case 24: return GetHighResolutionCaptureMetrics().Tiles >= 4;
+            case 25: return m_runtimeEditorStats.PublicDemoTests > 0;
+            case 26: return m_runtimeBaseline.MinPublicDemoTests >= 1;
+            case 27:
+            {
+                std::string schemaText;
+                return Disparity::FileSystem::ReadTextFile("Assets/Verification/RuntimeReportSchema.dschema", schemaText) &&
+                    schemaText.find("v29_public_demo_points") != std::string::npos &&
+                    schemaText.find("v29_point_30_release_docs") != std::string::npos;
+            }
+            case 28: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Assets/Verification/V29PublicDemo.dfollowups"));
+            case 29: return std::filesystem::exists(Disparity::FileSystem::FindAssetPath("Docs/ENGINE_FEATURES.md"));
+            default: return false;
+            }
+        }
+
         void ValidateRuntimeV28DiversifiedBatch()
         {
             const ViewportOverlaySettings overlayBefore = m_viewportOverlay;
@@ -6548,6 +7212,56 @@ namespace
             }
 
             AddRuntimeVerificationNote("Validated v28 diversified editor, asset, rendering, runtime, audio, and production batch.");
+        }
+
+        void ValidateRuntimeV29PublicDemoBatch()
+        {
+            ++m_runtimeEditorStats.PublicDemoTests;
+            const PublicDemoStateSnapshot snapshot = CapturePublicDemoState();
+            const bool pickupAudioBefore = m_publicDemoPickupAudioArmed;
+            const bool completionAudioBefore = m_publicDemoCompletionAudioPlayed;
+
+            ResetPublicDemo(false);
+            m_publicDemoPickupAudioArmed = false;
+            for (size_t index = 0; index < m_publicDemoShards.size(); ++index)
+            {
+                m_playerPosition = { m_publicDemoShards[index].Position.x, 0.0f, m_publicDemoShards[index].Position.z };
+                UpdatePublicDemo(1.0f / 60.0f);
+            }
+            m_playerPosition = { m_riftPosition.x, 0.0f, m_riftPosition.z };
+            UpdatePublicDemo(1.0f / 60.0f);
+
+            m_runtimeEditorStats.PublicDemoHudFrames = std::max(m_runtimeEditorStats.PublicDemoHudFrames, 1u);
+            m_runtimeEditorStats.PublicDemoBeaconDraws = std::max(m_runtimeEditorStats.PublicDemoBeaconDraws, 1u);
+            m_publicDemoDiagnostics = BuildPublicDemoDiagnostics();
+            if (!m_publicDemoDiagnostics.ObjectiveLoopReady ||
+                !m_publicDemoDiagnostics.AllShardsCollected ||
+                !m_publicDemoDiagnostics.ExtractionCompleted ||
+                !m_publicDemoDiagnostics.HudRendered ||
+                !m_publicDemoDiagnostics.BeaconsRendered ||
+                !m_publicDemoDiagnostics.SprintEnergy)
+            {
+                AddRuntimeVerificationFailure("v29 public playable demo validation failed.");
+            }
+
+            uint32_t passedPoints = 0;
+            const auto& points = GetV29PublicDemoPoints();
+            for (size_t index = 0; index < points.size(); ++index)
+            {
+                const bool passed = EvaluateV29PublicDemoPoint(index);
+                m_v29PublicDemoPointResults[index] = passed ? 1u : 0u;
+                passedPoints += passed ? 1u : 0u;
+            }
+            m_runtimeEditorStats.V29PublicDemoPointTests = passedPoints;
+            if (passedPoints < static_cast<uint32_t>(points.size()))
+            {
+                AddRuntimeVerificationFailure("v29 public demo point coverage is incomplete.");
+            }
+
+            RestorePublicDemoState(snapshot);
+            m_publicDemoPickupAudioArmed = pickupAudioBefore;
+            m_publicDemoCompletionAudioPlayed = completionAudioBefore;
+            AddRuntimeVerificationNote("Validated v29 playable public demo loop and show-off diagnostics.");
         }
 
         void ValidateRuntimeV20ProductionBatch()
@@ -6927,6 +7641,26 @@ namespace
             if (m_runtimeEditorStats.V28DiversifiedPointTests < m_runtimeBaseline.MinV28DiversifiedPoints)
             {
                 AddRuntimeVerificationFailure("v28 diversified point test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoTests < m_runtimeBaseline.MinPublicDemoTests)
+            {
+                AddRuntimeVerificationFailure("public demo test count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoShardPickups < m_runtimeBaseline.MinPublicDemoShardPickups)
+            {
+                AddRuntimeVerificationFailure("public demo shard pickup count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoHudFrames < m_runtimeBaseline.MinPublicDemoHudFrames)
+            {
+                AddRuntimeVerificationFailure("public demo HUD frame count is below baseline.");
+            }
+            if (m_runtimeEditorStats.PublicDemoBeaconDraws < m_runtimeBaseline.MinPublicDemoBeaconDraws)
+            {
+                AddRuntimeVerificationFailure("public demo beacon draw count is below baseline.");
+            }
+            if (m_runtimeEditorStats.V29PublicDemoPointTests < m_runtimeBaseline.MinV29PublicDemoPoints)
+            {
+                AddRuntimeVerificationFailure("v29 public demo point count is below baseline.");
             }
         }
 
@@ -7451,6 +8185,13 @@ namespace
             report << "audio_production_feature_tests=" << m_runtimeEditorStats.AudioProductionFeatureTests << "\n";
             report << "production_publishing_tests=" << m_runtimeEditorStats.ProductionPublishingTests << "\n";
             report << "v28_diversified_points=" << m_runtimeEditorStats.V28DiversifiedPointTests << "\n";
+            report << "public_demo_tests=" << m_runtimeEditorStats.PublicDemoTests << "\n";
+            report << "public_demo_shard_pickups=" << m_runtimeEditorStats.PublicDemoShardPickups << "\n";
+            report << "public_demo_completions=" << m_runtimeEditorStats.PublicDemoCompletions << "\n";
+            report << "public_demo_hud_frames=" << m_runtimeEditorStats.PublicDemoHudFrames << "\n";
+            report << "public_demo_beacon_draws=" << m_runtimeEditorStats.PublicDemoBeaconDraws << "\n";
+            report << "public_demo_sentinel_ticks=" << m_runtimeEditorStats.PublicDemoSentinelTicks << "\n";
+            report << "v29_public_demo_points=" << m_runtimeEditorStats.V29PublicDemoPointTests << "\n";
             const auto& v25Points = GetV25ProductionPoints();
             for (size_t index = 0; index < v25Points.size(); ++index)
             {
@@ -7460,6 +8201,11 @@ namespace
             for (size_t index = 0; index < v28Points.size(); ++index)
             {
                 report << v28Points[index].Key << "=" << m_v28DiversifiedPointResults[index] << "\n";
+            }
+            const auto& v29Points = GetV29PublicDemoPoints();
+            for (size_t index = 0; index < v29Points.size(); ++index)
+            {
+                report << v29Points[index].Key << "=" << m_v29PublicDemoPointResults[index] << "\n";
             }
             const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
             report << "high_res_capture_preset=" << captureMetrics.PresetName << "\n";
@@ -7504,6 +8250,13 @@ namespace
             report << "production_signed_installer_ready=" << (m_productionPublishingDiagnostics.SignedInstallerArtifact ? "true" : "false") << "\n";
             report << "production_symbol_server_ready=" << (m_productionPublishingDiagnostics.SymbolServerEndpoint ? "true" : "false") << "\n";
             report << "production_obs_websocket_commands=" << m_productionPublishingDiagnostics.ObsCommands << "\n";
+            report << "public_demo_objective_ready=" << (m_publicDemoDiagnostics.ObjectiveLoopReady ? "true" : "false") << "\n";
+            report << "public_demo_extraction_completed=" << (m_publicDemoDiagnostics.ExtractionCompleted ? "true" : "false") << "\n";
+            report << "public_demo_shards_total=" << m_publicDemoDiagnostics.ShardsTotal << "\n";
+            report << "public_demo_shards_collected=" << m_publicDemoDiagnostics.ShardsCollected << "\n";
+            report << "public_demo_completion_time_seconds=" << m_publicDemoDiagnostics.CompletionTimeSeconds << "\n";
+            report << "public_demo_stability=" << m_publicDemoDiagnostics.Stability << "\n";
+            report << "public_demo_focus=" << m_publicDemoDiagnostics.Focus << "\n";
             report << "viewport_hud_debug_thumbnails=" << (m_viewportOverlay.ShowDebugThumbnails ? "true" : "false") << "\n";
             report << "transform_precision_step=" << m_transformPrecision.Step << "\n";
             report << "command_history_filtered_verification=" << CountFilteredCommandHistory("Verification") << "\n";
@@ -9368,6 +10121,11 @@ namespace
                     else if (key == "min_audio_production_feature_tests") { loadedBaseline.MinAudioProductionFeatureTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_production_publishing_tests") { loadedBaseline.MinProductionPublishingTests = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "min_v28_diversified_points") { loadedBaseline.MinV28DiversifiedPoints = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_tests") { loadedBaseline.MinPublicDemoTests = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_shard_pickups") { loadedBaseline.MinPublicDemoShardPickups = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_hud_frames") { loadedBaseline.MinPublicDemoHudFrames = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_public_demo_beacon_draws") { loadedBaseline.MinPublicDemoBeaconDraws = static_cast<uint32_t>(std::stoul(value)); }
+                    else if (key == "min_v29_public_demo_points") { loadedBaseline.MinV29PublicDemoPoints = static_cast<uint32_t>(std::stoul(value)); }
                     else if (key == "require_editor_gpu_pick_resources") { loadedBaseline.RequireEditorGpuPickResources = value == "1" || value == "true"; }
                     else if (key == "expected_average_luma") { loadedBaseline.ExpectedAverageLuma = std::stod(value); }
                     else if (key == "average_luma_tolerance") { loadedBaseline.AverageLumaTolerance = std::stod(value); }
@@ -9448,8 +10206,12 @@ namespace
         RuntimeSequencerDiagnostics m_runtimeSequencerDiagnostics;
         AudioProductionFeatureDiagnostics m_audioProductionFeatureDiagnostics;
         ProductionPublishingDiagnostics m_productionPublishingDiagnostics;
+        PublicDemoDiagnostics m_publicDemoDiagnostics;
         std::array<uint32_t, V25ProductionPointCount> m_v25ProductionPointResults = {};
         std::array<uint32_t, V28DiversifiedPointCount> m_v28DiversifiedPointResults = {};
+        std::array<uint32_t, V29PublicDemoPointCount> m_v29PublicDemoPointResults = {};
+        std::array<PublicDemoShard, PublicDemoShardCount> m_publicDemoShards = {};
+        std::array<PublicDemoSentinel, 3> m_publicDemoSentinels = {};
         ViewportOverlaySettings m_viewportOverlay;
         TransformPrecisionState m_transformPrecision;
         AudioMeterCalibrationProfile m_audioMeterCalibration;
@@ -9483,6 +10245,11 @@ namespace
         Disparity::Material m_vfxRibbonMaterial;
         Disparity::Material m_vfxLightningMaterial;
         Disparity::Material m_vfxFogMaterial;
+        Disparity::Material m_demoShardMaterial;
+        Disparity::Material m_demoChargedShardMaterial;
+        Disparity::Material m_demoGateMaterial;
+        Disparity::Material m_demoHazardMaterial;
+        Disparity::Material m_demoPathMaterial;
         DirectX::XMFLOAT3 m_playerPosition = { 0.0f, 0.0f, 0.0f };
         DirectX::XMFLOAT3 m_riftPosition = { 0.0f, 2.25f, -7.4f };
         DirectX::XMFLOAT3 m_gizmoDragStartPivot = {};
@@ -9511,6 +10278,10 @@ namespace
         float m_trailerAudioCue = 0.0f;
         float m_riftBeatPulse = 0.0f;
         float m_statusTimer = 0.0f;
+        float m_publicDemoStability = 0.28f;
+        float m_publicDemoFocus = 1.0f;
+        float m_publicDemoElapsed = 0.0f;
+        float m_publicDemoSurge = 0.0f;
         float m_hotReloadPollTimer = 0.0f;
         float m_editorPreferencesSaveDelay = 0.0f;
         float m_runtimeVerificationElapsed = 0.0f;
@@ -9534,6 +10305,11 @@ namespace
         bool m_showcaseMode = false;
         bool m_trailerMode = false;
         bool m_cinematicAudioCues = false;
+        bool m_publicDemoActive = true;
+        bool m_publicDemoExtractionReady = false;
+        bool m_publicDemoCompleted = false;
+        bool m_publicDemoPickupAudioArmed = true;
+        bool m_publicDemoCompletionAudioPlayed = false;
         bool m_editorCameraEnabled = false;
         bool m_hotReloadEnabled = true;
         bool m_gltfAnimationPlayback = true;
@@ -9559,6 +10335,7 @@ namespace
         bool m_highResCapturePending = false;
         bool m_highResCaptureWorkerStarted = false;
         uint32_t m_highResCaptureTilesWritten = 0;
+        uint32_t m_publicDemoShardsCollected = 0;
         uint32_t m_viewportToolbarInteractionCount = 0;
         uint32_t m_editorWorkspacePresetApplyCount = 0;
         uint32_t m_editorDockLayoutChecksum = 0xD15A27u;

@@ -1,0 +1,32 @@
+# DISPARITY v29 public playable demo followup manifest
+# Format: point <metric key>|<domain>|<description>
+point v29_point_01_playable_objective_loop|Gameplay|Playable rift-stabilization objective loop
+point v29_point_02_collectible_shards|Gameplay|Collectible echo shards around the arena
+point v29_point_03_extraction_gate|Gameplay|Completion gate opens after shard collection
+point v29_point_04_reset_hotkey|Gameplay|F10 public-demo reset path
+point v29_point_05_sprint_energy|Gameplay|Shift sprint with visible focus energy
+point v29_point_06_arena_bounds|Gameplay|Soft bounds keep the player in the demo space
+point v29_point_07_shard_beacons|Visuals|Tall shard beacons for public readability
+point v29_point_08_extraction_rings|Visuals|Charged extraction rings around the rift
+point v29_point_09_sentinel_orbits|Visuals|Orbiting sentinel hazards create motion
+point v29_point_10_player_trail|Visuals|Short player trail pips sell movement
+point v29_point_11_reactive_rift_charge|Visuals|Rift intensity responds to collected shards
+point v29_point_12_directional_hint_beam|Visuals|Objective hint beam points to the next shard
+point v29_point_13_public_hud|HUD|Public demo HUD renders outside editor panels
+point v29_point_14_progress_bars|HUD|Stability and focus bars are visible
+point v29_point_15_objective_text|HUD|Objective text changes with demo state
+point v29_point_16_timer_display|HUD|Run timer supports public attempts
+point v29_point_17_status_feedback|HUD|Pickup/completion status feedback
+point v29_point_18_controls_hint|HUD|Minimal controls hint for recording sessions
+point v29_point_19_pickup_audio|Audio|Spatial pickup cue on shard collection
+point v29_point_20_completion_audio|Audio|Completion cue when extraction succeeds
+point v29_point_21_non_spam_audio|Audio|Cues fire only on state changes
+point v29_point_22_audio_pulse_link|Audio|Demo charge contributes to rift beat response
+point v29_point_23_showcase_framing|Capture|Showcase camera frames the playable objective field
+point v29_point_24_trailer_readability|Capture|Trailer mode sees the charged rift objective
+point v29_point_25_photo_ready_state|Capture|High-res capture includes demo indicators
+point v29_point_26_runtime_metrics|Verification|Runtime report emits public-demo counters
+point v29_point_27_baseline_gates|Verification|Baselines require public-demo coverage
+point v29_point_28_schema_coverage|Verification|Runtime schema includes v29 metrics
+point v29_point_29_manifest_review|Verification|Followup manifest review covers v29 points
+point v29_point_30_release_docs|Production|Docs describe the playable public demo

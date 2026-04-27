@@ -1,6 +1,15 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v28 versions of many requested followups. The next milestones should keep rotating through graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+The current engine now has functional v29 versions of many requested followups, including a small public playable loop for capture and demos. The next milestones should keep rotating through gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+
+## v29 Completed Public Playable Demo Batch
+
+- Added `Assets/Verification/V29PublicDemo.dfollowups`, a thirty-point public-demo followup manifest spanning gameplay, visuals, HUD, audio feedback, capture, verification, and production hygiene.
+- The prototype now has a replayable shard-collection objective: collect six glowing rift shards, manage sentinel pressure, return to the extraction beacon, and trigger a visible completion pulse.
+- `F10` resets the public demo state while the game is running, while `Shift+WASD` adds a sprint layer for the first playable loop.
+- The scene now draws route markers, shard beacons, sentinel hazards, extraction gate feedback, rift charge/surge modulation, and HUD objective/status text that remain visible when the editor is hidden.
+- Runtime verification completes the public demo route deterministically, validates shard pickups, completion, HUD frames, beacon draws, stability/focus values, and all thirty `v29_point_*` metrics.
+- Runtime baselines, runtime report schema checks, release-readiness review, manifest review, and performance-history summaries now require the v29 public-demo counters.
 
 ## v28 Completed Diversified Production Batch
 
@@ -177,6 +186,8 @@ The current engine now has functional v28 versions of many requested followups. 
 
 ## Runtime
 
+- Turn the v29 shard loop into a richer vertical slice with chained objectives, a short traversal puzzle, retry/failure rules, checkpoint reset polish, and gamepad input.
+- Add animation-state placeholders, footstep/pickup/completion events, objective gates, and clearer success/failure telemetry for the playable demo.
 - Extend the job-system async IO helper into asset streaming, cancellation, priorities, file watching, and frame pacing diagnostics.
 - Add serialization versioning, save-game separation, and deterministic scene IDs.
 - Add physics, collision queries, controller movement, animation-driven character logic, and gameplay event routing.
