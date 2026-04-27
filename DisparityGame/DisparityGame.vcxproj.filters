@@ -4,12 +4,21 @@
     <Filter Include="Source">
       <UniqueIdentifier>{8F8909D0-2395-4EC6-B70D-99549575EE8C}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\DisparityGame">
+      <UniqueIdentifier>{B84D34E9-052C-4D60-81B7-44E586E6F47A}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Assets\Shaders">
       <UniqueIdentifier>{7A6D752D-6D4E-4C0D-9AE2-55D76001A5A7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\DisparityGame.cpp"><Filter>Source</Filter></ClCompile>
+    <ClCompile Include="Source\DisparityGame\GameFollowupCatalog.cpp"><Filter>Source\DisparityGame</Filter></ClCompile>
+    <ClCompile Include="Source\DisparityGame\GameModuleRegistry.cpp"><Filter>Source\DisparityGame</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Source\DisparityGame\GameFollowupCatalog.h"><Filter>Source\DisparityGame</Filter></ClInclude>
+    <ClInclude Include="Source\DisparityGame\GameModuleRegistry.h"><Filter>Source\DisparityGame</Filter></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Assets\Shaders\Basic.hlsl"><Filter>Assets\Shaders</Filter></None>

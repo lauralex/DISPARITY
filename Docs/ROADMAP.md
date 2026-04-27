@@ -1,6 +1,14 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v35 versions of many requested followups, including engine-owned event routing, frame-phase scheduling, scene queries, streaming-budget planning, render-graph budget analysis, and the existing public vertical slice with collision traversal, enemy archetypes, controller-polish telemetry, blend-tree manifests, gamepad/menu flow, failure presentation, and content-backed cue/animation hooks. The next milestones should keep rotating through core engine architecture, gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+The current engine now has functional v36 versions of many requested followups, including engine-owned event routing, frame-phase scheduling, scene queries, streaming-budget planning, render-graph budget analysis, a service registry, structured telemetry, typed config variables, editor panel registry metadata, and the existing public vertical slice with collision traversal, enemy archetypes, controller-polish telemetry, blend-tree manifests, gamepad/menu flow, failure presentation, and content-backed cue/animation hooks. The next milestones should keep rotating through core engine architecture, gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, verification, and source-structure work so no production lane falls behind.
+
+## v36 Completed Mixed Engine/Game/Editor Batch
+
+- Added `Assets/Verification/V36MixedBatch.dfollowups`, a sixty-point batch spanning Engine, Editor, Game, Assets, Rendering, Runtime, Verification, and Production.
+- Added engine-owned `ServiceRegistry`, `TelemetryStream`, `ConfigVarRegistry`, and `EditorPanelRegistry` modules for subsystem readiness, structured counters/events/gauges, typed runtime tuning, deterministic panel order, dock targets, visibility toggles, and diagnostics.
+- Started splitting the game source: `DisparityGame/Source/DisparityGame/GameFollowupCatalog.*` now owns the v36 point catalog, while `DisparityGame/Source/DisparityGame/GameModuleRegistry.*` owns a documented source/module inventory used by runtime verification.
+- The Profiler includes a `Mixed Engine/Game/Editor Readiness v36` table, and runtime verification emits service, telemetry, config, editor-panel, source-split, and all `v36_point_*` metrics.
+- Baselines, runtime schema checks, release-readiness review, production-batch review, baseline review, performance-history summaries, README, feature docs, roadmap, and AGENTS context all require the v36 mixed batch.
 
 ## v35 Completed Engine Architecture Batch
 
@@ -209,6 +217,8 @@ The current engine now has functional v35 versions of many requested followups, 
 
 ## Editor
 
+- Turn the v36 `EditorPanelRegistry` into the live source of truth for visible editor panels, dock targets, saved layouts, workspace presets, panel search, and keyboard/gamepad navigation.
+- Add a dedicated `Engine Services` panel that reads `ServiceRegistry`, `TelemetryStream`, and `ConfigVarRegistry` live instead of only through the Profiler v36 table.
 - Add an engine-event inspector panel that records `EventBus` traffic, filters by channel/type/entity, can replay a captured event trace, and links events back to selected scene objects.
 - Add a scheduler graph panel that shows `FrameScheduler` phases, task order, skipped tasks, per-task budgets, and hot path warnings.
 - Promote v28 profile import/export/diff and workspace presets into a versioned per-project preference system with dock-layout files, conflict-safe migration, team defaults, and toolbar customization.
@@ -220,6 +230,8 @@ The current engine now has functional v35 versions of many requested followups, 
 
 ## Asset Pipeline
 
+- Use v36 config variables for real streaming budgets, import worker limits, package promotion toggles, and editor-visible asset pipeline quality presets.
+- Route asset database scans, import events, hot reload, dependency invalidation, and cook/package review through the v36 telemetry stream.
 - Replace the v35 `AssetStreamingPlan` smoke test with real async streaming requests backed by the job system, cancellation tokens, dependency-aware priority lanes, and GPU upload handoff.
 - Add streaming-budget overlays in the editor for pending bytes, deferred assets, pinned requests, and rollback state.
 - Replace the v28 package-promotion diagnostics with real optimized GPU mesh/material/animation resource uploads from structured `.dglbpack` packages.
@@ -229,6 +241,8 @@ The current engine now has functional v35 versions of many requested followups, 
 
 ## Rendering
 
+- Register renderer subsystems through the v36 `ServiceRegistry` and expose render quality/profile changes through `ConfigVarRegistry` instead of scattered panel-local settings.
+- Route render graph budget warnings, debug-view usage, high-resolution capture phases, and post-process toggles through `TelemetryStream` so trailer captures leave searchable diagnostics.
 - Turn v35 render-graph budget analysis into enforceable budget classes for editor, runtime, trailer capture, and packaged builds, with per-pass memory estimates and trend gates.
 - Turn v28 render-graph advanced diagnostics into real DX11 bind/unbind barriers and resource alias lifetime validation around physical allocation slots.
 - Replace GPU culling and Forward+ diagnostic counters with actual compute/CPU fallback culling and clustered light-bin buffers.
@@ -241,6 +255,9 @@ The current engine now has functional v35 versions of many requested followups, 
 
 ## Runtime
 
+- Move the main update loop onto the v35 `FrameScheduler` and let v36 `ServiceRegistry` validate all required game/editor/runtime services during startup.
+- Use v36 `TelemetryStream` as the shared route for gameplay objective events, encounter pressure, traversal actions, audio cues, save/load events, and replay breadcrumbs.
+- Continue the `DisparityGame.cpp` split by extracting public-demo state, rendering, editor panels, verification batches, and trailer/photo mode into focused files with short comments at ownership boundaries.
 - Replace the v35 `SceneQueryWorld` linear storage with a broad-phase acceleration structure and route editor picking, triggers, character collision, audio occlusion, and AI perception through it.
 - Move the main update loop onto the v35 `FrameScheduler` so gameplay, animation, audio, editor, and rendering phases have one inspectable task order.
 - Turn the v34 enemy archetype proof into data-driven AI with behavior trees/state machines, navigation volumes, perception memory, squad roles, difficulty budgets, and encounter prefab authoring.

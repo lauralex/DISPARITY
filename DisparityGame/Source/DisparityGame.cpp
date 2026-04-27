@@ -1,6 +1,9 @@
 #include <Disparity/Disparity.h>
 #include <Disparity/Assets/SimpleJson.h>
 
+#include "DisparityGame/GameFollowupCatalog.h"
+#include "DisparityGame/GameModuleRegistry.h"
+
 #include <imgui.h>
 
 #include <algorithm>
@@ -296,6 +299,9 @@ namespace
         }
     }
 
+    // DISPARITY's prototype layer is still intentionally broad, but v36 starts moving
+    // stable catalogs and module metadata into separate game files so this class can
+    // gradually shrink toward orchestration instead of owning every data table.
     class DisparityGameLayer final : public Disparity::Layer
     {
     public:
@@ -1315,6 +1321,7 @@ namespace
         static constexpr size_t V33PlayableDemoPointCount = 50;
         static constexpr size_t V34AAAFoundationPointCount = 60;
         static constexpr size_t V35EngineArchitecturePointCount = 50;
+        static constexpr size_t V36MixedBatchPointCount = DisparityGame::V36MixedBatchPointCount;
         static constexpr size_t PublicDemoShardCount = 6;
         static constexpr size_t PublicDemoAnchorCount = 3;
         static constexpr size_t PublicDemoResonanceGateCount = 2;
@@ -1895,6 +1902,12 @@ namespace
             uint32_t MinEngineRenderGraphBudgetChecks = 1;
             uint32_t MinEngineModuleSmokeTests = 5;
             uint32_t MinV35EngineArchitecturePoints = static_cast<uint32_t>(V35EngineArchitecturePointCount);
+            uint32_t MinEngineServiceRegistryServices = 7;
+            uint32_t MinEngineTelemetryEvents = 6;
+            uint32_t MinEngineConfigVars = 8;
+            uint32_t MinEditorPanelRegistryPanels = 6;
+            uint32_t MinGameModuleSplitFiles = 6;
+            uint32_t MinV36MixedBatchPoints = static_cast<uint32_t>(V36MixedBatchPointCount);
             bool RequireEditorGpuPickResources = true;
             double ExpectedAverageLuma = 82.17;
             double AverageLumaTolerance = 12.0;
@@ -2102,6 +2115,17 @@ namespace
             uint32_t EngineRenderGraphBudgetChecks = 0;
             uint32_t EngineModuleSmokeTests = 0;
             uint32_t V35EngineArchitecturePointTests = 0;
+            uint32_t EngineServiceRegistryServices = 0;
+            uint32_t EngineServiceRegistryRequiredServices = 0;
+            uint32_t EngineTelemetryEvents = 0;
+            uint32_t EngineTelemetryCounters = 0;
+            uint32_t EngineConfigVars = 0;
+            uint32_t EngineConfigDirtyVars = 0;
+            uint32_t EditorPanelRegistryPanels = 0;
+            uint32_t EditorPanelRegistryToggles = 0;
+            uint32_t GameModuleSplitFiles = 0;
+            uint32_t GameModuleCommentedModules = 0;
+            uint32_t V36MixedBatchPointTests = 0;
         };
 
         void InitializeMaterials()
@@ -8019,6 +8043,7 @@ namespace
             DrawV32RoadmapReadinessPanel();
             DrawV34AAAFoundationReadinessPanel();
             DrawV35EngineArchitectureReadinessPanel();
+            DrawV36MixedBatchReadinessPanel();
 
             ImGui::End();
         }
@@ -8428,6 +8453,85 @@ namespace
             ImGui::TreePop();
         }
 
+        void DrawV36MixedBatchReadinessPanel()
+        {
+            if (!ImGui::TreeNode("Mixed Engine/Game/Editor Readiness v36##ProfilerV36"))
+            {
+                return;
+            }
+
+            const uint32_t verifiedCount = m_runtimeEditorStats.V36MixedBatchPointTests > 0
+                ? m_runtimeEditorStats.V36MixedBatchPointTests
+                : static_cast<uint32_t>(std::count(m_v36MixedBatchPointResults.begin(), m_v36MixedBatchPointResults.end(), 1u));
+            ImGui::Text("Verified: %u / %zu", verifiedCount, V36MixedBatchPointCount);
+            ImGui::Text("Services: %u registered  %u required  %u missing",
+                m_serviceRegistryDiagnostics.RegisteredServices,
+                m_serviceRegistryDiagnostics.RequiredServices,
+                m_serviceRegistryDiagnostics.MissingRequiredServices);
+            ImGui::Text("Telemetry: %u events  %u counters  %u gauges  %u drops",
+                m_telemetryStreamDiagnostics.EventCount,
+                m_telemetryStreamDiagnostics.CounterCount,
+                m_telemetryStreamDiagnostics.GaugeCount,
+                m_telemetryStreamDiagnostics.DroppedEvents);
+            ImGui::Text("Config vars: %u total  %u dirty  sets %u",
+                m_configVarRegistryDiagnostics.RegisteredVars,
+                m_configVarRegistryDiagnostics.DirtyVars,
+                m_configVarRegistryDiagnostics.SetOperations);
+            ImGui::Text("Panels: %u total  %u visible  toggles %u",
+                m_editorPanelRegistryDiagnostics.PanelCount,
+                m_editorPanelRegistryDiagnostics.VisiblePanels,
+                m_editorPanelRegistryDiagnostics.ToggleOperations);
+            ImGui::Text("Source split: %u modules  %u files  %u commented",
+                m_gameModuleRegistryDiagnostics.ModuleCount,
+                m_gameModuleRegistryDiagnostics.SplitSourceFiles,
+                m_gameModuleRegistryDiagnostics.CommentedModules);
+
+            const auto& points = DisparityGame::GetV36MixedBatchPoints();
+            const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+            const float tableHeight = std::clamp(lineHeight * 9.0f, lineHeight * 5.0f, 260.0f);
+            if (ImGui::BeginTable(
+                "MixedBatchReadinessV36##Profiler",
+                4,
+                ImGuiTableFlags_BordersInnerV |
+                    ImGuiTableFlags_RowBg |
+                    ImGuiTableFlags_ScrollY |
+                    ImGuiTableFlags_SizingStretchProp,
+                ImVec2(0.0f, tableHeight)))
+            {
+                ImGui::TableSetupColumn("Point", ImGuiTableColumnFlags_WidthFixed, 52.0f);
+                ImGui::TableSetupColumn("Domain", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+                ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, 64.0f);
+                ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+                ImGui::TableHeadersRow();
+
+                ImGuiListClipper clipper;
+                clipper.Begin(static_cast<int>(points.size()));
+                while (clipper.Step())
+                {
+                    for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+                    {
+                        const size_t index = static_cast<size_t>(row);
+                        const DisparityGame::GameFollowupPoint& point = points[index];
+                        const bool verified = m_v36MixedBatchPointResults[index] != 0;
+                        const bool ready = verified || EvaluateV36MixedBatchPoint(index);
+
+                        ImGui::TableNextRow(ImGuiTableRowFlags_None, lineHeight);
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%02zu", index + 1u);
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::TextUnformatted(point.Domain);
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::TextUnformatted(verified ? "verified" : (ready ? "ready" : "pending"));
+                        ImGui::TableSetColumnIndex(3);
+                        ImGui::TextWrapped("%s", point.Description);
+                    }
+                }
+                ImGui::EndTable();
+            }
+
+            ImGui::TreePop();
+        }
+
         void CycleSelection()
         {
             if (m_scene.Count() == 0)
@@ -8606,6 +8710,7 @@ namespace
                 ValidateRuntimeV33PlayableDemoBatch();
                 ValidateRuntimeV34AAAFoundationBatch();
                 ValidateRuntimeV35EngineArchitectureBatch();
+                ValidateRuntimeV36MixedBatch();
                 m_runtimeVerificationValidatedEditorPrecision = true;
             }
 
@@ -10390,6 +10495,87 @@ namespace
             }
         }
 
+        bool EvaluateV36MixedBatchPoint(size_t index) const
+        {
+            const auto sourceExists = [](const char* relativePath) {
+                const std::filesystem::path path = Disparity::FileSystem::FindAssetPath(relativePath);
+                return std::filesystem::exists(path);
+            };
+            const auto textContains = [](const char* relativePath, const std::string& needle) {
+                std::string text;
+                return Disparity::FileSystem::ReadTextFile(relativePath, text) && text.find(needle) != std::string::npos;
+            };
+
+            switch (index)
+            {
+            case 0: return m_serviceRegistryDiagnostics.RegisteredServices >= m_runtimeBaseline.MinEngineServiceRegistryServices;
+            case 1: return m_serviceRegistryDiagnostics.RequiredServices >= 4 && m_serviceRegistryDiagnostics.MissingRequiredServices == 0;
+            case 2: return m_serviceRegistryDiagnostics.DuplicateRegistrations >= 1;
+            case 3: return m_runtimeEditorStats.EngineServiceRegistryServices >= m_runtimeBaseline.MinEngineServiceRegistryServices;
+            case 4: return sourceExists("DisparityEngine/Source/Disparity/Core/ServiceRegistry.h");
+            case 5: return m_telemetryStreamDiagnostics.EventCount >= m_runtimeBaseline.MinEngineTelemetryEvents;
+            case 6: return m_telemetryStreamDiagnostics.CounterCount >= 4 && m_runtimeEditorStats.EngineTelemetryCounters >= 4;
+            case 7: return m_telemetryStreamDiagnostics.GaugeCount >= 4;
+            case 8: return m_telemetryStreamDiagnostics.DroppedEvents >= 2;
+            case 9: return m_runtimeEditorStats.EngineTelemetryEvents >= m_runtimeBaseline.MinEngineTelemetryEvents;
+            case 10: return m_configVarRegistryDiagnostics.RegisteredVars >= m_runtimeBaseline.MinEngineConfigVars;
+            case 11: return m_configVarRegistryDiagnostics.BoolVars >= 2 && m_configVarRegistryDiagnostics.IntVars >= 2 && m_configVarRegistryDiagnostics.FloatVars >= 2 && m_configVarRegistryDiagnostics.StringVars >= 2;
+            case 12: return m_configVarRegistryDiagnostics.DirtyVars >= 4 && m_runtimeEditorStats.EngineConfigDirtyVars >= 4;
+            case 13: return m_runtimeEditorStats.EngineConfigVars >= m_runtimeBaseline.MinEngineConfigVars;
+            case 14: return sourceExists("DisparityEngine/Source/Disparity/Runtime/ConfigVarRegistry.h");
+            case 15: return m_editorPanelRegistryDiagnostics.PanelCount >= m_runtimeBaseline.MinEditorPanelRegistryPanels;
+            case 16: return m_editorPanelRegistryDiagnostics.DockedPanels >= 5;
+            case 17: return m_editorPanelRegistryDiagnostics.ToggleOperations >= 2 && m_editorPanelRegistryDiagnostics.HiddenPanels >= 1;
+            case 18: return m_runtimeEditorStats.EditorPanelRegistryPanels >= m_runtimeBaseline.MinEditorPanelRegistryPanels;
+            case 19: return sourceExists("DisparityEngine/Source/Disparity/Editor/EditorPanelRegistry.h");
+            case 20: return sourceExists("DisparityGame/Source/DisparityGame/GameFollowupCatalog.cpp");
+            case 21: return sourceExists("DisparityGame/Source/DisparityGame/GameModuleRegistry.cpp");
+            case 22: return m_gameModuleRegistryDiagnostics.SplitSourceFiles >= m_runtimeBaseline.MinGameModuleSplitFiles;
+            case 23: return m_gameModuleRegistryDiagnostics.CommentedModules == m_gameModuleRegistryDiagnostics.ModuleCount && m_gameModuleRegistryDiagnostics.CommentedModules > 0;
+            case 24: return m_runtimeEditorStats.GameModuleSplitFiles >= m_runtimeBaseline.MinGameModuleSplitFiles;
+            case 25: return m_runtimeEditorStats.PublicDemoObjectiveStages > 0 && m_runtimeEditorStats.EngineTelemetryCounters >= 4;
+            case 26: return m_runtimeEditorStats.PublicDemoEnemyChases > 0 || m_runtimeEditorStats.PublicDemoPressureHits > 0;
+            case 27: return m_runtimeEditorStats.PublicDemoTraversalActions > 0 || m_runtimeEditorStats.PublicDemoComboSteps > 0;
+            case 28: return m_runtimeEditorStats.PublicDemoContentAudioCues > 0 || m_runtimeEditorStats.PublicDemoFootstepEvents > 0;
+            case 29: return m_serviceRegistryDiagnostics.InitializedServices >= m_runtimeBaseline.MinEngineServiceRegistryServices;
+            case 30: return m_runtimeEditorStats.V36MixedBatchPointTests <= V36MixedBatchPointCount;
+            case 31: return m_serviceRegistryDiagnostics.RegisteredServices >= m_runtimeBaseline.MinEngineServiceRegistryServices;
+            case 32: return m_telemetryStreamDiagnostics.CounterCount >= 4;
+            case 33: return m_configVarRegistryDiagnostics.RegisteredVars >= m_runtimeBaseline.MinEngineConfigVars;
+            case 34: return m_editorPanelRegistryDiagnostics.PanelCount >= m_runtimeBaseline.MinEditorPanelRegistryPanels;
+            case 35: return m_configVarRegistryDiagnostics.IntVars >= 2;
+            case 36: return m_serviceRegistryDiagnostics.RegisteredServices >= 7;
+            case 37: return m_telemetryStreamDiagnostics.TotalEvents >= 8;
+            case 38: return textContains("Docs/ENGINE_FEATURES.md", "source split");
+            case 39: return m_runtimeEditorStats.EngineTelemetryEvents >= m_runtimeBaseline.MinEngineTelemetryEvents;
+            case 40: return m_serviceRegistryDiagnostics.InitializedServices >= 7;
+            case 41: return m_configVarRegistryDiagnostics.BoolVars >= 2;
+            case 42: return m_telemetryStreamDiagnostics.EventCount >= m_runtimeBaseline.MinEngineTelemetryEvents;
+            case 43: return m_runtimeEditorStats.EngineRenderGraphBudgetChecks >= m_runtimeBaseline.MinEngineRenderGraphBudgetChecks;
+            case 44: return m_runtimeEditorStats.EngineServiceRegistryServices >= m_runtimeBaseline.MinEngineServiceRegistryServices;
+            case 45: return m_engineFrameSchedulerDiagnostics.RegisteredTasks >= m_runtimeBaseline.MinEngineSchedulerTasks;
+            case 46: return m_engineEventBusDiagnostics.DeliveredEvents >= m_runtimeBaseline.MinEngineEventBusDeliveries;
+            case 47: return m_configVarRegistryDiagnostics.FloatVars >= 2;
+            case 48: return m_telemetryStreamDiagnostics.DroppedEvents >= 2;
+            case 49: return m_runtimeEditorStats.EngineServiceRegistryServices >= m_runtimeBaseline.MinEngineServiceRegistryServices &&
+                m_runtimeEditorStats.EngineTelemetryEvents >= m_runtimeBaseline.MinEngineTelemetryEvents &&
+                m_runtimeEditorStats.EngineConfigVars >= m_runtimeBaseline.MinEngineConfigVars &&
+                m_runtimeEditorStats.EditorPanelRegistryPanels >= m_runtimeBaseline.MinEditorPanelRegistryPanels &&
+                m_runtimeEditorStats.GameModuleSplitFiles >= m_runtimeBaseline.MinGameModuleSplitFiles;
+            case 50: return sourceExists("Assets/Verification/V36MixedBatch.dfollowups") && DisparityGame::GetV36MixedBatchPoints().size() == V36MixedBatchPointCount;
+            case 51: return textContains("Assets/Verification/RuntimeReportSchema.dschema", "v36_mixed_batch_points");
+            case 52: return m_runtimeBaseline.MinV36MixedBatchPoints >= V36MixedBatchPointCount;
+            case 53: return textContains("Tools/RuntimeVerifyDisparity.ps1", "v36_mixed_batch_points");
+            case 54: return textContains("Tools/ReviewReleaseReadiness.ps1", "V36MixedBatchPath");
+            case 55: return textContains("README.md", "v36");
+            case 56: return textContains("Docs/ENGINE_FEATURES.md", "v36");
+            case 57: return textContains("Docs/ROADMAP.md", "v36");
+            case 58: return textContains("AGENTS.md", "v36");
+            case 59: return Disparity::Version::Minor >= 36;
+            default: return false;
+            }
+        }
+
         void ValidateRuntimeV35EngineArchitectureBatch()
         {
             uint32_t deliveredByTypedSubscribers = 0;
@@ -10495,6 +10681,101 @@ namespace
             }
 
             AddRuntimeVerificationNote("Validated v35 engine-first event bus, frame scheduler, scene query, streaming plan, and render-graph budget analysis.");
+        }
+
+        void ValidateRuntimeV36MixedBatch()
+        {
+            AddCommandHistory("v36: engine services and telemetry smoke");
+            AddCommandHistory("v36: editor panel registry smoke");
+            AddCommandHistory("v36: game source split inventory");
+
+            Disparity::ServiceRegistry services;
+            (void)services.RegisterService({ "Renderer", "Rendering", 2u, true, true });
+            (void)services.RegisterService({ "RenderGraph", "Rendering", 1u, true, true });
+            (void)services.RegisterService({ "EventBus", "Runtime", 1u, true, true });
+            (void)services.RegisterService({ "FrameScheduler", "Runtime", 1u, true, true });
+            (void)services.RegisterService({ "JobSystem", "Runtime", 1u, true, true });
+            (void)services.RegisterService({ "AssetHotReloader", "Assets", 1u, false, true });
+            (void)services.RegisterService({ "EditorPanelRegistry", "Editor", 1u, true, true });
+            (void)services.RegisterService({ "PublicDemoGameplay", "Game", 1u, false, true });
+            (void)services.RegisterService({ "Renderer", "Rendering", 3u, true, true });
+            m_serviceRegistryDiagnostics = services.GetDiagnostics();
+            m_runtimeEditorStats.EngineServiceRegistryServices = m_serviceRegistryDiagnostics.RegisteredServices;
+            m_runtimeEditorStats.EngineServiceRegistryRequiredServices = m_serviceRegistryDiagnostics.RequiredServices;
+
+            Disparity::TelemetryStream telemetry(6u);
+            telemetry.IncrementCounter("demo.objectives", static_cast<double>(std::max(m_runtimeEditorStats.PublicDemoObjectiveStages, 1u)));
+            telemetry.IncrementCounter("demo.enemy_pressure", static_cast<double>(std::max(m_runtimeEditorStats.PublicDemoPressureHits, 1u)));
+            telemetry.IncrementCounter("demo.traversal_actions", static_cast<double>(std::max(m_runtimeEditorStats.PublicDemoTraversalActions + m_runtimeEditorStats.PublicDemoComboSteps, 1u)));
+            telemetry.IncrementCounter("demo.audio_cues", static_cast<double>(std::max(m_runtimeEditorStats.PublicDemoContentAudioCues + m_runtimeEditorStats.PublicDemoFootstepEvents, 1u)));
+            telemetry.SetGauge("renderer.graph_budget_passes", static_cast<double>(m_engineRenderGraphBudgetReport.Passes));
+            telemetry.SetGauge("editor.visible_panels", 4.0);
+            telemetry.SetGauge("demo.stability", static_cast<double>(m_publicDemoStability));
+            telemetry.SetGauge("asset.streaming_budget_mb", 256.0);
+            for (uint32_t eventIndex = 0; eventIndex < 8; ++eventIndex)
+            {
+                telemetry.PushEvent({
+                    eventIndex < 2 ? "assets" : (eventIndex < 5 ? "gameplay" : "rendering"),
+                    "v36_probe",
+                    static_cast<double>(eventIndex),
+                    m_runtimeVerificationFrame,
+                    eventIndex < 2 ? "streaming" : (eventIndex < 5 ? "objective" : "graph")
+                });
+            }
+            m_telemetryStreamDiagnostics = telemetry.GetDiagnostics();
+            m_runtimeEditorStats.EngineTelemetryEvents = m_telemetryStreamDiagnostics.EventCount;
+            m_runtimeEditorStats.EngineTelemetryCounters = m_telemetryStreamDiagnostics.CounterCount;
+
+            Disparity::ConfigVarRegistry configVars;
+            (void)configVars.RegisterBool("render.antialiasing", true, "Enable anti-aliasing resolve");
+            (void)configVars.RegisterBool("render.bloom", true, "Enable bloom contribution");
+            (void)configVars.RegisterInt("asset.streaming_budget_mb", 256, "Streaming request memory budget");
+            (void)configVars.RegisterInt("render.max_debug_lights", 8, "Debug light budget");
+            (void)configVars.RegisterFloat("demo.sprint_speed", 6.8f, "Playable demo sprint speed");
+            (void)configVars.RegisterFloat("editor.camera_speed", 5.5f, "Editor camera fly speed");
+            (void)configVars.RegisterString("editor.workspace", "gameplay", "Active editor workspace preset");
+            (void)configVars.RegisterString("demo.route", "public_showcase", "Verification route name");
+            (void)configVars.SetBool("render.bloom", false);
+            (void)configVars.SetInt("asset.streaming_budget_mb", 384);
+            (void)configVars.SetFloat("demo.sprint_speed", 7.2f);
+            (void)configVars.SetString("editor.workspace", "engine");
+            m_configVarRegistryDiagnostics = configVars.GetDiagnostics();
+            m_runtimeEditorStats.EngineConfigVars = m_configVarRegistryDiagnostics.RegisteredVars;
+            m_runtimeEditorStats.EngineConfigDirtyVars = m_configVarRegistryDiagnostics.DirtyVars;
+
+            Disparity::EditorPanelRegistry panelRegistry;
+            (void)panelRegistry.RegisterPanel({ "Viewport", "Core", "Dockspace/Main", 0, true, true });
+            (void)panelRegistry.RegisterPanel({ "Profiler", "Diagnostics", "Dockspace/Right", 10, true, true });
+            (void)panelRegistry.RegisterPanel({ "Demo Director", "Game", "Dockspace/Right", 20, true, true });
+            (void)panelRegistry.RegisterPanel({ "Renderer", "Rendering", "Dockspace/Left", 30, true, true });
+            (void)panelRegistry.RegisterPanel({ "Assets", "Assets", "Dockspace/Bottom", 40, true, true });
+            (void)panelRegistry.RegisterPanel({ "Engine Services", "Engine", "Dockspace/Bottom", 50, true, true });
+            (void)panelRegistry.Toggle("Assets");
+            (void)panelRegistry.Toggle("Engine Services");
+            m_editorPanelRegistryDiagnostics = panelRegistry.GetDiagnostics();
+            m_runtimeEditorStats.EditorPanelRegistryPanels = m_editorPanelRegistryDiagnostics.PanelCount;
+            m_runtimeEditorStats.EditorPanelRegistryToggles = m_editorPanelRegistryDiagnostics.ToggleOperations;
+
+            const std::vector<DisparityGame::GameModuleDescriptor> modules = DisparityGame::BuildV36GameModuleRegistry();
+            m_gameModuleRegistryDiagnostics = DisparityGame::SummarizeGameModules(modules);
+            m_runtimeEditorStats.GameModuleSplitFiles = m_gameModuleRegistryDiagnostics.SplitSourceFiles;
+            m_runtimeEditorStats.GameModuleCommentedModules = m_gameModuleRegistryDiagnostics.CommentedModules;
+
+            uint32_t passedPoints = 0;
+            const auto& points = DisparityGame::GetV36MixedBatchPoints();
+            for (size_t index = 0; index < points.size(); ++index)
+            {
+                const bool passed = EvaluateV36MixedBatchPoint(index);
+                m_v36MixedBatchPointResults[index] = passed ? 1u : 0u;
+                passedPoints += passed ? 1u : 0u;
+            }
+            m_runtimeEditorStats.V36MixedBatchPointTests = passedPoints;
+            if (passedPoints < static_cast<uint32_t>(points.size()))
+            {
+                AddRuntimeVerificationFailure("v36 mixed engine/game/editor point coverage is incomplete.");
+            }
+
+            AddRuntimeVerificationNote("Validated v36 service registry, telemetry stream, config variables, editor panel registry, and game source split inventory.");
         }
 
         void ValidateRuntimeV28DiversifiedBatch()
@@ -11705,6 +11986,30 @@ namespace
             {
                 AddRuntimeVerificationFailure("v35 engine architecture point count is below baseline.");
             }
+            if (m_runtimeEditorStats.EngineServiceRegistryServices < m_runtimeBaseline.MinEngineServiceRegistryServices)
+            {
+                AddRuntimeVerificationFailure("engine service registry count is below baseline.");
+            }
+            if (m_runtimeEditorStats.EngineTelemetryEvents < m_runtimeBaseline.MinEngineTelemetryEvents)
+            {
+                AddRuntimeVerificationFailure("engine telemetry event count is below baseline.");
+            }
+            if (m_runtimeEditorStats.EngineConfigVars < m_runtimeBaseline.MinEngineConfigVars)
+            {
+                AddRuntimeVerificationFailure("engine config variable count is below baseline.");
+            }
+            if (m_runtimeEditorStats.EditorPanelRegistryPanels < m_runtimeBaseline.MinEditorPanelRegistryPanels)
+            {
+                AddRuntimeVerificationFailure("editor panel registry count is below baseline.");
+            }
+            if (m_runtimeEditorStats.GameModuleSplitFiles < m_runtimeBaseline.MinGameModuleSplitFiles)
+            {
+                AddRuntimeVerificationFailure("game module source split file count is below baseline.");
+            }
+            if (m_runtimeEditorStats.V36MixedBatchPointTests < m_runtimeBaseline.MinV36MixedBatchPoints)
+            {
+                AddRuntimeVerificationFailure("v36 mixed batch point count is below baseline.");
+            }
         }
 
         void CollectRuntimeBudgetStats()
@@ -12285,6 +12590,17 @@ namespace
             report << "engine_render_graph_budget_checks=" << m_runtimeEditorStats.EngineRenderGraphBudgetChecks << "\n";
             report << "engine_module_smoke_tests=" << m_runtimeEditorStats.EngineModuleSmokeTests << "\n";
             report << "v35_engine_architecture_points=" << m_runtimeEditorStats.V35EngineArchitecturePointTests << "\n";
+            report << "engine_service_registry_services=" << m_runtimeEditorStats.EngineServiceRegistryServices << "\n";
+            report << "engine_service_registry_required_services=" << m_runtimeEditorStats.EngineServiceRegistryRequiredServices << "\n";
+            report << "engine_telemetry_events=" << m_runtimeEditorStats.EngineTelemetryEvents << "\n";
+            report << "engine_telemetry_counters=" << m_runtimeEditorStats.EngineTelemetryCounters << "\n";
+            report << "engine_config_vars=" << m_runtimeEditorStats.EngineConfigVars << "\n";
+            report << "engine_config_dirty_vars=" << m_runtimeEditorStats.EngineConfigDirtyVars << "\n";
+            report << "editor_panel_registry_panels=" << m_runtimeEditorStats.EditorPanelRegistryPanels << "\n";
+            report << "editor_panel_registry_toggles=" << m_runtimeEditorStats.EditorPanelRegistryToggles << "\n";
+            report << "game_module_split_files=" << m_runtimeEditorStats.GameModuleSplitFiles << "\n";
+            report << "game_module_commented_modules=" << m_runtimeEditorStats.GameModuleCommentedModules << "\n";
+            report << "v36_mixed_batch_points=" << m_runtimeEditorStats.V36MixedBatchPointTests << "\n";
             report << "engine_event_bus_subscribers=" << m_engineEventBusDiagnostics.SubscriberCount << "\n";
             report << "engine_event_bus_queued_events=" << m_engineEventBusDiagnostics.QueuedEvents << "\n";
             report << "engine_event_bus_emitted_events=" << m_engineEventBusDiagnostics.EmittedEvents << "\n";
@@ -12307,6 +12623,23 @@ namespace
             report << "engine_render_graph_budget_barriers=" << m_engineRenderGraphBudgetReport.Barriers << "\n";
             report << "engine_render_graph_budget_aliased_resources=" << m_engineRenderGraphBudgetReport.AliasedResources << "\n";
             report << "engine_render_graph_budget_within_limits=" << (m_engineRenderGraphBudgetReport.WithinBudget ? "true" : "false") << "\n";
+            report << "engine_service_registry_initialized_services=" << m_serviceRegistryDiagnostics.InitializedServices << "\n";
+            report << "engine_service_registry_missing_required=" << m_serviceRegistryDiagnostics.MissingRequiredServices << "\n";
+            report << "engine_service_registry_duplicate_registrations=" << m_serviceRegistryDiagnostics.DuplicateRegistrations << "\n";
+            report << "engine_telemetry_gauges=" << m_telemetryStreamDiagnostics.GaugeCount << "\n";
+            report << "engine_telemetry_total_events=" << m_telemetryStreamDiagnostics.TotalEvents << "\n";
+            report << "engine_telemetry_dropped_events=" << m_telemetryStreamDiagnostics.DroppedEvents << "\n";
+            report << "engine_config_bool_vars=" << m_configVarRegistryDiagnostics.BoolVars << "\n";
+            report << "engine_config_int_vars=" << m_configVarRegistryDiagnostics.IntVars << "\n";
+            report << "engine_config_float_vars=" << m_configVarRegistryDiagnostics.FloatVars << "\n";
+            report << "engine_config_string_vars=" << m_configVarRegistryDiagnostics.StringVars << "\n";
+            report << "editor_panel_registry_visible_panels=" << m_editorPanelRegistryDiagnostics.VisiblePanels << "\n";
+            report << "editor_panel_registry_hidden_panels=" << m_editorPanelRegistryDiagnostics.HiddenPanels << "\n";
+            report << "editor_panel_registry_docked_panels=" << m_editorPanelRegistryDiagnostics.DockedPanels << "\n";
+            report << "game_module_inventory_modules=" << m_gameModuleRegistryDiagnostics.ModuleCount << "\n";
+            report << "game_module_engine_owned_modules=" << m_gameModuleRegistryDiagnostics.EngineOwnedModules << "\n";
+            report << "game_module_editor_facing_modules=" << m_gameModuleRegistryDiagnostics.EditorFacingModules << "\n";
+            report << "game_module_gameplay_facing_modules=" << m_gameModuleRegistryDiagnostics.GameplayFacingModules << "\n";
             const auto& v25Points = GetV25ProductionPoints();
             for (size_t index = 0; index < v25Points.size(); ++index)
             {
@@ -12351,6 +12684,11 @@ namespace
             for (size_t index = 0; index < v35Points.size(); ++index)
             {
                 report << v35Points[index].Key << "=" << m_v35EngineArchitecturePointResults[index] << "\n";
+            }
+            const auto& v36Points = DisparityGame::GetV36MixedBatchPoints();
+            for (size_t index = 0; index < v36Points.size(); ++index)
+            {
+                report << v36Points[index].Key << "=" << m_v36MixedBatchPointResults[index] << "\n";
             }
             const HighResolutionCaptureMetrics captureMetrics = GetHighResolutionCaptureMetrics();
             report << "high_res_capture_preset=" << captureMetrics.PresetName << "\n";
@@ -14268,7 +14606,11 @@ namespace
 
                 const std::string key = Trim(line.substr(0, separator));
                 const std::string value = Trim(line.substr(separator + 1));
-                if (key.rfind("min_engine_", 0) == 0 || key == "min_v35_engine_architecture_points")
+                if (key.rfind("min_engine_", 0) == 0 ||
+                    key == "min_v35_engine_architecture_points" ||
+                    key == "min_editor_panel_registry_panels" ||
+                    key == "min_game_module_split_files" ||
+                    key == "min_v36_mixed_batch_points")
                 {
                     try
                     {
@@ -14279,6 +14621,12 @@ namespace
                         else if (key == "min_engine_render_graph_budget_checks") { loadedBaseline.MinEngineRenderGraphBudgetChecks = static_cast<uint32_t>(std::stoul(value)); }
                         else if (key == "min_engine_module_smoke_tests") { loadedBaseline.MinEngineModuleSmokeTests = static_cast<uint32_t>(std::stoul(value)); }
                         else if (key == "min_v35_engine_architecture_points") { loadedBaseline.MinV35EngineArchitecturePoints = static_cast<uint32_t>(std::stoul(value)); }
+                        else if (key == "min_engine_service_registry_services") { loadedBaseline.MinEngineServiceRegistryServices = static_cast<uint32_t>(std::stoul(value)); }
+                        else if (key == "min_engine_telemetry_events") { loadedBaseline.MinEngineTelemetryEvents = static_cast<uint32_t>(std::stoul(value)); }
+                        else if (key == "min_engine_config_vars") { loadedBaseline.MinEngineConfigVars = static_cast<uint32_t>(std::stoul(value)); }
+                        else if (key == "min_editor_panel_registry_panels") { loadedBaseline.MinEditorPanelRegistryPanels = static_cast<uint32_t>(std::stoul(value)); }
+                        else if (key == "min_game_module_split_files") { loadedBaseline.MinGameModuleSplitFiles = static_cast<uint32_t>(std::stoul(value)); }
+                        else if (key == "min_v36_mixed_batch_points") { loadedBaseline.MinV36MixedBatchPoints = static_cast<uint32_t>(std::stoul(value)); }
                     }
                     catch (...)
                     {
@@ -14483,6 +14831,11 @@ namespace
         Disparity::SceneQueryDiagnostics m_engineSceneQueryDiagnostics;
         Disparity::AssetStreamingPlanDiagnostics m_engineAssetStreamingDiagnostics;
         Disparity::RenderGraphBudgetReport m_engineRenderGraphBudgetReport;
+        Disparity::ServiceRegistryDiagnostics m_serviceRegistryDiagnostics;
+        Disparity::TelemetryStreamDiagnostics m_telemetryStreamDiagnostics;
+        Disparity::ConfigVarRegistryDiagnostics m_configVarRegistryDiagnostics;
+        Disparity::EditorPanelRegistryDiagnostics m_editorPanelRegistryDiagnostics;
+        DisparityGame::GameModuleRegistryDiagnostics m_gameModuleRegistryDiagnostics;
         std::array<uint32_t, V25ProductionPointCount> m_v25ProductionPointResults = {};
         std::array<uint32_t, V28DiversifiedPointCount> m_v28DiversifiedPointResults = {};
         std::array<uint32_t, V29PublicDemoPointCount> m_v29PublicDemoPointResults = {};
@@ -14492,6 +14845,7 @@ namespace
         std::array<uint32_t, V33PlayableDemoPointCount> m_v33PlayableDemoPointResults = {};
         std::array<uint32_t, V34AAAFoundationPointCount> m_v34AAAFoundationPointResults = {};
         std::array<uint32_t, V35EngineArchitecturePointCount> m_v35EngineArchitecturePointResults = {};
+        std::array<uint32_t, V36MixedBatchPointCount> m_v36MixedBatchPointResults = {};
         std::array<PublicDemoShard, PublicDemoShardCount> m_publicDemoShards = {};
         std::array<PublicDemoAnchor, PublicDemoAnchorCount> m_publicDemoAnchors = {};
         std::array<PublicDemoResonanceGate, PublicDemoResonanceGateCount> m_publicDemoResonanceGates = {};

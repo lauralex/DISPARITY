@@ -70,6 +70,14 @@ Editor UI:
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
 
+## Engine v36 Mixed Batch Implemented
+
+- Added engine-owned `ServiceRegistry`, `TelemetryStream`, `ConfigVarRegistry`, and `EditorPanelRegistry` modules for subsystem readiness, structured counters/events, typed runtime tuning, and deterministic editor panel ordering/visibility.
+- Started the game source split: new v36 followup data lives in `DisparityGame/Source/DisparityGame/GameFollowupCatalog.*`, and the readable module/source inventory lives in `DisparityGame/Source/DisparityGame/GameModuleRegistry.*` instead of adding another large table to `DisparityGame.cpp`.
+- The Profiler now includes a `Mixed Engine/Game/Editor Readiness v36` table with service, telemetry, config, editor-panel, and source-split diagnostics.
+- Runtime verification reports `v36_mixed_batch_points`, service registry counters, telemetry counters, config variable counters, editor panel registry counters, game module split counters, and every `v36_point_*` metric.
+- Baselines, runtime schema checks, release readiness, production-batch review, performance history, docs, and AGENTS context all require the v36 mixed batch.
+
 ## Engine v1 Followups Implemented
 
 - Lightweight editor/profiler overlay through the window title.
