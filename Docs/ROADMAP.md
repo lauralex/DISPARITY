@@ -1,6 +1,16 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v27 versions of many requested followups. The next milestones should keep rotating through graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+The current engine now has functional v28 versions of many requested followups. The next milestones should keep rotating through graph, editor viewport, shot-track, VFX, asset, audio, capture, and verification work so no production lane falls behind.
+
+## v28 Completed Diversified Production Batch
+
+- Added `Assets/Verification/V28DiversifiedBatch.dfollowups`, a thirty-six-point production followup manifest with six points each for editor workflow, asset pipeline promotion, rendering, runtime sequencer, audio production, and production publishing.
+- Editor workflow now includes profile export/import/default-diff controls, workspace preset metadata, gameplay/editor/trailer workspace buttons, and capture-progress diagnostics in the `Viewport` panel.
+- Cooked package runtime metadata now reports texture binding counts, streaming readiness, streaming priority levels, skinning palette uploads, retargeting maps, live invalidation tickets, rollback journal entries, and estimated upload bytes.
+- Rendering diagnostics now promote the graph/capture/VFX roadmap into explicit advanced-readiness counters for bind/barrier execution, alias validation, GPU culling, Forward+ bins, CSM splits, motion-vector targets, tiled capture, temporal resolve, and VFX renderer handoff.
+- Runtime sequencer and audio diagnostics now cover curve/clip/thumbnail/nested/keyboard-preview/undo readiness plus streamed music, spatial emitters, attenuation assets, calibrated metering, XAudio2 voice readiness, and content-driven pulse inputs.
+- Production publishing diagnostics now cover schema metric breadth, baseline diff-package readiness, installer bootstrapper output, symbol publish plans, OBS WebSocket command metadata, interactive CI runtime gates, artifact uploads, crash retries, and signed approval intent.
+- Runtime reports, runtime baselines, the schema manifest, baseline review, release-readiness review, production-batch review, and performance-history summaries all require the new v28 counters and all thirty-six point metrics.
 
 ## v27 Completed Diversified Production Batch
 
@@ -141,27 +151,27 @@ The current engine now has functional v27 versions of many requested followups. 
 
 ## Editor
 
-- Extend named editor preference profiles with import/export, dock-layout persistence, conflict-safe migration, profile diffing, and per-project defaults.
-- Upgrade the viewport toolbar with icon buttons, hotkey hints, compact capture-state progress, toolbar customization, and optional workspace presets for gameplay, editor, and trailer capture.
+- Promote v28 profile import/export/diff and workspace presets into a versioned per-project preference system with dock-layout files, conflict-safe migration, team defaults, and toolbar customization.
+- Upgrade the viewport toolbar from text buttons to an icon/hotkey-hint surface with command search, per-workspace layout presets, and reviewable toolbar customization.
 - Expand the current mesh/ring/plane gizmo handles with depth-aware hover occlusion, constraint previews, numerical transform entry, richer pivot/orientation editing, and richer object-ID handle metadata.
 - Upgrade the current selection outline plus copy/paste/duplicate/delete/multi-select support with undo grouping, command categories, history export, and reviewable command macros.
 - Promote the new prefab variant/parent/nested metadata into nested-prefab instancing, multi-object override diffing, recursive dependency-aware apply/revert, and undo grouping.
 
 ## Asset Pipeline
 
-- Promote the structured `.dglbpack` runtime metadata loader from v24 readiness metadata into real optimized GPU mesh/material/animation resources.
-- Promote exported texture slots into real texture binding for normal, metallic-roughness, emissive, and occlusion maps instead of metadata-only persistence.
-- Expand the new blend/skinning API into animation clips, skeleton assets, retargeting, state machines, and GPU skinning constant/structured-buffer uploads.
-- Use the dependency graph for live hot-reload invalidation so reloading one source asset updates all dependent GPU/runtime resources, with invalidation previews and reload-safe rollback.
+- Replace the v28 package-promotion diagnostics with real optimized GPU mesh/material/animation resource uploads from structured `.dglbpack` packages.
+- Promote exported texture-slot counts into real normal, metallic-roughness, emissive, and occlusion texture binding in the renderer.
+- Expand the skinning/retargeting diagnostics into skeleton assets, animation clips, state machines, retargeting profiles, and GPU skinning constant/structured-buffer uploads.
+- Use the dependency graph for live hot-reload invalidation so reloading one source asset updates all dependent GPU/runtime resources, with rollback journals applied instead of only reported.
 
 ## Rendering
 
-- Turn render-graph transition diagnostics into explicit DX11 bind/unbind barriers and add resource alias lifetime validation around the physical allocation slots.
-- Add GPU frustum/occlusion culling and real clustered or Forward+ light binning.
-- Replace the single shadow-map coverage mode with true cascaded shadow maps.
-- Add normal/depth pre-pass options, SSR/SSGI experiments, motion vectors, and a more correct temporal AA resolve beyond the current FXAA-style resolve plus history blend.
-- Move the high-resolution proof from source-frame resampling to true tiled offscreen rendering with per-tile camera jitter, selectable resolve filters, real EXR output, and async compression workers using the v27 capture preset surface.
-- Upgrade the v27 VFX emitter profile into a dedicated renderer with soft particles, GPU simulation buffers, per-emitter sorting controls, motion vectors, temporal reprojection, and debug visualizers.
+- Turn v28 render-graph advanced diagnostics into real DX11 bind/unbind barriers and resource alias lifetime validation around physical allocation slots.
+- Replace GPU culling and Forward+ diagnostic counters with actual compute/CPU fallback culling and clustered light-bin buffers.
+- Replace shadow coverage diagnostics with true cascaded shadow maps and per-cascade stabilization controls.
+- Add normal/depth pre-pass options, SSR/SSGI experiments, real motion-vector rendering, and a more correct temporal AA resolve beyond the current FXAA-style resolve plus history blend.
+- Move the high-resolution proof from source-frame resampling to true tiled offscreen rendering with per-tile camera jitter, selectable resolve filters, real EXR output, and async compression workers.
+- Upgrade the VFX emitter/profile diagnostics into a dedicated renderer with soft particles, GPU simulation buffers, per-emitter sorting controls, motion vectors, temporal reprojection, and debug visualizers.
 - Add motion vectors, temporal VFX reprojection, better TAA resolve, and exposure curves tuned for trailer captures.
 - Investigate a DX12 or Vulkan backend once the DX11 renderer has a stable render graph contract.
 
@@ -171,17 +181,17 @@ The current engine now has functional v27 versions of many requested followups. 
 - Add serialization versioning, save-game separation, and deterministic scene IDs.
 - Add physics, collision queries, controller movement, animation-driven character logic, and gameplay event routing.
 - Add scripting reload boundaries, script state preservation, and a safer script asset format.
-- Promote v6 shot metadata into a real sequencer with curve editing, clip lanes, shot thumbnails, bookmarks, nested sequences, clip blending, undoable edits, and non-modal preview scrubbing.
+- Promote v28 sequencer diagnostics into a real sequencer with curve editing, clip lanes, shot thumbnails, bookmarks, nested sequences, clip blending, keyboard preview, undoable edits, and non-modal scrubbing.
 
 ## Audio
 
-- Replace the production-counter/calibration audio proof with real XAudio2 mixer voices, streamed music assets, spatial emitter components, attenuation-curve assets, calibrated meters, and content-driven amplitude analysis that drives VFX pulses from actual audio buffers.
+- Replace the v28 audio production diagnostics with real XAudio2 mixer voices, streamed music assets, spatial emitter components, attenuation-curve assets, calibrated meters, and content-driven amplitude analysis that drives VFX pulses from decoded audio buffers.
 
 ## Production
 
 - Add more committed per-GPU/driver golden tolerance profiles from real verification machines and tighter local overrides.
-- Promote signed baseline update approvals into a review command that updates goldens/performance thresholds with explicit approver intent and stores an auditable diff package.
-- Promote the v24 runtime report schema manifest into a versioned schema validation system with compatibility checks and explicit review diffs.
+- Promote signed baseline update approvals and the v28 diff-package diagnostics into a review command that updates goldens/performance thresholds with explicit approver intent and stores an auditable diff package.
+- Promote the runtime report schema manifest into a versioned schema validation system with compatibility checks and explicit review diffs.
 - Run packaged runtime smoke tests by default on a dedicated interactive desktop runner.
 - Replace the release-readiness/bootstrapper command with an actual installer executable and publish symbols through a real symbol server endpoint.
-- Expand OBS scene/profile generation into real OBS WebSocket automation, watermark toggles, capture metadata approval, and packaged vertical-slice launch presets.
+- Expand OBS scene/profile generation plus v28 OBS command diagnostics into real OBS WebSocket automation, watermark toggles, capture metadata approval, and packaged vertical-slice launch presets.

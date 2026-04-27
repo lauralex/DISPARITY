@@ -4,6 +4,7 @@ param(
     [string]$ObsProfilePath = "Saved/Trailer/OBS/DISPARITY-Trailer-Scene.json",
     [string]$RuntimeReportSchemaPath = "Assets/Verification/RuntimeReportSchema.dschema",
     [string]$ProductionBatchPath = "Assets/Verification/V25ProductionBatch.dfollowups",
+    [string]$DiversifiedBatchPath = "Assets/Verification/V28DiversifiedBatch.dfollowups",
     [string]$OutputPath = "Saved/Release/release_readiness_manifest.json"
 )
 
@@ -23,6 +24,7 @@ $InstallerPath = Resolve-RepoPath -Path $InstallerPath
 $ObsProfilePath = Resolve-RepoPath -Path $ObsProfilePath
 $RuntimeReportSchemaPath = Resolve-RepoPath -Path $RuntimeReportSchemaPath
 $ProductionBatchPath = Resolve-RepoPath -Path $ProductionBatchPath
+$DiversifiedBatchPath = Resolve-RepoPath -Path $DiversifiedBatchPath
 $OutputPath = Resolve-RepoPath -Path $OutputPath
 
 $packageManifestPath = Join-Path $PackagePath "package_manifest.json"
@@ -37,7 +39,8 @@ $checks = @(
     [pscustomobject]@{ name = "symbol_manifest"; path = $symbolManifestPath; exists = Test-Path -LiteralPath $symbolManifestPath },
     [pscustomobject]@{ name = "obs_profile"; path = $ObsProfilePath; exists = Test-Path -LiteralPath $ObsProfilePath },
     [pscustomobject]@{ name = "runtime_report_schema"; path = $RuntimeReportSchemaPath; exists = Test-Path -LiteralPath $RuntimeReportSchemaPath },
-    [pscustomobject]@{ name = "production_batch_manifest"; path = $ProductionBatchPath; exists = Test-Path -LiteralPath $ProductionBatchPath }
+    [pscustomobject]@{ name = "production_batch_manifest"; path = $ProductionBatchPath; exists = Test-Path -LiteralPath $ProductionBatchPath },
+    [pscustomobject]@{ name = "diversified_batch_manifest"; path = $DiversifiedBatchPath; exists = Test-Path -LiteralPath $DiversifiedBatchPath }
 )
 
 foreach ($check in $checks) {
@@ -60,8 +63,8 @@ $schemaMetrics = @(Get-Content -LiteralPath $RuntimeReportSchemaPath | Where-Obj
     $trimmed = $_.Trim()
     ![string]::IsNullOrWhiteSpace($trimmed) -and !$trimmed.StartsWith("#")
 })
-if ($schemaMetrics.Count -lt 60 -or !($schemaMetrics -contains "v25_production_points")) {
-    throw "Runtime report schema does not include the v25 production metrics."
+if ($schemaMetrics.Count -lt 100 -or !($schemaMetrics -contains "v25_production_points") -or !($schemaMetrics -contains "v28_diversified_points")) {
+    throw "Runtime report schema does not include the v25/v28 production metrics."
 }
 
 $productionPoints = @(Get-Content -LiteralPath $ProductionBatchPath | Where-Object {
@@ -69,6 +72,13 @@ $productionPoints = @(Get-Content -LiteralPath $ProductionBatchPath | Where-Obje
 })
 if ($productionPoints.Count -ne 40) {
     throw "Production batch manifest does not define forty points."
+}
+
+$diversifiedPoints = @(Get-Content -LiteralPath $DiversifiedBatchPath | Where-Object {
+    $_.Trim().StartsWith("point ")
+})
+if ($diversifiedPoints.Count -ne 36) {
+    throw "Diversified batch manifest does not define thirty-six points."
 }
 
 $parent = Split-Path -Parent $OutputPath
@@ -83,6 +93,7 @@ if (![string]::IsNullOrWhiteSpace($parent)) {
     package_file_count = $packageManifest.files.Count
     runtime_schema_metric_count = $schemaMetrics.Count
     production_batch_point_count = $productionPoints.Count
+    diversified_batch_point_count = $diversifiedPoints.Count
     checks = $checks
 } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $OutputPath
 

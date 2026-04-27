@@ -227,6 +227,11 @@ Invoke-Step "Verification baseline review" {
 
 Invoke-Step "Production followup manifest review" {
     & (Join-Path $PSScriptRoot "ReviewProductionBatch.ps1")
+    & (Join-Path $PSScriptRoot "ReviewProductionBatch.ps1") `
+        -ManifestPath "Assets/Verification/V28DiversifiedBatch.dfollowups" `
+        -ExpectedCount 36 `
+        -OutputPath "Saved/Verification/v28_diversified_batch_review.json" `
+        -KeyPrefix "v28"
 }
 
 Invoke-Step "Baseline approval manifest" {

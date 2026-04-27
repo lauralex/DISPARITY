@@ -51,7 +51,7 @@ Editor UI:
 - `F1`: show/hide Dear ImGui editor panels.
 - Dock panels into the main viewport, or drag panels outside the main window with ImGui multi-viewport enabled.
 - `Hierarchy`: select the player or scene entities, then copy/paste/duplicate/delete scene objects.
-- `Viewport`: enable the independent editor camera, frame the player/selection, choose gizmo translate/rotate/scale and world/local space, inspect the live GPU-pick/capture diagnostics HUD, save/load/reset named preference profiles, and use right-drag plus WASD/QE to move without driving gameplay input.
+- `Viewport`: enable the independent editor camera, frame the player/selection, choose gizmo translate/rotate/scale and world/local space, inspect the live GPU-pick/capture diagnostics HUD, save/load/reset/import/export/diff named preference profiles, apply gameplay/editor/trailer workspace presets, and use right-drag plus WASD/QE to move without driving gameplay input.
 - `Inspector`: edit transforms/materials and use simple transform gizmo buttons; selected objects also draw draggable, camera-scaled 3D axis/ring/plane gizmo handles in the viewport.
 - `Assets`: reload scene/script, toggle hot reload, inspect the asset database and dependency graph, cook dirty metadata caches, export glTF materials, inspect glTF metadata, and save/apply prefabs.
 - `Shot Director`: edit, add, save, reload, capture, thumbnail, and preview-scrub v6 `.dshot` trailer keys without leaving the running editor.
@@ -305,16 +305,33 @@ Editor UI:
 - Runtime reports, runtime baselines, performance history, and `Assets/Verification/RuntimeReportSchema.dschema` now require the ten v24 counters so future verification metrics can be reviewed through an asset instead of hardcoded script edits.
 - `Tools/ReviewReleaseReadiness.ps1` checks packaged manifests, installer/bootstrapper output, symbol manifests, OBS profile metadata, and the runtime report schema before release artifacts are considered complete.
 
+## Engine v25-v27 Production Followups Implemented
+
+- `Assets/Verification/V25ProductionBatch.dfollowups` tracks forty stable production points across editor, gizmo, asset, rendering, capture, VFX, sequencer/audio, and production automation work; runtime verification exports one metric for every point.
+- Editor preferences persist to `Saved/Editor/editor_preferences.json`, round-trip through named sanitized profiles under `Saved/Editor/Profiles`, and are validated by isolated verification probes.
+- The viewport texture now has an overlaid toolbar for camera mode, post-debug cycling, capture queueing, object-ID/depth rows, and HUD visibility.
+- `F9` capture manifests are schema v3 with typed `Trailer2x` preset, async-compression readiness, planned EXR metadata, and graph-owned high-resolution capture diagnostics.
+- VFX emitter profiles, cooked dependency-preview/rollback readiness, and profile/capture/VFX/cooked-dependency counters are required by baselines, schema checks, and performance history.
+
+## Engine v28 Diversified Production Batch Implemented
+
+- A new `Assets/Verification/V28DiversifiedBatch.dfollowups` manifest covers thirty-six stable points, six each for editor workflow, asset pipeline promotion, rendering, runtime sequencer, audio production, and production publishing.
+- The `Viewport` panel now includes profile export/import/default-diff controls, remembers workspace preset metadata, and offers gameplay/editor/trailer workspace preset buttons with capture progress reporting.
+- Cooked package runtime metadata now exposes streaming readiness, texture-binding counts, skinning palette uploads, retargeting maps, streaming priority levels, live invalidation tickets, rollback journal entries, and upload-byte estimates.
+- Rendering diagnostics now cover graph-owned advanced pass readiness such as bind/barrier promotion, culling/binning, CSM, motion-vector targets, tiled capture, temporal resolve, and VFX renderer promotion counters.
+- Runtime and audio diagnostics now cover sequencer editing/readiness, keyboard preview bindings, undoable shot edits, real-content pulse inputs, streamed-music layer readiness, spatial emitter authoring, attenuation assets, and calibrated mixer metering.
+- Production tooling now reviews both v25 and v28 followup manifests, requires v28 category counters in every runtime baseline, records v28 performance-history columns, checks release-readiness schema coverage, and reports the new category counters in summaries.
+
 More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
-- Promote graph-owned resource diagnostics into explicit DX11 bind/unbind barriers, real alias lifetime validation, GPU culling, Forward+ lighting, cascaded shadows, motion vectors, and stronger temporal AA.
-- Move the high-resolution capture proof from resolved source-frame sampling to true tiled offscreen supersampling with per-tile camera jitter, selectable resolve filters, real EXR output, and async compression workers backed by the v27 capture preset surface.
-- Extend named editor preference profiles with import/export, profile diffing, dock-layout persistence, schema migration, and per-project defaults.
-- Replace cooked package metadata promotion with real optimized GPU mesh/material/animation uploads, live dependency invalidation using the v27 preview surface, runtime streaming, retargeting, and GPU skinning palette buffers.
+- Promote v28 graph-owned rendering diagnostics into actual DX11 pass execution: explicit bind/unbind barriers, alias lifetime validation, GPU culling, Forward+ lighting, cascaded shadows, motion-vector rendering, and stronger temporal AA.
+- Move the high-resolution capture proof from resolved source-frame sampling to true tiled offscreen supersampling with per-tile camera jitter, selectable resolve filters, real EXR output, and real async compression workers.
+- Turn editor profile import/export/diff and workspace presets into a versioned per-project preference system with dock-layout files, schema migration, conflict-safe merge, and checked-in team defaults.
+- Replace cooked package readiness metadata with real optimized GPU mesh/material/animation uploads, live dependency invalidation, runtime streaming, retargeting, and GPU skinning palette buffers.
 - Promote nested prefab metadata into multi-object override diffing, recursive dependency-aware apply/revert, undo grouping, and dependency-aware scene reloads.
-- Replace audio calibration counters with real XAudio2 mixer voices, streamed music assets, spatial emitter components, attenuation-curve assets, calibrated meters, and content-driven VFX pulses.
-- Expand v6 Shot Director metadata into a full sequencer with curve editing, clip lanes, thumbnails, nested sequences, clip blending, and undoable edits.
+- Replace audio production/readiness counters with real XAudio2 mixer voices, streamed music assets, spatial emitter components, attenuation-curve assets, calibrated meters, and content-driven VFX pulses from decoded buffers.
+- Expand v6 Shot Director plus v28 runtime sequencer diagnostics into a full sequencer with curve editing, clip lanes, thumbnails, nested sequences, clip blending, keyboard preview, and undoable edits.
 - Promote rift particle/ribbon profiles into a dedicated GPU VFX renderer with soft particles, emitter sorting controls, motion vectors, temporal reprojection, and debug visualizers.
-- Replace release readiness manifests, bootstrapper plans, and symbol-server plans with signed publishing/install artifacts, interactive CI runtime gates, and OBS WebSocket automation.
+- Replace release readiness manifests, bootstrapper plans, symbol-server plans, and OBS command diagnostics with signed publishing/install artifacts, interactive CI runtime gates, and real OBS WebSocket automation.

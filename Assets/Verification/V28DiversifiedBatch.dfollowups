@@ -1,0 +1,38 @@
+# DISPARITY v28 diversified production followup manifest.
+# Format: point <stable-key>|<domain>|<description>
+point v28_point_01_editor_profile_import_export|Editor|Add named editor preference profile import and export coverage.
+point v28_point_02_editor_profile_diff|Editor|Add profile diff summary coverage for workspace preference changes.
+point v28_point_03_editor_dock_layout|Editor|Track dock-layout persistence readiness with a stable checksum.
+point v28_point_04_editor_workspace_presets|Editor|Add gameplay, editor, and trailer workspace preset coverage.
+point v28_point_05_editor_capture_progress|Editor|Expose viewport capture progress through the workspace controls.
+point v28_point_06_editor_command_macro_review|Editor|Track reviewable command macro readiness from command history.
+point v28_point_07_asset_gpu_package_upload|Assets|Promote cooked package metadata into GPU resource readiness diagnostics.
+point v28_point_08_asset_texture_bindings|Assets|Track material texture binding counts for optimized packages.
+point v28_point_09_asset_animation_clips|Assets|Track animation clip resource readiness from optimized packages.
+point v28_point_10_asset_live_invalidation|Assets|Track live dependency invalidation tickets.
+point v28_point_11_asset_reload_rollback_journal|Assets|Track reload rollback journal entries.
+point v28_point_12_asset_streaming_priorities|Assets|Track asset streaming priority levels.
+point v28_point_13_render_explicit_bind_barriers|Rendering|Track explicit bind and unbind barrier diagnostics.
+point v28_point_14_render_alias_lifetime_validation|Rendering|Track alias lifetime validation diagnostics.
+point v28_point_15_render_gpu_culling_buckets|Rendering|Track GPU culling bucket readiness.
+point v28_point_16_render_forward_plus_bins|Rendering|Track Forward+ light bin readiness.
+point v28_point_17_render_csm_cascades|Rendering|Track cascaded shadow cascade readiness.
+point v28_point_18_render_motion_vectors_taa|Rendering|Track motion-vector targets and temporal resolve readiness.
+point v28_point_19_runtime_streaming_requests|Runtime|Track asset streaming request readiness.
+point v28_point_20_runtime_cancellation_tokens|Runtime|Track async cancellation token readiness.
+point v28_point_21_runtime_file_watchers|Runtime|Track file watcher readiness.
+point v28_point_22_runtime_script_reload_boundary|Runtime|Track script reload boundary readiness.
+point v28_point_23_runtime_script_state_slots|Runtime|Track script state preservation slots.
+point v28_point_24_runtime_sequencer_preview|Runtime|Track sequencer clip blending and keyboard preview readiness.
+point v28_point_25_audio_xaudio2_mixer_targets|Audio|Track XAudio2 mixer voice target readiness.
+point v28_point_26_audio_streamed_music_asset|Audio|Track streamed music asset readiness.
+point v28_point_27_audio_spatial_components|Audio|Track spatial emitter component readiness.
+point v28_point_28_audio_attenuation_assets|Audio|Track attenuation curve asset readiness.
+point v28_point_29_audio_calibrated_meters|Audio|Track calibrated production meter readiness.
+point v28_point_30_audio_content_amplitude_pulses|Audio|Track content-driven amplitude pulse readiness.
+point v28_point_31_prod_per_gpu_goldens|Production|Track per-GPU golden profile coverage.
+point v28_point_32_prod_baseline_diff_package|Production|Write an auditable baseline diff package.
+point v28_point_33_prod_schema_compatibility|Production|Track runtime schema compatibility coverage.
+point v28_point_34_prod_interactive_runner|Production|Track interactive runner readiness.
+point v28_point_35_prod_signed_installer|Production|Track signed installer and symbol publishing readiness.
+point v28_point_36_prod_obs_websocket_commands|Production|Track OBS WebSocket command automation readiness.

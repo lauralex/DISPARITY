@@ -1,7 +1,8 @@
 param(
     [string]$ManifestPath = "Assets/Verification/V25ProductionBatch.dfollowups",
     [int]$ExpectedCount = 40,
-    [string]$OutputPath = "Saved/Verification/v25_production_batch_review.json"
+    [string]$OutputPath = "Saved/Verification/v25_production_batch_review.json",
+    [string]$KeyPrefix = "v25"
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,8 +37,9 @@ foreach ($line in Get-Content -LiteralPath $ManifestPath) {
     $key = $Matches[1].Trim()
     $domain = $Matches[2].Trim()
     $description = $Matches[3].Trim()
-    if ($key -notmatch "^v25_point_\d{2}_[a-z0-9_]+$") {
-        throw "Production batch point key '$key' does not match the v25 naming convention."
+    $keyPattern = "^$([regex]::Escape($KeyPrefix))_point_\d{2}_[a-z0-9_]+$"
+    if ($key -notmatch $keyPattern) {
+        throw "Production batch point key '$key' does not match the $KeyPrefix naming convention."
     }
     if ([string]::IsNullOrWhiteSpace($domain) -or [string]::IsNullOrWhiteSpace($description)) {
         throw "Production batch point '$key' is missing a domain or description."
@@ -59,7 +61,7 @@ if ($duplicateKeys.Count -gt 0) {
     throw "Production batch manifest has duplicate key(s): $(@($duplicateKeys | ForEach-Object { $_.Name }) -join ', ')"
 }
 
-$expectedKeys = 1..$ExpectedCount | ForEach-Object { "v25_point_{0:D2}_" -f $_ }
+$expectedKeys = 1..$ExpectedCount | ForEach-Object { "$KeyPrefix`_point_{0:D2}_" -f $_ }
 foreach ($prefix in $expectedKeys) {
     $matchingPrefix = @($points | Where-Object { $_.key.StartsWith($prefix) })
     if ($matchingPrefix.Count -eq 0) {
@@ -84,6 +86,7 @@ if (![string]::IsNullOrWhiteSpace($parent)) {
     schema = 1
     reviewed_utc = (Get-Date).ToUniversalTime().ToString("o")
     manifest = $ManifestPath
+    key_prefix = $KeyPrefix
     expected_count = $ExpectedCount
     point_count = $points.Count
     domain_counts = $domainCounts
