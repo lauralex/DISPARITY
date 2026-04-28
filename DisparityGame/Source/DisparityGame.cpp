@@ -3770,7 +3770,7 @@ namespace
                 renderer.DrawMesh(m_cubeMesh, trail, trailMaterial);
             }
 
-            const uint32_t catalogBeacons = DisparityGame::DrawProductionCatalogWorldBeacons(renderer, m_productionCatalogSnapshot, visualTime, m_riftPosition, m_demoRelayMaterial, m_cubeMesh);
+            const uint32_t catalogBeacons = DisparityGame::DrawProductionCatalogWorldBeacons(renderer, m_productionCatalogSnapshot, m_productionCatalogPreview, m_runtimeEditorStats, visualTime, m_riftPosition, m_demoRelayMaterial, m_cubeMesh);
             beaconDraws += catalogBeacons; m_runtimeEditorStats.V45CatalogVisibleBeacons += catalogBeacons;
             if (m_runtimeVerification.Enabled)
             {
@@ -4094,42 +4094,38 @@ namespace
         (void)m_runtimeCommandRegistry.RegisterCommand({ "workspace.trailer", "Editor", "Apply the trailer workspace", "", true });
         (void)m_runtimeCommandRegistry.RegisterCommand({ "workspace.engine_services", "Editor", "Apply engine service diagnostics workspace", "", true });
         (void)m_runtimeCommandRegistry.RegisterCommand({ "catalog.reload", "Assets", "Reload production runtime catalogs", "", true });
+        (void)m_runtimeCommandRegistry.RegisterCommand({ "catalog.preview_next", "Assets", "Preview the next production catalog action", "", true });
         (void)m_runtimeCommandRegistry.RegisterCommand({ "demo.reset", "Game", "Reset the public-demo route", "F10", true });
         (void)m_runtimeCommandRegistry.ValidateRequiredCategories({ "Game", "Editor", "Runtime", "Rendering" });
         m_runtimeCommandRegistryDiagnostics = m_runtimeCommandRegistry.GetDiagnostics();
-
-            m_editorPanelRegistry.Clear();
-            (void)m_editorPanelRegistry.RegisterPanel({ "Viewport", "Core", "Dockspace/Main", 0, true, true });
-            (void)m_editorPanelRegistry.RegisterPanel({ "Hierarchy", "Core", "Dockspace/Left", 10, true, true });
-            (void)m_editorPanelRegistry.RegisterPanel({ "Inspector", "Core", "Dockspace/Right", 20, true, true });
-            (void)m_editorPanelRegistry.RegisterPanel({ "Assets", "Assets", "Dockspace/Bottom", 30, true, true });
-            (void)m_editorPanelRegistry.RegisterPanel({ "Renderer", "Rendering", "Dockspace/Right", 40, true, true });
-            (void)m_editorPanelRegistry.RegisterPanel({ "Shot Director", "Cinematics", "Dockspace/Right", 50, true, true });
-            (void)m_editorPanelRegistry.RegisterPanel({ "Demo Director", "Game", "Dockspace/Right", 60, true, true });
-            (void)m_editorPanelRegistry.RegisterPanel({ "Audio Mixer", "Audio", "Dockspace/Bottom", 70, true, true });
-            (void)m_editorPanelRegistry.RegisterPanel({ "Profiler", "Diagnostics", "Dockspace/Right", 80, true, true });
-            (void)m_editorPanelRegistry.RegisterPanel({ "Engine Services", "Engine", "Dockspace/Bottom", 90, true, true });
+        m_editorPanelRegistry.Clear();
+        (void)m_editorPanelRegistry.RegisterPanel({ "Viewport", "Core", "Dockspace/Main", 0, true, true });
+        (void)m_editorPanelRegistry.RegisterPanel({ "Hierarchy", "Core", "Dockspace/Left", 10, true, true });
+        (void)m_editorPanelRegistry.RegisterPanel({ "Inspector", "Core", "Dockspace/Right", 20, true, true });
+        (void)m_editorPanelRegistry.RegisterPanel({ "Assets", "Assets", "Dockspace/Bottom", 30, true, true });
+        (void)m_editorPanelRegistry.RegisterPanel({ "Renderer", "Rendering", "Dockspace/Right", 40, true, true });
+        (void)m_editorPanelRegistry.RegisterPanel({ "Shot Director", "Cinematics", "Dockspace/Right", 50, true, true });
+        (void)m_editorPanelRegistry.RegisterPanel({ "Demo Director", "Game", "Dockspace/Right", 60, true, true });
+        (void)m_editorPanelRegistry.RegisterPanel({ "Audio Mixer", "Audio", "Dockspace/Bottom", 70, true, true });
+        (void)m_editorPanelRegistry.RegisterPanel({ "Profiler", "Diagnostics", "Dockspace/Right", 80, true, true });
+        (void)m_editorPanelRegistry.RegisterPanel({ "Engine Services", "Engine", "Dockspace/Bottom", 90, true, true });
         (void)m_editorPanelRegistry.RegisterWorkspace({ "Gameplay", "Dockspace/Main", { "Viewport", "Hierarchy", "Inspector", "Demo Director", "Profiler" }, "Viewport", true, "Saved/Editor/Layouts/Gameplay.docklayout", true, { "demo.reset", "demo.quick_restart", "scene.reload" }, { "DPad cycles panels", "A focuses selected panel" }, 5u });
         (void)m_editorPanelRegistry.RegisterWorkspace({ "Trailer", "Dockspace/Main", { "Viewport", "Renderer", "Shot Director", "Audio Mixer", "Profiler" }, "Shot Director", true, "Saved/Editor/Layouts/Trailer.docklayout", true, { "capture.high_res", "workspace.trailer" }, { "Right bumper opens Shot Director", "Left stick scrubs preview" }, 4u });
         (void)m_editorPanelRegistry.RegisterWorkspace({ "Engine Services", "Dockspace/Main", { "Viewport", "Assets", "Renderer", "Engine Services", "Profiler" }, "Engine Services", true, "Saved/Editor/Layouts/EngineServices.docklayout", false, { "workspace.engine_services", "scene.reload" }, { "Start opens command search" }, 3u });
         m_editorPanelRegistryDiagnostics = m_editorPanelRegistry.GetDiagnostics();
-            m_gameEventRoutes = DisparityGame::BuildPublicDemoEventRouteCatalog();
-            m_gameEventRouteDiagnostics = DisparityGame::SummarizeGameEventRoutes(m_gameEventRoutes);
-            m_runtimeEditorStats.GameEventRouteCatalogRoutes = m_gameEventRouteDiagnostics.RouteCount;
-            m_runtimeEditorStats.GameEventRouteTelemetryRoutes = m_gameEventRouteDiagnostics.TelemetryBackedRoutes;
-            m_runtimeEditorStats.GameEventRouteEventBusRoutes = m_gameEventRouteDiagnostics.EventBusBackedRoutes;
-            m_productionCatalogSnapshot = DisparityGame::BuildProductionCatalogSnapshot(); DisparityGame::ApplyProductionCatalogSnapshotStats(m_productionCatalogSnapshot, m_runtimeEditorStats);
-            m_telemetryStream.Clear();
-            m_telemetryStream.IncrementCounter("editor.panels", static_cast<double>(m_editorPanelRegistryDiagnostics.PanelCount));
-            m_telemetryStream.IncrementCounter("runtime.commands", static_cast<double>(m_runtimeCommandRegistryDiagnostics.RegisteredCommands));
-            m_telemetryStream.IncrementCounter("game.event_routes", static_cast<double>(m_gameEventRouteDiagnostics.RouteCount));
-            m_telemetryStream.IncrementCounter("assets.production_catalog_bindings", static_cast<double>(m_productionCatalogSnapshot.Diagnostics.BindingCount));
-            m_telemetryStream.SetGauge("editor.workspaces", static_cast<double>(m_editorPanelRegistryDiagnostics.WorkspaceCount));
-            m_telemetryStream.SetGauge("demo.stability", static_cast<double>(m_publicDemoStability));
-            m_telemetryStream.PushEvent({ "editor", "engine_services_ready", 1.0, m_editorFrameIndex, "v38" });
-            m_telemetryStreamDiagnostics = m_telemetryStream.GetDiagnostics();
-        }
+        m_gameEventRouteDiagnostics = DisparityGame::RefreshGameEventRouteCatalog(m_gameEventRoutes, m_runtimeEditorStats);
+        DisparityGame::RefreshProductionCatalogPreview(m_productionCatalogSnapshot, m_productionCatalogPreview, m_runtimeEditorStats);
 
+        m_telemetryStream.Clear();
+        m_telemetryStream.IncrementCounter("editor.panels", static_cast<double>(m_editorPanelRegistryDiagnostics.PanelCount));
+        m_telemetryStream.IncrementCounter("runtime.commands", static_cast<double>(m_runtimeCommandRegistryDiagnostics.RegisteredCommands));
+        m_telemetryStream.IncrementCounter("game.event_routes", static_cast<double>(m_gameEventRouteDiagnostics.RouteCount));
+        m_telemetryStream.IncrementCounter("assets.production_catalog_bindings", static_cast<double>(m_productionCatalogSnapshot.Diagnostics.BindingCount));
+        m_telemetryStream.SetGauge("editor.workspaces", static_cast<double>(m_editorPanelRegistryDiagnostics.WorkspaceCount));
+        m_telemetryStream.SetGauge("demo.stability", static_cast<double>(m_publicDemoStability));
+        m_telemetryStream.PushEvent({ "editor", "engine_services_ready", 1.0, m_editorFrameIndex, "v38" });
+        m_telemetryStreamDiagnostics = m_telemetryStream.GetDiagnostics();
+        }
         std::string PublicDemoObjectiveText() const
         {
             if (m_publicDemoCompleted)
@@ -6166,8 +6162,10 @@ namespace
                 m_gameEventRouteDiagnostics.RouteCount,
                 m_gameEventRouteDiagnostics.TelemetryBackedRoutes,
                 m_gameEventRouteDiagnostics.EventBusBackedRoutes);
-            if (DisparityGame::DrawProductionCatalogSnapshotPanel(m_productionCatalogSnapshot, m_runtimeEditorStats))
-            { m_productionCatalogSnapshot = DisparityGame::BuildProductionCatalogSnapshot(); DisparityGame::ApplyProductionCatalogSnapshotStats(m_productionCatalogSnapshot, m_runtimeEditorStats); }
+            if (DisparityGame::DrawProductionCatalogSnapshotPanel(m_productionCatalogSnapshot, m_productionCatalogPreview, m_runtimeEditorStats))
+            {
+                DisparityGame::RefreshProductionCatalogPreview(m_productionCatalogSnapshot, m_productionCatalogPreview, m_runtimeEditorStats);
+            }
             if (ImGui::BeginTable(
                 "RuntimeCommands##EngineServices",
                 3,
@@ -13539,6 +13537,7 @@ namespace
         Disparity::EditorPanelRegistryDiagnostics m_editorPanelRegistryDiagnostics;
         DisparityGame::GameEventRouteDiagnostics m_gameEventRouteDiagnostics;
         DisparityGame::ProductionCatalogSnapshot m_productionCatalogSnapshot;
+        DisparityGame::ProductionCatalogPreviewState m_productionCatalogPreview;
         DisparityGame::GameModuleRegistryDiagnostics m_gameModuleRegistryDiagnostics;
         std::array<uint32_t, V25ProductionPointCount> m_v25ProductionPointResults = {};
         std::array<uint32_t, V28DiversifiedPointCount> m_v28DiversifiedPointResults = {};

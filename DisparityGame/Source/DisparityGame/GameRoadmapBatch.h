@@ -119,6 +119,21 @@ namespace DisparityGame
         std::array<uint32_t, 6> VerificationAssets = {};
     };
 
+    struct V46CatalogActionPreviewMetrics
+    {
+        uint32_t SelectableRows = 0;
+        uint32_t PreviewSelections = 0;
+        uint32_t PreviewCycles = 0;
+        uint32_t PreviewClears = 0;
+        uint32_t PreviewDetails = 0;
+        uint32_t FocusedBeacons = 0;
+        uint32_t EnginePreviewBindings = 0;
+        uint32_t EditorPreviewBindings = 0;
+        uint32_t GamePreviewBindings = 0;
+        uint32_t RuntimeActionCommands = 0;
+        std::array<uint32_t, 6> VerificationAssets = {};
+    };
+
     [[nodiscard]] std::array<uint32_t, V39RoadmapPointCount> EvaluateV39RoadmapBatch(
         const V39RoadmapMetrics& metrics,
         const RuntimeBaseline& baseline);
@@ -145,6 +160,10 @@ namespace DisparityGame
         const V45LiveCatalogMetrics& metrics);
     [[nodiscard]] uint32_t CountReadyV45LiveCatalogPoints(
         const std::array<uint32_t, V45LiveCatalogPointCount>& results);
+    [[nodiscard]] std::array<uint32_t, V46CatalogActionPreviewPointCount> EvaluateV46CatalogActionPreview(
+        const V46CatalogActionPreviewMetrics& metrics);
+    [[nodiscard]] uint32_t CountReadyV46CatalogActionPreviewPoints(
+        const std::array<uint32_t, V46CatalogActionPreviewPointCount>& results);
     void CaptureV39RoadmapStats(
         EditorVerificationStats& stats,
         const Disparity::RuntimeCommandRegistryDiagnostics& commandDiagnostics,

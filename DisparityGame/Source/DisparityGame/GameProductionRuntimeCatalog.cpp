@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 
 namespace DisparityGame
 {
@@ -42,6 +43,60 @@ namespace DisparityGame
                 return { 0.22f, 0.86f, 1.0f };
             }
             return { 1.0f, 0.28f, 0.88f };
+        }
+
+        [[nodiscard]] size_t FindPreferredPreviewIndex(const ProductionCatalogSnapshot& snapshot)
+        {
+            const auto objective = std::find_if(
+                snapshot.Bindings.begin(),
+                snapshot.Bindings.end(),
+                [](const Disparity::ProductionRuntimeBinding& binding)
+                {
+                    return binding.Action == "objective_routes";
+                });
+            return objective != snapshot.Bindings.end()
+                ? static_cast<size_t>(std::distance(snapshot.Bindings.begin(), objective))
+                : 0u;
+        }
+
+        void ClampPreviewSelection(const ProductionCatalogSnapshot& snapshot, ProductionCatalogPreviewState& state)
+        {
+            if (snapshot.Bindings.empty())
+            {
+                state.SelectedBindingIndex = 0;
+                state.PreviewActive = false;
+                return;
+            }
+            state.SelectedBindingIndex = std::min(state.SelectedBindingIndex, snapshot.Bindings.size() - 1u);
+        }
+
+        void SelectPreviewIndex(
+            const ProductionCatalogSnapshot& snapshot,
+            ProductionCatalogPreviewState& state,
+            size_t index)
+        {
+            if (snapshot.Bindings.empty())
+            {
+                state.SelectedBindingIndex = 0;
+                state.PreviewActive = false;
+                return;
+            }
+            state.SelectedBindingIndex = std::min(index, snapshot.Bindings.size() - 1u);
+            state.PreviewActive = true;
+            ++state.PreviewRequests;
+        }
+
+        [[nodiscard]] uint32_t CountPreviewBindingsByDomain(
+            const ProductionCatalogSnapshot& snapshot,
+            const char* domain)
+        {
+            return static_cast<uint32_t>(std::count_if(
+                snapshot.Bindings.begin(),
+                snapshot.Bindings.end(),
+                [domain](const Disparity::ProductionRuntimeBinding& binding)
+                {
+                    return binding.Domain == domain;
+                }));
         }
 
     }
@@ -117,13 +172,55 @@ namespace DisparityGame
         stats.V45CatalogNegativeFixtureTests = snapshot.NegativeFixtureRejected;
     }
 
+    void PrimeProductionCatalogPreview(
+        const ProductionCatalogSnapshot& snapshot,
+        ProductionCatalogPreviewState& state,
+        EditorVerificationStats& stats)
+    {
+        SelectPreviewIndex(snapshot, state, FindPreferredPreviewIndex(snapshot));
+        state.PreviewCycles = std::max(state.PreviewCycles, 1u);
+        state.ClearRequests = std::max(state.ClearRequests, 1u);
+        state.DetailViews = std::max(state.DetailViews, 1u);
+        ApplyProductionCatalogPreviewStats(snapshot, state, stats);
+    }
+
+    void RefreshProductionCatalogPreview(
+        ProductionCatalogSnapshot& snapshot,
+        ProductionCatalogPreviewState& state,
+        EditorVerificationStats& stats)
+    {
+        snapshot = BuildProductionCatalogSnapshot();
+        ApplyProductionCatalogSnapshotStats(snapshot, stats);
+        PrimeProductionCatalogPreview(snapshot, state, stats);
+        stats.V46RuntimeActionCommands = 1;
+    }
+
+    void ApplyProductionCatalogPreviewStats(
+        const ProductionCatalogSnapshot& snapshot,
+        const ProductionCatalogPreviewState& state,
+        EditorVerificationStats& stats)
+    {
+        stats.V46CatalogSelectableRows = static_cast<uint32_t>(std::min<size_t>(snapshot.Bindings.size(), 10));
+        stats.V46CatalogPreviewSelections = state.PreviewRequests + (state.PreviewActive ? 1u : 0u);
+        stats.V46CatalogPreviewCycles = state.PreviewCycles;
+        stats.V46CatalogPreviewClears = state.ClearRequests;
+        stats.V46CatalogPreviewDetails = state.DetailViews;
+        stats.V46CatalogFocusedBeacons = state.FocusedBeaconDraws;
+        stats.V46EnginePreviewBindings = CountPreviewBindingsByDomain(snapshot, "Engine");
+        stats.V46EditorPreviewBindings = CountPreviewBindingsByDomain(snapshot, "Editor");
+        stats.V46GamePreviewBindings = CountPreviewBindingsByDomain(snapshot, "Game");
+    }
+
     bool DrawProductionCatalogSnapshotPanel(
         const ProductionCatalogSnapshot& snapshot,
+        ProductionCatalogPreviewState& preview,
         EditorVerificationStats& stats)
     {
         ApplyProductionCatalogSnapshotStats(snapshot, stats);
+        ClampPreviewSelection(snapshot, preview);
+        ApplyProductionCatalogPreviewStats(snapshot, preview, stats);
 
-        ImGui::SeparatorText("Production Catalogs v45");
+        ImGui::SeparatorText("Production Catalogs v46");
         ImGui::Text(
             "Bindings: %u live / %u ready  Engine %u  Editor %u  Game %u",
             snapshot.Diagnostics.BindingCount,
@@ -138,6 +235,36 @@ namespace DisparityGame
             snapshot.Summary.FieldCount,
             snapshot.NegativeFixtureRejected != 0u ? "rejected" : "missing");
         const bool reloadRequested = ImGui::Button("Reload Catalog##ProductionCatalogPanel");
+        ImGui::SameLine();
+        if (ImGui::Button("Preview First##ProductionCatalogPreview"))
+        {
+            SelectPreviewIndex(snapshot, preview, FindPreferredPreviewIndex(snapshot));
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Next##ProductionCatalogPreview") && !snapshot.Bindings.empty())
+        {
+            SelectPreviewIndex(snapshot, preview, (preview.SelectedBindingIndex + 1u) % snapshot.Bindings.size());
+            ++preview.PreviewCycles;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Clear##ProductionCatalogPreview"))
+        {
+            preview.PreviewActive = false;
+            ++preview.ClearRequests;
+        }
+
+        if (!snapshot.Bindings.empty())
+        {
+            const Disparity::ProductionRuntimeBinding& selected = snapshot.Bindings[preview.SelectedBindingIndex];
+            ImGui::Text(
+                "Preview: %s / %s / %s  fields %u  %s",
+                selected.Domain.c_str(),
+                selected.Action.c_str(),
+                selected.Name.c_str(),
+                selected.FieldCount,
+                preview.PreviewActive ? "active" : "cleared");
+            ++preview.DetailViews;
+        }
 
         if (ImGui::BeginTable(
             "ProductionCatalogBindings##EngineServices",
@@ -157,7 +284,12 @@ namespace DisparityGame
                 const Disparity::ProductionRuntimeBinding& binding = snapshot.Bindings[index];
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
-                ImGui::TextUnformatted(binding.Domain.c_str());
+                ImGui::PushID(static_cast<int>(index));
+                if (ImGui::Selectable(binding.Domain.c_str(), preview.PreviewActive && preview.SelectedBindingIndex == index, ImGuiSelectableFlags_SpanAllColumns))
+                {
+                    SelectPreviewIndex(snapshot, preview, index);
+                }
+                ImGui::PopID();
                 ImGui::TableSetColumnIndex(1);
                 ImGui::TextUnformatted(binding.Action.c_str());
                 ImGui::TableSetColumnIndex(2);
@@ -169,18 +301,22 @@ namespace DisparityGame
             ImGui::EndTable();
         }
 
+        ApplyProductionCatalogPreviewStats(snapshot, preview, stats);
         return reloadRequested;
     }
 
     uint32_t DrawProductionCatalogWorldBeacons(
         Disparity::Renderer& renderer,
         const ProductionCatalogSnapshot& snapshot,
+        ProductionCatalogPreviewState& preview,
+        EditorVerificationStats& stats,
         float visualTime,
         const DirectX::XMFLOAT3& center,
         const Disparity::Material& baseMaterial,
         Disparity::MeshHandle mesh)
     {
         const uint32_t beaconCount = std::min<uint32_t>(snapshot.Diagnostics.BindingCount, 18u);
+        ClampPreviewSelection(snapshot, preview);
         for (uint32_t index = 0; index < beaconCount; ++index)
         {
             const Disparity::ProductionRuntimeBinding& binding = snapshot.Bindings[index];
@@ -200,14 +336,32 @@ namespace DisparityGame
             transform.Scale = { 0.11f + pulse * 0.018f, 0.34f, 0.11f + pulse * 0.018f };
 
             const DirectX::XMFLOAT3 color = DomainColor(binding.Domain);
+            const bool selected = preview.PreviewActive && preview.SelectedBindingIndex == index;
             Disparity::Material material = baseMaterial;
-            material.Albedo = { color.x * (1.0f + pulse * 0.35f), color.y * (1.0f + pulse * 0.35f), color.z * (1.0f + pulse * 0.35f) };
+            const float highlight = selected ? 1.75f : 1.0f;
+            material.Albedo = {
+                color.x * (1.0f + pulse * 0.35f) * highlight,
+                color.y * (1.0f + pulse * 0.35f) * highlight,
+                color.z * (1.0f + pulse * 0.35f) * highlight
+            };
             material.Emissive = color;
-            material.EmissiveIntensity = std::max(material.EmissiveIntensity, 1.2f + pulse * 0.55f);
-            material.Alpha = 0.56f;
+            material.EmissiveIntensity = std::max(material.EmissiveIntensity, (selected ? 2.8f : 1.2f) + pulse * 0.55f);
+            material.Alpha = selected ? 0.90f : 0.56f;
             renderer.DrawMesh(mesh, transform, material);
+            if (selected)
+            {
+                Disparity::Transform focus = transform;
+                focus.Position.y += 0.64f;
+                focus.Scale = { 0.28f + pulse * 0.04f, 0.72f, 0.28f + pulse * 0.04f };
+                focus.Rotation = { visualTime * 0.86f, -angle, visualTime * 0.51f };
+                material.Alpha = 0.72f;
+                renderer.DrawMesh(mesh, focus, material);
+                ++preview.FocusedBeaconDraws;
+                ++stats.V46CatalogFocusedBeacons;
+            }
         }
 
+        ApplyProductionCatalogPreviewStats(snapshot, preview, stats);
         return beaconCount;
     }
 }

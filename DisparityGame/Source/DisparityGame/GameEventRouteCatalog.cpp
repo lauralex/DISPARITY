@@ -1,4 +1,5 @@
 #include "DisparityGame/GameEventRouteCatalog.h"
+#include "DisparityGame/GameRuntimeTypes.h"
 
 #include <set>
 #include <string_view>
@@ -99,6 +100,18 @@ namespace DisparityGame
         }
 
         diagnostics.TraceChannels = static_cast<uint32_t>(traceChannels.size());
+        return diagnostics;
+    }
+
+    GameEventRouteDiagnostics RefreshGameEventRouteCatalog(
+        std::vector<GameEventRouteDescriptor>& routes,
+        EditorVerificationStats& stats)
+    {
+        routes = BuildPublicDemoEventRouteCatalog();
+        GameEventRouteDiagnostics diagnostics = SummarizeGameEventRoutes(routes);
+        stats.GameEventRouteCatalogRoutes = diagnostics.RouteCount;
+        stats.GameEventRouteTelemetryRoutes = diagnostics.TelemetryBackedRoutes;
+        stats.GameEventRouteEventBusRoutes = diagnostics.EventBusBackedRoutes;
         return diagnostics;
     }
 }

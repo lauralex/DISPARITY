@@ -288,6 +288,41 @@ namespace DisparityGame
         return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
     }
 
+    std::array<uint32_t, V46CatalogActionPreviewPointCount> EvaluateV46CatalogActionPreview(
+        const V46CatalogActionPreviewMetrics& metrics)
+    {
+        std::array<uint32_t, V46CatalogActionPreviewPointCount> results = {};
+        results[0] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.h", "ProductionCatalogPreviewState") ? 1u : 0u;
+        results[1] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ClampPreviewSelection") ? 1u : 0u;
+        results[2] = metrics.EnginePreviewBindings >= 6 && metrics.EditorPreviewBindings >= 6 && metrics.GamePreviewBindings >= 6 ? 1u : 0u;
+        results[3] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "PrimeProductionCatalogPreview") ? 1u : 0u;
+        results[4] = metrics.RuntimeActionCommands >= 1 ? 1u : 0u;
+        results[5] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.h", "ApplyProductionCatalogPreviewStats") ? 1u : 0u;
+        results[6] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v46") ? 1u : 0u;
+        results[7] = metrics.SelectableRows >= 8 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ImGui::Selectable") ? 1u : 0u;
+        results[8] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Preview First##ProductionCatalogPreview") ? 1u : 0u;
+        results[9] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Next##ProductionCatalogPreview") ? 1u : 0u;
+        results[10] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Clear##ProductionCatalogPreview") ? 1u : 0u;
+        results[11] = metrics.PreviewDetails >= 1 ? 1u : 0u;
+        results[12] = metrics.FocusedBeacons >= 1 ? 1u : 0u;
+        results[13] = metrics.PreviewSelections >= 1 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "objective_routes") ? 1u : 0u;
+        results[14] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "DomainColor") ? 1u : 0u;
+        results[15] = metrics.PreviewSelections >= 1 && metrics.PreviewCycles >= 1 ? 1u : 0u;
+        results[16] = metrics.EnginePreviewBindings >= 1 && metrics.EditorPreviewBindings >= 1 && metrics.GamePreviewBindings >= 1 ? 1u : 0u;
+        results[17] = metrics.PreviewClears >= 1 && TextContains("DisparityGame/Source/DisparityGame.cpp", "RefreshProductionCatalogPreview") ? 1u : 0u;
+        for (size_t index = 0; index < metrics.VerificationAssets.size(); ++index)
+        {
+            results[18 + index] = metrics.VerificationAssets[index] != 0u ? 1u : 0u;
+        }
+        return results;
+    }
+
+    uint32_t CountReadyV46CatalogActionPreviewPoints(
+        const std::array<uint32_t, V46CatalogActionPreviewPointCount>& results)
+    {
+        return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
+    }
+
     void CaptureV39RoadmapStats(
         EditorVerificationStats& stats,
         const Disparity::RuntimeCommandRegistryDiagnostics& commandDiagnostics,
@@ -807,6 +842,60 @@ namespace DisparityGame
         for (size_t index = 0; index < v45Points.size(); ++index)
         {
             report << v45Points[index].Key << "=" << v45Results[index] << "\n";
+        }
+
+        const std::array<uint32_t, 6> v46VerificationAssets = {
+            TextContains("Assets/Verification/V46CatalogActionPreview.dfollowups", "v46_point_24_docs_agent_roadmap_gate") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeReportSchema.dschema", "v46_catalog_action_preview_points") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeBaseline.dverify", "min_v46_catalog_action_preview_points") &&
+                TextContains("Assets/Verification/CameraSweepBaseline.dverify", "min_v46_catalog_action_preview_points") &&
+                TextContains("Assets/Verification/EditorPrecisionBaseline.dverify", "min_v46_catalog_action_preview_points") &&
+                TextContains("Assets/Verification/PostDebugBaseline.dverify", "min_v46_catalog_action_preview_points") &&
+                TextContains("Assets/Verification/AssetReloadBaseline.dverify", "min_v46_catalog_action_preview_points") &&
+                TextContains("Assets/Verification/GizmoDragBaseline.dverify", "min_v46_catalog_action_preview_points") ? 1u : 0u,
+            TextContains("Tools/ReviewReleaseReadiness.ps1", "V46CatalogActionPreviewPath") ? 1u : 0u,
+            TextContains("Tools/RuntimeVerifyDisparity.ps1", "v46_catalog_action_preview_points") &&
+                TextContains("Tools/SummarizePerformanceHistory.ps1", "v46_catalog_action_preview_points") ? 1u : 0u,
+            TextContains("README.md", "Engine v46 Catalog Action Preview Implemented") &&
+                TextContains("Docs/ROADMAP.md", "v46 Completed Catalog Action Preview Batch") &&
+                TextContains("Docs/ENGINE_FEATURES.md", "v46_catalog_action_preview_points") &&
+                TextContains("AGENTS.md", "Editor/runtime v46") ? 1u : 0u
+        };
+        const V46CatalogActionPreviewMetrics v46Metrics = {
+            std::max(stats.V46CatalogSelectableRows, static_cast<uint32_t>(std::min<size_t>(v45Snapshot.Bindings.size(), 10u))),
+            stats.V46CatalogPreviewSelections,
+            stats.V46CatalogPreviewCycles,
+            stats.V46CatalogPreviewClears,
+            stats.V46CatalogPreviewDetails,
+            stats.V46CatalogFocusedBeacons,
+            std::max(stats.V46EnginePreviewBindings, v45Snapshot.Diagnostics.EngineBindings),
+            std::max(stats.V46EditorPreviewBindings, v45Snapshot.Diagnostics.EditorBindings),
+            std::max(stats.V46GamePreviewBindings, v45Snapshot.Diagnostics.GameBindings),
+            stats.V46RuntimeActionCommands,
+            v46VerificationAssets
+        };
+        const auto v46Results = EvaluateV46CatalogActionPreview(v46Metrics);
+        const uint32_t v46VerificationReady = static_cast<uint32_t>(std::count(v46VerificationAssets.begin(), v46VerificationAssets.end(), 1u));
+        const uint32_t v46ReadyPoints = CountReadyV46CatalogActionPreviewPoints(v46Results);
+
+        report << "v46_catalog_selectable_rows=" << v46Metrics.SelectableRows << "\n";
+        report << "v46_catalog_preview_selections=" << v46Metrics.PreviewSelections << "\n";
+        report << "v46_catalog_preview_cycles=" << v46Metrics.PreviewCycles << "\n";
+        report << "v46_catalog_preview_clears=" << v46Metrics.PreviewClears << "\n";
+        report << "v46_catalog_preview_details=" << v46Metrics.PreviewDetails << "\n";
+        report << "v46_catalog_focused_beacons=" << v46Metrics.FocusedBeacons << "\n";
+        report << "v46_engine_preview_bindings=" << v46Metrics.EnginePreviewBindings << "\n";
+        report << "v46_editor_preview_bindings=" << v46Metrics.EditorPreviewBindings << "\n";
+        report << "v46_game_preview_bindings=" << v46Metrics.GamePreviewBindings << "\n";
+        report << "v46_runtime_action_commands=" << v46Metrics.RuntimeActionCommands << "\n";
+        report << "v46_verification_assets=" << v46VerificationReady << "\n";
+        report << "v46_docs_ready=" << v46VerificationAssets[5] << "\n";
+        report << "v46_catalog_action_preview_points=" << v46ReadyPoints << "\n";
+
+        const auto& v46Points = GetV46CatalogActionPreviewPoints();
+        for (size_t index = 0; index < v46Points.size(); ++index)
+        {
+            report << v46Points[index].Key << "=" << v46Results[index] << "\n";
         }
     }
 }

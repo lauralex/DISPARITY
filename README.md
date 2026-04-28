@@ -61,7 +61,7 @@ Editor UI:
 - `Demo Director`: inspect the public vertical slice stage, objective distance, shard/anchor/gate/relay progress, checkpoint/retry/pressure/footstep/combo/collision/traversal/enemy/gamepad/audio/animation telemetry, recent gameplay events, and v30/v31/v32/v33 readiness while the demo is running.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters/production counters, and store/recall a mixer snapshot.
-- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, public-demo event routes, and the live v45 production catalog table/reload surface from one live readiness panel.
+- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, public-demo event routes, and the live v46 production catalog table/reload/preview surface from one live readiness panel.
 
 ## Engine v0 Features
 
@@ -70,6 +70,14 @@ Editor UI:
 - Keyboard and raw mouse input.
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
+
+## Engine v46 Catalog Action Preview Implemented
+
+- Added `Assets/Verification/V46CatalogActionPreview.dfollowups`, a twenty-four-point batch that makes the live production catalog selectable and visible as an editor/game action preview.
+- `GameProductionRuntimeCatalog.*` now owns `ProductionCatalogPreviewState`, selection clamping, preview priming, per-domain preview counts, and preview stats so the root game file stays at its enforced line budget.
+- `Engine Services > Production Catalogs v46` now has selectable catalog rows plus `Preview First`, `Next`, and `Clear` actions, and it shows the selected binding detail line with domain, action, entry, field count, and active/cleared state.
+- The public demo now highlights the selected catalog binding with a stronger focused beacon marker around the DISPARITY rift, defaulting to the objective-route binding so the preview is immediately visible.
+- Runtime reports now emit `v46_catalog_action_preview_points`, preview selection/cycle/clear/detail/focused-beacon counters, Engine/Editor/Game preview binding counts, command coverage, verification assets, docs readiness, and every `v46_point_*` metric.
 
 ## Engine v45 Live Production Catalog Implemented
 

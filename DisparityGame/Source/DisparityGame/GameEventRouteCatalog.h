@@ -5,6 +5,8 @@
 
 namespace DisparityGame
 {
+    struct EditorVerificationStats;
+
     struct GameEventRouteDescriptor
     {
         const char* Name = "";
@@ -49,4 +51,7 @@ namespace DisparityGame
 
     [[nodiscard]] std::vector<GameEventRouteDescriptor> BuildPublicDemoEventRouteCatalog();
     [[nodiscard]] GameEventRouteDiagnostics SummarizeGameEventRoutes(const std::vector<GameEventRouteDescriptor>& routes);
+    [[nodiscard]] GameEventRouteDiagnostics RefreshGameEventRouteCatalog(
+        std::vector<GameEventRouteDescriptor>& routes,
+        EditorVerificationStats& stats);
 }

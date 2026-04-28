@@ -300,4 +300,35 @@ namespace DisparityGame
         } };
         return points;
     }
+
+    const std::array<GameFollowupPoint, V46CatalogActionPreviewBatchPointCount>& GetV46CatalogActionPreviewPoints()
+    {
+        static const std::array<GameFollowupPoint, V46CatalogActionPreviewBatchPointCount> points = { {
+            { "v46_point_01_engine_preview_state", "Engine", "Production catalog preview state is owned outside DisparityGame.cpp" },
+            { "v46_point_02_engine_preview_selection_clamp", "Engine", "Preview selection clamps safely across catalog reloads" },
+            { "v46_point_03_engine_preview_domain_counts", "Engine", "Preview diagnostics count Engine, Editor, and Game bindings" },
+            { "v46_point_04_engine_preview_verification_prime", "Engine", "Runtime verification primes the same preview action path" },
+            { "v46_point_05_engine_preview_action_command", "Engine", "Runtime command registry exposes a catalog preview command" },
+            { "v46_point_06_engine_preview_public_api", "Engine", "Catalog preview helpers are available through the game catalog bridge" },
+            { "v46_point_07_editor_preview_panel_visible", "Editor", "Engine Services panel displays Production Catalogs v46" },
+            { "v46_point_08_editor_selectable_catalog_rows", "Editor", "Catalog rows are selectable in the Engine Services panel" },
+            { "v46_point_09_editor_preview_first_button", "Editor", "Editor exposes a Preview First catalog action" },
+            { "v46_point_10_editor_preview_next_button", "Editor", "Editor exposes a Next catalog action" },
+            { "v46_point_11_editor_preview_clear_button", "Editor", "Editor exposes a Clear catalog preview action" },
+            { "v46_point_12_editor_preview_detail_line", "Editor", "Editor shows the selected binding detail line" },
+            { "v46_point_13_game_focused_beacon_visible", "Game", "Playable demo renders a focused catalog beacon marker" },
+            { "v46_point_14_game_objective_binding_default", "Game", "Preview defaults to the public-demo objective route binding" },
+            { "v46_point_15_game_domain_color_feedback", "Game", "Focused beacon preserves domain color feedback" },
+            { "v46_point_16_game_catalog_preview_telemetry", "Game", "Runtime report emits catalog preview interaction metrics" },
+            { "v46_point_17_game_all_domain_preview_coverage", "Game", "Game runtime keeps Engine, Editor, and Game preview binding coverage" },
+            { "v46_point_18_game_world_reload_survives_preview", "Game", "Preview selection remains valid after catalog reload" },
+            { "v46_point_19_verification_manifest_gate", "Verification", "v46 catalog action preview manifest is present and reviewed" },
+            { "v46_point_20_verification_schema_gate", "Verification", "Runtime report schema includes v46 preview metrics" },
+            { "v46_point_21_verification_baseline_gate", "Verification", "Runtime baselines include v46 preview thresholds" },
+            { "v46_point_22_verification_release_gate", "Verification", "Release readiness includes the v46 preview manifest" },
+            { "v46_point_23_verification_performance_history_gate", "Verification", "Runtime and performance-history tooling track v46 preview metrics" },
+            { "v46_point_24_docs_agent_roadmap_gate", "Docs", "README, feature guide, roadmap, and AGENTS document v46 catalog action preview" }
+        } };
+        return points;
+    }
 }
