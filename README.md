@@ -61,7 +61,7 @@ Editor UI:
 - `Demo Director`: inspect the public vertical slice stage, objective distance, shard/anchor/gate/relay progress, checkpoint/retry/pressure/footstep/combo/collision/traversal/enemy/gamepad/audio/animation telemetry, recent gameplay events, and v30/v31/v32/v33 readiness while the demo is running.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters/production counters, and store/recall a mixer snapshot.
-- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, and public-demo event routes from one live readiness panel.
+- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, public-demo event routes, and the live v45 production catalog table/reload surface from one live readiness panel.
 
 ## Engine v0 Features
 
@@ -70,6 +70,15 @@ Editor UI:
 - Keyboard and raw mouse input.
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
+
+## Engine v45 Live Production Catalog Implemented
+
+- Added `Assets/Verification/V45LiveProductionCatalog.dfollowups`, a twenty-four-point batch that turns the validated v44 runtime catalog into visible engine/editor/game bindings.
+- Extended `ProductionAssetRuntimeCatalog` with `ProductionRuntimeBinding` rows, diagnostics, ready/active/domain counts, and field lookup so engine systems can query catalog content without re-parsing text.
+- Added `DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.*` to bridge catalog data into the editor, runtime verification, and public demo while preserving the root game-file line budget.
+- `Engine Services` now shows a `Production Catalogs v45` table with source, domain, action, directive, field counts, runtime-ready state, and a reload button.
+- The playable scene now renders catalog-driven orbiting domain beacons around the DISPARITY rift, making the live production content visible in the world instead of only in reports.
+- Runtime reports now emit `v45_live_catalog_points`, runtime/ready binding counts, engine/editor/game binding splits, panel rows, visible beacons, objective/encounter binding counts, negative-fixture checks, and all `v45_point_*` metrics.
 
 ## Engine v44 Runtime Catalog Activation Implemented
 

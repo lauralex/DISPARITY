@@ -198,4 +198,70 @@ namespace Disparity
         summary.ActionCount = static_cast<uint32_t>(actions.size());
         return summary;
     }
+
+    std::vector<ProductionRuntimeBinding> BuildProductionRuntimeBindings(
+        const std::vector<ProductionRuntimeAsset>& catalog)
+    {
+        std::vector<ProductionRuntimeBinding> bindings;
+        bindings.reserve(catalog.size());
+
+        for (const ProductionRuntimeAsset& asset : catalog)
+        {
+            for (const ProductionRuntimeAssetEntry& entry : asset.Entries)
+            {
+                if (!entry.Activated)
+                {
+                    continue;
+                }
+
+                ProductionRuntimeBinding binding = {};
+                binding.SourcePath = asset.Path;
+                binding.Domain = asset.Domain;
+                binding.Action = asset.Action;
+                binding.Directive = entry.Directive;
+                binding.Name = entry.Name.empty() ? asset.Action : entry.Name;
+                binding.FieldCount = static_cast<uint32_t>(entry.Fields.size());
+                binding.Activated = entry.Activated;
+                binding.RuntimeReady = asset.RuntimeReady;
+                bindings.push_back(std::move(binding));
+            }
+        }
+
+        return bindings;
+    }
+
+    ProductionRuntimeCatalogDiagnostics DiagnoseProductionRuntimeCatalog(
+        const std::vector<ProductionRuntimeAsset>& catalog)
+    {
+        ProductionRuntimeCatalogDiagnostics diagnostics = {};
+        const std::vector<ProductionRuntimeBinding> bindings = BuildProductionRuntimeBindings(catalog);
+        diagnostics.BindingCount = static_cast<uint32_t>(bindings.size());
+
+        for (const ProductionRuntimeBinding& binding : bindings)
+        {
+            diagnostics.RuntimeReadyBindings += binding.RuntimeReady ? 1u : 0u;
+            diagnostics.ActiveBindings += binding.Activated ? 1u : 0u;
+            diagnostics.EngineBindings += binding.Domain == "Engine" ? 1u : 0u;
+            diagnostics.EditorBindings += binding.Domain == "Editor" ? 1u : 0u;
+            diagnostics.GameBindings += binding.Domain == "Game" ? 1u : 0u;
+            diagnostics.EntriesWithFields += binding.FieldCount > 0 ? 1u : 0u;
+            diagnostics.MaxFieldsPerEntry = std::max(diagnostics.MaxFieldsPerEntry, binding.FieldCount);
+        }
+
+        return diagnostics;
+    }
+
+    const ProductionRuntimeAssetField* FindProductionRuntimeField(
+        const ProductionRuntimeAssetEntry& entry,
+        const std::string& key)
+    {
+        const auto match = std::find_if(
+            entry.Fields.begin(),
+            entry.Fields.end(),
+            [&key](const ProductionRuntimeAssetField& field)
+            {
+                return field.Key == key;
+            });
+        return match != entry.Fields.end() ? &(*match) : nullptr;
+    }
 }

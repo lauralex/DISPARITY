@@ -269,4 +269,35 @@ namespace DisparityGame
         } };
         return points;
     }
+
+    const std::array<GameFollowupPoint, V45LiveCatalogBatchPointCount>& GetV45LiveCatalogPoints()
+    {
+        static const std::array<GameFollowupPoint, V45LiveCatalogBatchPointCount> points = { {
+            { "v45_point_01_engine_runtime_binding_surface", "Engine", "Production runtime catalog exposes live binding descriptors" },
+            { "v45_point_02_engine_binding_diagnostics", "Engine", "Production runtime catalog emits binding diagnostics by domain" },
+            { "v45_point_03_engine_field_query_api", "Engine", "Production runtime catalog exposes field lookup helpers" },
+            { "v45_point_04_engine_runtime_ready_binding_count", "Engine", "Runtime-ready production bindings are counted for verification" },
+            { "v45_point_05_engine_negative_fixture_rejected", "Engine", "Malformed production catalog fixture is rejected by validation" },
+            { "v45_point_06_engine_public_header_export", "Engine", "New production catalog binding API is exported through the engine header" },
+            { "v45_point_07_editor_catalog_panel_visible", "Editor", "Engine Services panel shows production catalog status" },
+            { "v45_point_08_editor_catalog_table_rows", "Editor", "Editor renders live production catalog binding rows" },
+            { "v45_point_09_editor_catalog_reload_control", "Editor", "Editor exposes a reload button for production catalogs" },
+            { "v45_point_10_editor_catalog_command_registered", "Editor", "Runtime command registry includes production catalog reload" },
+            { "v45_point_11_editor_catalog_service_registered", "Editor", "Service registry tracks the production catalog runtime surface" },
+            { "v45_point_12_editor_catalog_unique_imgui_ids", "Editor", "Production catalog UI uses stable ImGui IDs" },
+            { "v45_point_13_game_catalog_bindings_loaded", "Game", "Playable demo loads game-domain production catalog bindings" },
+            { "v45_point_14_game_objective_binding_visible", "Game", "Objective route catalog binding is exposed to runtime verification" },
+            { "v45_point_15_game_encounter_binding_visible", "Game", "Encounter catalog binding is exposed to runtime verification" },
+            { "v45_point_16_game_catalog_world_beacons", "Game", "Playable demo renders catalog-driven world beacons" },
+            { "v45_point_17_game_catalog_telemetry_counter", "Game", "Telemetry records production catalog binding counts" },
+            { "v45_point_18_game_catalog_demo_director_metric", "Game", "Demo/engine services surfaces report catalog readiness" },
+            { "v45_point_19_verification_manifest_gate", "Verification", "v45 live production catalog manifest is present and reviewed" },
+            { "v45_point_20_verification_schema_gate", "Verification", "Runtime report schema includes v45 catalog metrics" },
+            { "v45_point_21_verification_baseline_gate", "Verification", "Runtime baselines include v45 catalog thresholds" },
+            { "v45_point_22_verification_release_gate", "Verification", "Release readiness includes the v45 live catalog manifest" },
+            { "v45_point_23_verification_performance_history_gate", "Verification", "Runtime and performance-history tooling track v45 catalog metrics" },
+            { "v45_point_24_docs_agent_roadmap_gate", "Docs", "README, feature guide, roadmap, and AGENTS document v45 live production catalogs" }
+        } };
+        return points;
+    }
 }

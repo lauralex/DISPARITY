@@ -20,6 +20,7 @@ namespace DisparityGame
     constexpr size_t V42ProductionSurfaceBatchPointCount = 24;
     constexpr size_t V43LiveValidationBatchPointCount = 24;
     constexpr size_t V44RuntimeCatalogBatchPointCount = 24;
+    constexpr size_t V45LiveCatalogBatchPointCount = 24;
 
     [[nodiscard]] const std::array<GameFollowupPoint, V36MixedBatchPointCount>& GetV36MixedBatchPoints();
     [[nodiscard]] const std::array<GameFollowupPoint, V38DiversifiedBatchPointCount>& GetV38DiversifiedBatchPoints();
@@ -29,4 +30,5 @@ namespace DisparityGame
     [[nodiscard]] const std::array<GameFollowupPoint, V42ProductionSurfaceBatchPointCount>& GetV42ProductionSurfacePoints();
     [[nodiscard]] const std::array<GameFollowupPoint, V43LiveValidationBatchPointCount>& GetV43LiveValidationPoints();
     [[nodiscard]] const std::array<GameFollowupPoint, V44RuntimeCatalogBatchPointCount>& GetV44RuntimeCatalogPoints();
+    [[nodiscard]] const std::array<GameFollowupPoint, V45LiveCatalogBatchPointCount>& GetV45LiveCatalogPoints();
 }

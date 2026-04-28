@@ -20,6 +20,7 @@ param(
     [string]$V42ProductionSurfacePath = "Assets/Verification/V42ProductionSurface.dfollowups",
     [string]$V43LiveValidationPath = "Assets/Verification/V43LiveProductionValidation.dfollowups",
     [string]$V44RuntimeCatalogPath = "Assets/Verification/V44RuntimeCatalogActivation.dfollowups",
+    [string]$V45LiveCatalogPath = "Assets/Verification/V45LiveProductionCatalog.dfollowups",
     [string]$OutputPath = "Saved/Release/release_readiness_manifest.json"
 )
 
@@ -55,6 +56,7 @@ $V41BreadthBatchPath = Resolve-RepoPath -Path $V41BreadthBatchPath
 $V42ProductionSurfacePath = Resolve-RepoPath -Path $V42ProductionSurfacePath
 $V43LiveValidationPath = Resolve-RepoPath -Path $V43LiveValidationPath
 $V44RuntimeCatalogPath = Resolve-RepoPath -Path $V44RuntimeCatalogPath
+$V45LiveCatalogPath = Resolve-RepoPath -Path $V45LiveCatalogPath
 $OutputPath = Resolve-RepoPath -Path $OutputPath
 
 $packageManifestPath = Join-Path $PackagePath "package_manifest.json"
@@ -85,7 +87,8 @@ $checks = @(
     [pscustomobject]@{ name = "v41_breadth_batch_manifest"; path = $V41BreadthBatchPath; exists = Test-Path -LiteralPath $V41BreadthBatchPath },
     [pscustomobject]@{ name = "v42_production_surface_manifest"; path = $V42ProductionSurfacePath; exists = Test-Path -LiteralPath $V42ProductionSurfacePath },
     [pscustomobject]@{ name = "v43_live_validation_manifest"; path = $V43LiveValidationPath; exists = Test-Path -LiteralPath $V43LiveValidationPath },
-    [pscustomobject]@{ name = "v44_runtime_catalog_manifest"; path = $V44RuntimeCatalogPath; exists = Test-Path -LiteralPath $V44RuntimeCatalogPath }
+    [pscustomobject]@{ name = "v44_runtime_catalog_manifest"; path = $V44RuntimeCatalogPath; exists = Test-Path -LiteralPath $V44RuntimeCatalogPath },
+    [pscustomobject]@{ name = "v45_live_catalog_manifest"; path = $V45LiveCatalogPath; exists = Test-Path -LiteralPath $V45LiveCatalogPath }
 )
 
 foreach ($check in $checks) {
@@ -108,8 +111,8 @@ $schemaMetrics = @(Get-Content -LiteralPath $RuntimeReportSchemaPath | Where-Obj
     $trimmed = $_.Trim()
     ![string]::IsNullOrWhiteSpace($trimmed) -and !$trimmed.StartsWith("#")
 })
-if ($schemaMetrics.Count -lt 960 -or !($schemaMetrics -contains "v25_production_points") -or !($schemaMetrics -contains "v28_diversified_points") -or !($schemaMetrics -contains "v29_public_demo_points") -or !($schemaMetrics -contains "v30_vertical_slice_points") -or !($schemaMetrics -contains "v31_diversified_points") -or !($schemaMetrics -contains "v32_roadmap_points") -or !($schemaMetrics -contains "v33_playable_demo_points") -or !($schemaMetrics -contains "v34_aaa_foundation_points") -or !($schemaMetrics -contains "v35_engine_architecture_points") -or !($schemaMetrics -contains "v36_mixed_batch_points") -or !($schemaMetrics -contains "v38_diversified_points") -or !($schemaMetrics -contains "v39_roadmap_points") -or !($schemaMetrics -contains "v40_diversified_points") -or !($schemaMetrics -contains "v41_breadth_points") -or !($schemaMetrics -contains "v42_content_points") -or !($schemaMetrics -contains "v43_validation_points") -or !($schemaMetrics -contains "v44_catalog_points")) {
-    throw "Runtime report schema does not include the v25/v28/v29/v30/v31/v32/v33/v34/v35/v36/v38/v39/v40/v41/v42/v43/v44 production metrics."
+if ($schemaMetrics.Count -lt 990 -or !($schemaMetrics -contains "v25_production_points") -or !($schemaMetrics -contains "v28_diversified_points") -or !($schemaMetrics -contains "v29_public_demo_points") -or !($schemaMetrics -contains "v30_vertical_slice_points") -or !($schemaMetrics -contains "v31_diversified_points") -or !($schemaMetrics -contains "v32_roadmap_points") -or !($schemaMetrics -contains "v33_playable_demo_points") -or !($schemaMetrics -contains "v34_aaa_foundation_points") -or !($schemaMetrics -contains "v35_engine_architecture_points") -or !($schemaMetrics -contains "v36_mixed_batch_points") -or !($schemaMetrics -contains "v38_diversified_points") -or !($schemaMetrics -contains "v39_roadmap_points") -or !($schemaMetrics -contains "v40_diversified_points") -or !($schemaMetrics -contains "v41_breadth_points") -or !($schemaMetrics -contains "v42_content_points") -or !($schemaMetrics -contains "v43_validation_points") -or !($schemaMetrics -contains "v44_catalog_points") -or !($schemaMetrics -contains "v45_live_catalog_points")) {
+    throw "Runtime report schema does not include the v25/v28/v29/v30/v31/v32/v33/v34/v35/v36/v38/v39/v40/v41/v42/v43/v44/v45 production metrics."
 }
 
 $productionPoints = @(Get-Content -LiteralPath $ProductionBatchPath | Where-Object {
@@ -231,6 +234,13 @@ if ($v44RuntimeCatalogPoints.Count -ne 24) {
     throw "v44 runtime catalog activation manifest does not define twenty-four points."
 }
 
+$v45LiveCatalogPoints = @(Get-Content -LiteralPath $V45LiveCatalogPath | Where-Object {
+    $_.Trim().StartsWith("point ")
+})
+if ($v45LiveCatalogPoints.Count -ne 24) {
+    throw "v45 live production catalog manifest does not define twenty-four points."
+}
+
 $parent = Split-Path -Parent $OutputPath
 if (![string]::IsNullOrWhiteSpace($parent)) {
     New-Item -ItemType Directory -Force -Path $parent | Out-Null
@@ -259,6 +269,7 @@ if (![string]::IsNullOrWhiteSpace($parent)) {
     v42_production_surface_point_count = $v42ProductionSurfacePoints.Count
     v43_live_validation_point_count = $v43LiveValidationPoints.Count
     v44_runtime_catalog_point_count = $v44RuntimeCatalogPoints.Count
+    v45_live_catalog_point_count = $v45LiveCatalogPoints.Count
     checks = $checks
 } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $OutputPath
 

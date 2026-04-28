@@ -4,6 +4,7 @@
 #include "DisparityGame/GameFollowupCatalog.h"
 #include "DisparityGame/GameModuleRegistry.h"
 #include "DisparityGame/GameProductionCatalog.h"
+#include "DisparityGame/GameProductionRuntimeCatalog.h"
 #include "DisparityGame/GameRoadmapBatch.h"
 #include "DisparityGame/GameRuntimeHelpers.h"
 #include "DisparityGame/GameRuntimeTypes.h"
@@ -3392,13 +3393,11 @@ namespace
             {
                 return;
             }
-
             const float visualTime = ShowcaseVisualTime();
             const float charge = PublicDemoRiftCharge();
             uint32_t beaconDraws = 0;
             uint32_t relayBridgeDraws = 0;
             uint32_t traversalMarkers = 0;
-
             if (!m_publicDemoCompleted)
             {
                 const DirectX::XMFLOAT3 objective = PublicDemoCurrentObjectivePosition();
@@ -3771,6 +3770,8 @@ namespace
                 renderer.DrawMesh(m_cubeMesh, trail, trailMaterial);
             }
 
+            const uint32_t catalogBeacons = DisparityGame::DrawProductionCatalogWorldBeacons(renderer, m_productionCatalogSnapshot, visualTime, m_riftPosition, m_demoRelayMaterial, m_cubeMesh);
+            beaconDraws += catalogBeacons; m_runtimeEditorStats.V45CatalogVisibleBeacons += catalogBeacons;
             if (m_runtimeVerification.Enabled)
             {
                 m_runtimeEditorStats.PublicDemoBeaconDraws += beaconDraws;
@@ -4069,11 +4070,11 @@ namespace
             (void)m_serviceRegistry.RegisterService({ "JobSystem", "Runtime", 1u, true, true });
             (void)m_serviceRegistry.RegisterService({ "RuntimeCommandRegistry", "Runtime", 1u, true, true });
             (void)m_serviceRegistry.RegisterService({ "AssetHotReloader", "Assets", 1u, false, true });
+            (void)m_serviceRegistry.RegisterService({ "ProductionRuntimeCatalog", "Assets", 1u, true, true });
             (void)m_serviceRegistry.RegisterService({ "EditorPanelRegistry", "Editor", 2u, true, true });
             (void)m_serviceRegistry.RegisterService({ "GameEventRouteCatalog", "Game", 1u, false, true });
             (void)m_serviceRegistry.RegisterService({ "PublicDemoGameplay", "Game", 1u, false, true });
             m_serviceRegistryDiagnostics = m_serviceRegistry.GetDiagnostics();
-
             m_configVars.Clear();
             (void)m_configVars.RegisterBool("render.antialiasing", true, "Enable anti-aliasing resolve");
             (void)m_configVars.RegisterBool("render.bloom", true, "Enable bloom contribution");
@@ -4084,7 +4085,6 @@ namespace
             (void)m_configVars.RegisterString("editor.workspace", "gameplay", "Active editor workspace preset");
             (void)m_configVars.RegisterString("demo.route", "public_showcase", "Verification route name");
             m_configVarRegistryDiagnostics = m_configVars.GetDiagnostics();
-
         m_runtimeCommandRegistry.Clear();
         (void)m_runtimeCommandRegistry.RegisterCommand({ "demo.reset", "Game", "Reset the public-demo route", "F10", true });
         (void)m_runtimeCommandRegistry.RegisterCommand({ "demo.quick_restart", "Game", "Fast restart from the latest checkpoint", "F10", true });
@@ -4093,6 +4093,7 @@ namespace
         (void)m_runtimeCommandRegistry.RegisterCommand({ "workspace.gameplay", "Editor", "Apply the gameplay workspace", "", true });
         (void)m_runtimeCommandRegistry.RegisterCommand({ "workspace.trailer", "Editor", "Apply the trailer workspace", "", true });
         (void)m_runtimeCommandRegistry.RegisterCommand({ "workspace.engine_services", "Editor", "Apply engine service diagnostics workspace", "", true });
+        (void)m_runtimeCommandRegistry.RegisterCommand({ "catalog.reload", "Assets", "Reload production runtime catalogs", "", true });
         (void)m_runtimeCommandRegistry.RegisterCommand({ "demo.reset", "Game", "Reset the public-demo route", "F10", true });
         (void)m_runtimeCommandRegistry.ValidateRequiredCategories({ "Game", "Editor", "Runtime", "Rendering" });
         m_runtimeCommandRegistryDiagnostics = m_runtimeCommandRegistry.GetDiagnostics();
@@ -4112,17 +4113,17 @@ namespace
         (void)m_editorPanelRegistry.RegisterWorkspace({ "Trailer", "Dockspace/Main", { "Viewport", "Renderer", "Shot Director", "Audio Mixer", "Profiler" }, "Shot Director", true, "Saved/Editor/Layouts/Trailer.docklayout", true, { "capture.high_res", "workspace.trailer" }, { "Right bumper opens Shot Director", "Left stick scrubs preview" }, 4u });
         (void)m_editorPanelRegistry.RegisterWorkspace({ "Engine Services", "Dockspace/Main", { "Viewport", "Assets", "Renderer", "Engine Services", "Profiler" }, "Engine Services", true, "Saved/Editor/Layouts/EngineServices.docklayout", false, { "workspace.engine_services", "scene.reload" }, { "Start opens command search" }, 3u });
         m_editorPanelRegistryDiagnostics = m_editorPanelRegistry.GetDiagnostics();
-
             m_gameEventRoutes = DisparityGame::BuildPublicDemoEventRouteCatalog();
             m_gameEventRouteDiagnostics = DisparityGame::SummarizeGameEventRoutes(m_gameEventRoutes);
             m_runtimeEditorStats.GameEventRouteCatalogRoutes = m_gameEventRouteDiagnostics.RouteCount;
             m_runtimeEditorStats.GameEventRouteTelemetryRoutes = m_gameEventRouteDiagnostics.TelemetryBackedRoutes;
             m_runtimeEditorStats.GameEventRouteEventBusRoutes = m_gameEventRouteDiagnostics.EventBusBackedRoutes;
-
+            m_productionCatalogSnapshot = DisparityGame::BuildProductionCatalogSnapshot(); DisparityGame::ApplyProductionCatalogSnapshotStats(m_productionCatalogSnapshot, m_runtimeEditorStats);
             m_telemetryStream.Clear();
             m_telemetryStream.IncrementCounter("editor.panels", static_cast<double>(m_editorPanelRegistryDiagnostics.PanelCount));
             m_telemetryStream.IncrementCounter("runtime.commands", static_cast<double>(m_runtimeCommandRegistryDiagnostics.RegisteredCommands));
             m_telemetryStream.IncrementCounter("game.event_routes", static_cast<double>(m_gameEventRouteDiagnostics.RouteCount));
+            m_telemetryStream.IncrementCounter("assets.production_catalog_bindings", static_cast<double>(m_productionCatalogSnapshot.Diagnostics.BindingCount));
             m_telemetryStream.SetGauge("editor.workspaces", static_cast<double>(m_editorPanelRegistryDiagnostics.WorkspaceCount));
             m_telemetryStream.SetGauge("demo.stability", static_cast<double>(m_publicDemoStability));
             m_telemetryStream.PushEvent({ "editor", "engine_services_ready", 1.0, m_editorFrameIndex, "v38" });
@@ -6134,7 +6135,6 @@ namespace
                 ImGui::End();
                 return;
             }
-
             m_serviceRegistryDiagnostics = m_serviceRegistry.GetDiagnostics();
             m_telemetryStreamDiagnostics = m_telemetryStream.GetDiagnostics();
             m_configVarRegistryDiagnostics = m_configVars.GetDiagnostics();
@@ -6166,7 +6166,8 @@ namespace
                 m_gameEventRouteDiagnostics.RouteCount,
                 m_gameEventRouteDiagnostics.TelemetryBackedRoutes,
                 m_gameEventRouteDiagnostics.EventBusBackedRoutes);
-
+            if (DisparityGame::DrawProductionCatalogSnapshotPanel(m_productionCatalogSnapshot, m_runtimeEditorStats))
+            { m_productionCatalogSnapshot = DisparityGame::BuildProductionCatalogSnapshot(); DisparityGame::ApplyProductionCatalogSnapshotStats(m_productionCatalogSnapshot, m_runtimeEditorStats); }
             if (ImGui::BeginTable(
                 "RuntimeCommands##EngineServices",
                 3,
@@ -13537,6 +13538,7 @@ namespace
         Disparity::RuntimeCommandRegistryDiagnostics m_runtimeCommandRegistryDiagnostics;
         Disparity::EditorPanelRegistryDiagnostics m_editorPanelRegistryDiagnostics;
         DisparityGame::GameEventRouteDiagnostics m_gameEventRouteDiagnostics;
+        DisparityGame::ProductionCatalogSnapshot m_productionCatalogSnapshot;
         DisparityGame::GameModuleRegistryDiagnostics m_gameModuleRegistryDiagnostics;
         std::array<uint32_t, V25ProductionPointCount> m_v25ProductionPointResults = {};
         std::array<uint32_t, V28DiversifiedPointCount> m_v28DiversifiedPointResults = {};

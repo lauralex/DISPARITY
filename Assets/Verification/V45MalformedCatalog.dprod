@@ -1,0 +1,2 @@
+# Intentionally malformed fixture for v45 negative validation.
+route catalog_negative_probe | live=true | note=missing_trigger_activation

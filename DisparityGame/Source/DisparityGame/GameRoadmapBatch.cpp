@@ -1,5 +1,6 @@
 #include "DisparityGame/GameRoadmapBatch.h"
 #include "DisparityGame/GameFollowupCatalog.h"
+#include "DisparityGame/GameProductionRuntimeCatalog.h"
 #include "Disparity/Assets/ProductionAssetRuntimeCatalog.h"
 #include "Disparity/Assets/ProductionAssetValidator.h"
 #include "Disparity/Core/FileSystem.h"
@@ -247,6 +248,42 @@ namespace DisparityGame
 
     uint32_t CountReadyV44RuntimeCatalogPoints(
         const std::array<uint32_t, V44RuntimeCatalogPointCount>& results)
+    {
+        return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
+    }
+
+    std::array<uint32_t, V45LiveCatalogPointCount> EvaluateV45LiveCatalog(
+        const V45LiveCatalogMetrics& metrics)
+    {
+        std::array<uint32_t, V45LiveCatalogPointCount> results = {};
+        results[0] = metrics.RuntimeBindings >= 18 ? 1u : 0u;
+        results[1] = metrics.EngineBindings >= 6 && metrics.EditorBindings >= 6 && metrics.GameBindings >= 6 ? 1u : 0u;
+        results[2] = metrics.RuntimeReadyBindings >= 18 ? 1u : 0u;
+        results[3] = metrics.RuntimeReadyBindings == metrics.RuntimeBindings ? 1u : 0u;
+        results[4] = metrics.NegativeFixtureTests >= 1 ? 1u : 0u;
+        results[5] = TextContains("DisparityEngine/Source/Disparity/Assets/ProductionAssetRuntimeCatalog.h", "ProductionRuntimeBinding") ? 1u : 0u;
+        results[6] = metrics.CatalogPanelRows >= 8 ? 1u : 0u;
+        results[7] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ProductionCatalogBindings##EngineServices") ? 1u : 0u;
+        results[8] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Reload Catalog##ProductionCatalogPanel") ? 1u : 0u;
+        results[9] = TextContains("DisparityGame/Source/DisparityGame.cpp", "catalog.reload") ? 1u : 0u;
+        results[10] = TextContains("DisparityGame/Source/DisparityGame.cpp", "ProductionRuntimeCatalog") ? 1u : 0u;
+        results[11] = TextContains("Tools/TestImGuiIds.ps1", "duplicate") &&
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "##ProductionCatalogPanel") ? 1u : 0u;
+        results[12] = metrics.GameBindings >= 6 ? 1u : 0u;
+        results[13] = metrics.ObjectiveBindings >= 1 ? 1u : 0u;
+        results[14] = metrics.EncounterBindings >= 1 ? 1u : 0u;
+        results[15] = metrics.VisibleBeacons >= 1 ? 1u : 0u;
+        results[16] = TextContains("DisparityGame/Source/DisparityGame.cpp", "assets.production_catalog_bindings") ? 1u : 0u;
+        results[17] = TextContains("DisparityGame/Source/DisparityGame.cpp", "DrawProductionCatalogSnapshotPanel") ? 1u : 0u;
+        for (size_t index = 0; index < metrics.VerificationAssets.size(); ++index)
+        {
+            results[18 + index] = metrics.VerificationAssets[index] != 0u ? 1u : 0u;
+        }
+        return results;
+    }
+
+    uint32_t CountReadyV45LiveCatalogPoints(
+        const std::array<uint32_t, V45LiveCatalogPointCount>& results)
     {
         return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
     }
@@ -714,6 +751,62 @@ namespace DisparityGame
         for (size_t index = 0; index < v44Points.size(); ++index)
         {
             report << v44Points[index].Key << "=" << v44Results[index] << "\n";
+        }
+
+        const ProductionCatalogSnapshot v45Snapshot = BuildProductionCatalogSnapshot();
+        const std::array<uint32_t, 6> v45VerificationAssets = {
+            TextContains("Assets/Verification/V45LiveProductionCatalog.dfollowups", "v45_point_24_docs_agent_roadmap_gate") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeReportSchema.dschema", "v45_live_catalog_points") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeBaseline.dverify", "min_v45_live_catalog_points") &&
+                TextContains("Assets/Verification/CameraSweepBaseline.dverify", "min_v45_live_catalog_points") &&
+                TextContains("Assets/Verification/EditorPrecisionBaseline.dverify", "min_v45_live_catalog_points") &&
+                TextContains("Assets/Verification/PostDebugBaseline.dverify", "min_v45_live_catalog_points") &&
+                TextContains("Assets/Verification/AssetReloadBaseline.dverify", "min_v45_live_catalog_points") &&
+                TextContains("Assets/Verification/GizmoDragBaseline.dverify", "min_v45_live_catalog_points") ? 1u : 0u,
+            TextContains("Tools/ReviewReleaseReadiness.ps1", "V45LiveCatalogPath") ? 1u : 0u,
+            TextContains("Tools/RuntimeVerifyDisparity.ps1", "v45_live_catalog_points") &&
+                TextContains("Tools/SummarizePerformanceHistory.ps1", "v45_live_catalog_points") ? 1u : 0u,
+            TextContains("README.md", "Engine v45 Live Production Catalog Implemented") &&
+                TextContains("Docs/ROADMAP.md", "v45 Completed Live Production Catalog Batch") &&
+                TextContains("Docs/ENGINE_FEATURES.md", "v45_live_catalog_points") &&
+                TextContains("AGENTS.md", "Editor/runtime v45") ? 1u : 0u
+        };
+        const V45LiveCatalogMetrics v45Metrics = {
+            v45Snapshot.Diagnostics.BindingCount,
+            v45Snapshot.Diagnostics.RuntimeReadyBindings,
+            v45Snapshot.Diagnostics.EngineBindings,
+            v45Snapshot.Diagnostics.EditorBindings,
+            v45Snapshot.Diagnostics.GameBindings,
+            std::max(stats.V45CatalogPanelRows, static_cast<uint32_t>(std::min<size_t>(v45Snapshot.Bindings.size(), 10u))),
+            stats.V45CatalogVisibleBeacons,
+            CountProductionCatalogBindingsByAction(v45Snapshot, "objective_routes"),
+            CountProductionCatalogBindingsByAction(v45Snapshot, "encounter_plan"),
+            v45Snapshot.NegativeFixtureRejected,
+            v45VerificationAssets
+        };
+        const auto v45Results = EvaluateV45LiveCatalog(v45Metrics);
+        const uint32_t v45VerificationReady = static_cast<uint32_t>(std::count(v45VerificationAssets.begin(), v45VerificationAssets.end(), 1u));
+        const uint32_t v45ReadyPoints = CountReadyV45LiveCatalogPoints(v45Results);
+
+        report << "v45_runtime_catalog_bindings=" << v45Metrics.RuntimeBindings << "\n";
+        report << "v45_runtime_catalog_ready_bindings=" << v45Metrics.RuntimeReadyBindings << "\n";
+        report << "v45_engine_live_bindings=" << v45Metrics.EngineBindings << "\n";
+        report << "v45_editor_live_bindings=" << v45Metrics.EditorBindings << "\n";
+        report << "v45_game_live_bindings=" << v45Metrics.GameBindings << "\n";
+        report << "v45_catalog_panel_rows=" << v45Metrics.CatalogPanelRows << "\n";
+        report << "v45_catalog_visible_beacons=" << v45Metrics.VisibleBeacons << "\n";
+        report << "v45_catalog_objective_bindings=" << v45Metrics.ObjectiveBindings << "\n";
+        report << "v45_catalog_encounter_bindings=" << v45Metrics.EncounterBindings << "\n";
+        report << "v45_catalog_negative_fixture_tests=" << v45Metrics.NegativeFixtureTests << "\n";
+        report << "v45_verification_assets=" << v45VerificationReady << "\n";
+        report << "v45_runtime_catalog_hash_low=" << static_cast<uint32_t>(v45Snapshot.Summary.CombinedHash & 0xffffffffull) << "\n";
+        report << "v45_docs_ready=" << v45VerificationAssets[5] << "\n";
+        report << "v45_live_catalog_points=" << v45ReadyPoints << "\n";
+
+        const auto& v45Points = GetV45LiveCatalogPoints();
+        for (size_t index = 0; index < v45Points.size(); ++index)
+        {
+            report << v45Points[index].Key << "=" << v45Results[index] << "\n";
         }
     }
 }

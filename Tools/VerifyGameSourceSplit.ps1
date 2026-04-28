@@ -1,6 +1,6 @@
 param(
     [int]$MaxRootGameLines = 13800,
-    [int]$MinSplitFiles = 13
+    [int]$MinSplitFiles = 15
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,6 +31,8 @@ $requiredProjectEntries = @(
     "Source\DisparityGame\GameModuleRegistry.h",
     "Source\DisparityGame\GameProductionCatalog.cpp",
     "Source\DisparityGame\GameProductionCatalog.h",
+    "Source\DisparityGame\GameProductionRuntimeCatalog.cpp",
+    "Source\DisparityGame\GameProductionRuntimeCatalog.h",
     "Source\DisparityGame\GameRuntimeHelpers.cpp",
     "Source\DisparityGame\GameRuntimeHelpers.h",
     "Source\DisparityGame\GameRuntimeTypes.h",

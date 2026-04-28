@@ -776,6 +776,7 @@ inline constexpr size_t V41BreadthPointCount = V41BreadthBatchPointCount;
 inline constexpr size_t V42ProductionSurfacePointCount = V42ProductionSurfaceBatchPointCount;
 inline constexpr size_t V43LiveValidationPointCount = V43LiveValidationBatchPointCount;
 inline constexpr size_t V44RuntimeCatalogPointCount = V44RuntimeCatalogBatchPointCount;
+inline constexpr size_t V45LiveCatalogPointCount = V45LiveCatalogBatchPointCount;
 inline constexpr size_t PublicDemoShardCount = 6;
 inline constexpr size_t PublicDemoAnchorCount = 3;
 inline constexpr size_t PublicDemoResonanceGateCount = 2;
@@ -1178,6 +1179,17 @@ struct EditorVerificationStats
     uint32_t GameEventRouteAccessibilityRoutes = 0;
     uint32_t GameEventRouteHudVisibleRoutes = 0;
     uint32_t V40DiversifiedPointTests = 0;
+    uint32_t V45RuntimeCatalogBindings = 0;
+    uint32_t V45RuntimeCatalogReadyBindings = 0;
+    uint32_t V45EngineCatalogBindings = 0;
+    uint32_t V45EditorCatalogBindings = 0;
+    uint32_t V45GameCatalogBindings = 0;
+    uint32_t V45CatalogPanelRows = 0;
+    uint32_t V45CatalogVisibleBeacons = 0;
+    uint32_t V45CatalogObjectiveBindings = 0;
+    uint32_t V45CatalogEncounterBindings = 0;
+    uint32_t V45CatalogNegativeFixtureTests = 0;
+    uint32_t V45LiveCatalogPointTests = 0;
 };
 
 }

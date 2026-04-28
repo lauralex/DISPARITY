@@ -17,6 +17,7 @@
     <ClCompile Include="Source\DisparityGame\GameFollowupCatalog.cpp"><Filter>Source\DisparityGame</Filter></ClCompile>
     <ClCompile Include="Source\DisparityGame\GameModuleRegistry.cpp"><Filter>Source\DisparityGame</Filter></ClCompile>
     <ClCompile Include="Source\DisparityGame\GameProductionCatalog.cpp"><Filter>Source\DisparityGame</Filter></ClCompile>
+    <ClCompile Include="Source\DisparityGame\GameProductionRuntimeCatalog.cpp"><Filter>Source\DisparityGame</Filter></ClCompile>
     <ClCompile Include="Source\DisparityGame\GameRoadmapBatch.cpp"><Filter>Source\DisparityGame</Filter></ClCompile>
     <ClCompile Include="Source\DisparityGame\GameRuntimeHelpers.cpp"><Filter>Source\DisparityGame</Filter></ClCompile>
   </ItemGroup>
@@ -25,6 +26,7 @@
     <ClInclude Include="Source\DisparityGame\GameFollowupCatalog.h"><Filter>Source\DisparityGame</Filter></ClInclude>
     <ClInclude Include="Source\DisparityGame\GameModuleRegistry.h"><Filter>Source\DisparityGame</Filter></ClInclude>
     <ClInclude Include="Source\DisparityGame\GameProductionCatalog.h"><Filter>Source\DisparityGame</Filter></ClInclude>
+    <ClInclude Include="Source\DisparityGame\GameProductionRuntimeCatalog.h"><Filter>Source\DisparityGame</Filter></ClInclude>
     <ClInclude Include="Source\DisparityGame\GameRoadmapBatch.h"><Filter>Source\DisparityGame</Filter></ClInclude>
     <ClInclude Include="Source\DisparityGame\GameRuntimeHelpers.h"><Filter>Source\DisparityGame</Filter></ClInclude>
     <ClInclude Include="Source\DisparityGame\GameRuntimeTypes.h"><Filter>Source\DisparityGame</Filter></ClInclude>

@@ -81,6 +81,15 @@ namespace DisparityGame
                 true
             },
             {
+                "production runtime catalog bridge",
+                "Game",
+                "DisparityGame/GameProductionRuntimeCatalog.cpp",
+                "v45 binds engine production catalog data into editor diagnostics and visible public-demo world markers.",
+                false,
+                true,
+                true
+            },
+            {
                 "service registry",
                 "Engine",
                 "Disparity/Core/ServiceRegistry.cpp",
