@@ -75,6 +75,7 @@
     <ClInclude Include="Source\Disparity\Runtime\ConfigVarRegistry.h"><Filter>Source\Runtime</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Runtime\FrameScheduler.h"><Filter>Source\Runtime</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Runtime\JobSystem.h"><Filter>Source\Runtime</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Runtime\RuntimeCommandRegistry.h"><Filter>Source\Runtime</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Scripting\ScriptRunner.h"><Filter>Source\Scripting</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Scene\Camera.h"><Filter>Source\Scene</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Scene\Material.h"><Filter>Source\Scene</Filter></ClInclude>
@@ -114,6 +115,7 @@
     <ClCompile Include="Source\Disparity\Runtime\ConfigVarRegistry.cpp"><Filter>Source\Runtime</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Runtime\FrameScheduler.cpp"><Filter>Source\Runtime</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Runtime\JobSystem.cpp"><Filter>Source\Runtime</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Runtime\RuntimeCommandRegistry.cpp"><Filter>Source\Runtime</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Scripting\ScriptRunner.cpp"><Filter>Source\Scripting</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Scene\Camera.cpp"><Filter>Source\Scene</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Scene\PrimitiveFactory.cpp"><Filter>Source\Scene</Filter></ClCompile>

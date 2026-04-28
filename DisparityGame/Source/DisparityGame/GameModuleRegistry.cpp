@@ -63,6 +63,24 @@ namespace DisparityGame
                 true
             },
             {
+                "game event route catalog",
+                "Game",
+                "DisparityGame/GameEventRouteCatalog.cpp",
+                "Public-demo objective, encounter, traversal, audio, and failure routes are cataloged outside the live layer for v38 verification.",
+                false,
+                true,
+                true
+            },
+            {
+                "roadmap batch evaluation",
+                "Verification",
+                "DisparityGame/GameRoadmapBatch.cpp",
+                "The v39 roadmap point evaluation and runtime-report writing live outside the orchestration layer so verification growth stays reviewable.",
+                false,
+                true,
+                true
+            },
+            {
                 "service registry",
                 "Engine",
                 "Disparity/Core/ServiceRegistry.cpp",
@@ -93,10 +111,19 @@ namespace DisparityGame
                 "editor panel registry",
                 "Editor",
                 "Disparity/Editor/EditorPanelRegistry.cpp",
-                "Panel order and visibility are centralized for future layout persistence work.",
+                "Panel order, visibility, workspace presets, search, and navigation are centralized for editor layout work.",
                 true,
                 true,
                 false
+            },
+            {
+                "runtime command registry",
+                "Runtime",
+                "Disparity/Runtime/RuntimeCommandRegistry.cpp",
+                "Runtime command metadata gives engine, editor, and game systems one searchable command surface.",
+                true,
+                true,
+                true
             }
         };
     }

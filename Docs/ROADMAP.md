@@ -1,6 +1,24 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v37 versions of many requested followups, including engine-owned event routing, frame-phase scheduling, scene queries, streaming-budget planning, render-graph budget analysis, a service registry, structured telemetry, typed config variables, editor panel registry metadata, a guarded game-source split, and the existing public vertical slice with collision traversal, enemy archetypes, controller-polish telemetry, blend-tree manifests, gamepad/menu flow, failure presentation, and content-backed cue/animation hooks. The next milestones should keep rotating through core engine architecture, gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, verification, and source-structure work so no production lane falls behind.
+The current engine now has functional v39 versions of many requested followups, including engine-owned event routing, frame-phase scheduling, scene queries, streaming-budget planning, render-graph budget analysis, a service registry, structured telemetry, typed config variables, a runtime command registry with history/conflict/category diagnostics, editor panel/workspace registry metadata with saved layout/team-default/binding surfaces, a guarded game-source split, a replayable public-demo event-route catalog with trace channels, and the existing public vertical slice with collision traversal, enemy archetypes, controller-polish telemetry, blend-tree manifests, gamepad/menu flow, failure presentation, and content-backed cue/animation hooks. The next milestones should keep rotating through core engine architecture, gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, verification, and source-structure work so no production lane falls behind.
+
+## v39 Completed Roadmap Engine/Editor/Game Batch
+
+- Added `Assets/Verification/V39RoadmapBatch.dfollowups`, a fifteen-point batch with five Engine, five Editor, and five Game roadmap points.
+- Engine work extends `RuntimeCommandRegistry` with execution history, binding-conflict diagnostics, category summaries, required-category validation, and trace-ready runtime-report counters.
+- Editor work expands `EditorPanelRegistry` workspace descriptors with saved dock-layout files, team-default flags, command bindings, controller navigation hints, and toolbar customization slot counts.
+- Game work promotes `GameEventRouteCatalog` route descriptors with replay flags, breadcrumb labels, selection-link metadata, trace channels, checkpoint/failure routes, and deterministic runtime-report counters.
+- Source structure work moves v39 readiness evaluation/reporting into `DisparityGame/Source/DisparityGame/GameRoadmapBatch.*`, and the source-split verifier now requires that module to stay in the Visual Studio project.
+- Baselines, runtime schema checks, release-readiness review, production-batch review, performance-history summaries, README, feature docs, roadmap, and AGENTS context all require the v39 roadmap batch.
+
+## v38 Completed Diversified Engine/Editor/Game Batch
+
+- Added `Assets/Verification/V38DiversifiedBatch.dfollowups`, a thirty-point batch with ten Engine, ten Editor, and ten Game points so the next production pass stays balanced across reusable runtime systems, usable editor workflow, and public-demo gameplay infrastructure.
+- Added engine-owned `RuntimeCommandRegistry` support for registered commands, categories, default bindings, enable/disable state, duplicate tracking, command execution diagnostics, and case-insensitive command search.
+- Extended `EditorPanelRegistry` into a live panel/workspace surface with searchable panels, workspace presets, visibility application, navigation diagnostics, a `Panels`/`Workspaces` menu path, and a dedicated `Engine Services` panel that shows service, telemetry, config, command, panel, and route readiness.
+- Added `DisparityGame/Source/DisparityGame/GameEventRouteCatalog.*` for documented objective, encounter, traversal, audio, and failure event routes backed by telemetry counters and event channels.
+- The Profiler includes a `Diversified Engine/Editor/Game Readiness v38` table, and runtime verification emits runtime-command, editor-workspace, event-route, and all `v38_point_*` metrics.
+- Baselines, runtime schema checks, release-readiness review, production-batch review, baseline review, performance-history summaries, README, feature docs, roadmap, and AGENTS context all require the v38 diversified batch.
 
 ## v37 Completed Source Split Correction
 
@@ -224,8 +242,8 @@ The current engine now has functional v37 versions of many requested followups, 
 
 ## Editor
 
-- Turn the v36 `EditorPanelRegistry` into the live source of truth for visible editor panels, dock targets, saved layouts, workspace presets, panel search, and keyboard/gamepad navigation.
-- Add a dedicated `Engine Services` panel that reads `ServiceRegistry`, `TelemetryStream`, and `ConfigVarRegistry` live instead of only through the Profiler v36 table.
+- Continue maturing the v39 `EditorPanelRegistry` workspace surface beyond metadata into real dock-layout persistence, migration-safe team defaults, richer command bindings, and controller-first navigation.
+- Extend the v38 `Engine Services` panel with richer service drilldowns, filtered telemetry timelines, config editing, and command execution history instead of the current compact readiness summary.
 - Add an engine-event inspector panel that records `EventBus` traffic, filters by channel/type/entity, can replay a captured event trace, and links events back to selected scene objects.
 - Add a scheduler graph panel that shows `FrameScheduler` phases, task order, skipped tasks, per-task budgets, and hot path warnings.
 - Promote v28 profile import/export/diff and workspace presets into a versioned per-project preference system with dock-layout files, conflict-safe migration, team defaults, and toolbar customization.

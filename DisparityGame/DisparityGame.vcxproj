@@ -81,15 +81,19 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source\DisparityGame.cpp" />
+    <ClCompile Include="Source\DisparityGame\GameEventRouteCatalog.cpp" />
     <ClCompile Include="Source\DisparityGame\GameFollowupCatalog.cpp" />
     <ClCompile Include="Source\DisparityGame\GameModuleRegistry.cpp" />
     <ClCompile Include="Source\DisparityGame\GameProductionCatalog.cpp" />
+    <ClCompile Include="Source\DisparityGame\GameRoadmapBatch.cpp" />
     <ClCompile Include="Source\DisparityGame\GameRuntimeHelpers.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\DisparityGame\GameEventRouteCatalog.h" />
     <ClInclude Include="Source\DisparityGame\GameFollowupCatalog.h" />
     <ClInclude Include="Source\DisparityGame\GameModuleRegistry.h" />
     <ClInclude Include="Source\DisparityGame\GameProductionCatalog.h" />
+    <ClInclude Include="Source\DisparityGame\GameRoadmapBatch.h" />
     <ClInclude Include="Source\DisparityGame\GameRuntimeHelpers.h" />
     <ClInclude Include="Source\DisparityGame\GameRuntimeTypes.h" />
   </ItemGroup>

@@ -1,0 +1,30 @@
+point v38_point_01_runtime_command_registry_module|Engine|Engine has a runtime command registry module.
+point v38_point_02_runtime_command_categories|Engine|Runtime commands retain category metadata for editor surfaces.
+point v38_point_03_runtime_command_enable_disable|Engine|Runtime commands can be enabled and disabled deterministically.
+point v38_point_04_runtime_command_execution_counts|Engine|Runtime command execution and failed execution counts are tracked.
+point v38_point_05_runtime_command_search|Engine|Runtime command search can find commands by name, category, description, or binding.
+point v38_point_06_runtime_command_duplicate_tracking|Engine|Duplicate runtime command registrations are tracked.
+point v38_point_07_runtime_command_diagnostics_report|Engine|Runtime report emits command registry diagnostics.
+point v38_point_08_runtime_command_umbrella_header|Engine|Runtime command registry is exposed through the engine umbrella include.
+point v38_point_09_runtime_command_manifest|Engine|v38 manifest includes runtime command coverage.
+point v38_point_10_runtime_command_wrapper_gate|Engine|Runtime verification wrapper asserts command registry counters.
+point v38_point_11_editor_workspace_registry|Editor|Editor panel registry owns workspace presets.
+point v38_point_12_editor_workspace_apply|Editor|Workspace application changes panel visibility.
+point v38_point_13_editor_panel_search|Editor|Panel search returns matching editor panels.
+point v38_point_14_editor_panel_navigation|Editor|Panel registry supports next visible panel navigation.
+point v38_point_15_editor_panel_workspace_diagnostics|Editor|Workspace diagnostics count presets, bindings, and missing references.
+point v38_point_16_editor_panel_live_routing|Editor|Editor panel visibility is routed through the live panel registry.
+point v38_point_17_editor_panel_menu_toggles|Editor|Main menu exposes registered panels and workspaces.
+point v38_point_18_editor_engine_services_panel|Editor|Editor includes an Engine Services panel for service, command, telemetry, config, panel, and route diagnostics.
+point v38_point_19_editor_profiler_v38_table|Editor|Profiler exposes the v38 diversified readiness table.
+point v38_point_20_editor_schema_release_gates|Editor|Schema and release readiness include the v38 editor metrics.
+point v38_point_21_game_event_route_catalog_split|Game|Public-demo event route catalog lives outside DisparityGame.cpp.
+point v38_point_22_game_objective_routes|Game|Objective route metadata covers shards, anchors, gates, relays, and extraction.
+point v38_point_23_game_encounter_routes|Game|Encounter route metadata covers enemy pressure and reactions.
+point v38_point_24_game_traversal_routes|Game|Traversal route metadata covers dash and combo chains.
+point v38_point_25_game_audio_failure_routes|Game|Audio and failure route metadata connect cue, footstep, and retry events.
+point v38_point_26_game_route_telemetry_backing|Game|Every game route has a telemetry counter.
+point v38_point_27_game_route_event_bus_backing|Game|Every game route has an event bus channel.
+point v38_point_28_game_route_runtime_report|Game|Runtime report emits game route catalog diagnostics.
+point v38_point_29_game_source_split_inventory|Game|Game module inventory includes the event route catalog.
+point v38_point_30_game_docs_version_agents|Game|Docs, AGENTS context, versioning, baselines, and tooling describe v38.

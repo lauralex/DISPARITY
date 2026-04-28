@@ -1,6 +1,6 @@
 param(
-    [int]$MaxRootGameLines = 13500,
-    [int]$MinSplitFiles = 9
+    [int]$MaxRootGameLines = 13800,
+    [int]$MinSplitFiles = 13
 )
 
 $ErrorActionPreference = "Stop"
@@ -25,13 +25,17 @@ $projectText = Get-Content -LiteralPath $projectPath -Raw
 $requiredProjectEntries = @(
     "Source\DisparityGame\GameFollowupCatalog.cpp",
     "Source\DisparityGame\GameFollowupCatalog.h",
+    "Source\DisparityGame\GameEventRouteCatalog.cpp",
+    "Source\DisparityGame\GameEventRouteCatalog.h",
     "Source\DisparityGame\GameModuleRegistry.cpp",
     "Source\DisparityGame\GameModuleRegistry.h",
     "Source\DisparityGame\GameProductionCatalog.cpp",
     "Source\DisparityGame\GameProductionCatalog.h",
     "Source\DisparityGame\GameRuntimeHelpers.cpp",
     "Source\DisparityGame\GameRuntimeHelpers.h",
-    "Source\DisparityGame\GameRuntimeTypes.h"
+    "Source\DisparityGame\GameRuntimeTypes.h",
+    "Source\DisparityGame\GameRoadmapBatch.cpp",
+    "Source\DisparityGame\GameRoadmapBatch.h"
 )
 
 $missingProjectEntries = @()

@@ -1,0 +1,15 @@
+point v39_point_01_engine_command_history|Engine|Runtime command registry records execution history entries.
+point v39_point_02_engine_binding_conflicts|Engine|Runtime command registry detects default binding conflicts.
+point v39_point_03_engine_category_summaries|Engine|Runtime command registry builds category summaries for editor surfaces.
+point v39_point_04_engine_required_category_validation|Engine|Runtime command registry validates required command categories.
+point v39_point_05_engine_command_trace_report|Engine|Runtime report emits command history and binding diagnostics.
+point v39_point_06_editor_saved_dock_layouts|Editor|Editor workspaces advertise saved dock-layout descriptors.
+point v39_point_07_editor_team_default_workspaces|Editor|Editor workspaces can be marked as team defaults.
+point v39_point_08_editor_workspace_command_bindings|Editor|Editor workspace metadata carries command binding counts.
+point v39_point_09_editor_controller_navigation_hints|Editor|Editor workspace metadata carries controller navigation hints.
+point v39_point_10_editor_toolbar_customization_slots|Editor|Editor workspace metadata carries toolbar customization slots.
+point v39_point_11_game_route_replay_breadcrumbs|Game|Public-demo event routes expose replayable breadcrumb labels.
+point v39_point_12_game_route_selection_links|Game|Public-demo event routes identify routes linkable to selected scene objects.
+point v39_point_13_game_route_trace_channels|Game|Public-demo event routes group into trace channels for replay review.
+point v39_point_14_game_failure_checkpoint_routes|Game|Failure and checkpoint routes are represented in the event catalog.
+point v39_point_15_game_route_runtime_report|Game|Runtime report emits replay, selection, trace, and failure route diagnostics.

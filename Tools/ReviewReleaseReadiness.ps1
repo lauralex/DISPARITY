@@ -13,6 +13,8 @@ param(
     [string]$V34AAAFoundationBatchPath = "Assets/Verification/V34AAAFoundationBatch.dfollowups",
     [string]$V35EngineArchitectureBatchPath = "Assets/Verification/V35EngineArchitectureBatch.dfollowups",
     [string]$V36MixedBatchPath = "Assets/Verification/V36MixedBatch.dfollowups",
+    [string]$V38DiversifiedBatchPath = "Assets/Verification/V38DiversifiedBatch.dfollowups",
+    [string]$V39RoadmapBatchPath = "Assets/Verification/V39RoadmapBatch.dfollowups",
     [string]$OutputPath = "Saved/Release/release_readiness_manifest.json"
 )
 
@@ -41,6 +43,8 @@ $V33PlayableDemoBatchPath = Resolve-RepoPath -Path $V33PlayableDemoBatchPath
 $V34AAAFoundationBatchPath = Resolve-RepoPath -Path $V34AAAFoundationBatchPath
 $V35EngineArchitectureBatchPath = Resolve-RepoPath -Path $V35EngineArchitectureBatchPath
 $V36MixedBatchPath = Resolve-RepoPath -Path $V36MixedBatchPath
+$V38DiversifiedBatchPath = Resolve-RepoPath -Path $V38DiversifiedBatchPath
+$V39RoadmapBatchPath = Resolve-RepoPath -Path $V39RoadmapBatchPath
 $OutputPath = Resolve-RepoPath -Path $OutputPath
 
 $packageManifestPath = Join-Path $PackagePath "package_manifest.json"
@@ -64,7 +68,9 @@ $checks = @(
     [pscustomobject]@{ name = "v33_playable_demo_batch_manifest"; path = $V33PlayableDemoBatchPath; exists = Test-Path -LiteralPath $V33PlayableDemoBatchPath },
     [pscustomobject]@{ name = "v34_aaa_foundation_batch_manifest"; path = $V34AAAFoundationBatchPath; exists = Test-Path -LiteralPath $V34AAAFoundationBatchPath },
     [pscustomobject]@{ name = "v35_engine_architecture_batch_manifest"; path = $V35EngineArchitectureBatchPath; exists = Test-Path -LiteralPath $V35EngineArchitectureBatchPath },
-    [pscustomobject]@{ name = "v36_mixed_batch_manifest"; path = $V36MixedBatchPath; exists = Test-Path -LiteralPath $V36MixedBatchPath }
+    [pscustomobject]@{ name = "v36_mixed_batch_manifest"; path = $V36MixedBatchPath; exists = Test-Path -LiteralPath $V36MixedBatchPath },
+    [pscustomobject]@{ name = "v38_diversified_batch_manifest"; path = $V38DiversifiedBatchPath; exists = Test-Path -LiteralPath $V38DiversifiedBatchPath },
+    [pscustomobject]@{ name = "v39_roadmap_batch_manifest"; path = $V39RoadmapBatchPath; exists = Test-Path -LiteralPath $V39RoadmapBatchPath }
 )
 
 foreach ($check in $checks) {
@@ -87,8 +93,8 @@ $schemaMetrics = @(Get-Content -LiteralPath $RuntimeReportSchemaPath | Where-Obj
     $trimmed = $_.Trim()
     ![string]::IsNullOrWhiteSpace($trimmed) -and !$trimmed.StartsWith("#")
 })
-if ($schemaMetrics.Count -lt 616 -or !($schemaMetrics -contains "v25_production_points") -or !($schemaMetrics -contains "v28_diversified_points") -or !($schemaMetrics -contains "v29_public_demo_points") -or !($schemaMetrics -contains "v30_vertical_slice_points") -or !($schemaMetrics -contains "v31_diversified_points") -or !($schemaMetrics -contains "v32_roadmap_points") -or !($schemaMetrics -contains "v33_playable_demo_points") -or !($schemaMetrics -contains "v34_aaa_foundation_points") -or !($schemaMetrics -contains "v35_engine_architecture_points") -or !($schemaMetrics -contains "v36_mixed_batch_points")) {
-    throw "Runtime report schema does not include the v25/v28/v29/v30/v31/v32/v33/v34/v35/v36 production metrics."
+if ($schemaMetrics.Count -lt 765 -or !($schemaMetrics -contains "v25_production_points") -or !($schemaMetrics -contains "v28_diversified_points") -or !($schemaMetrics -contains "v29_public_demo_points") -or !($schemaMetrics -contains "v30_vertical_slice_points") -or !($schemaMetrics -contains "v31_diversified_points") -or !($schemaMetrics -contains "v32_roadmap_points") -or !($schemaMetrics -contains "v33_playable_demo_points") -or !($schemaMetrics -contains "v34_aaa_foundation_points") -or !($schemaMetrics -contains "v35_engine_architecture_points") -or !($schemaMetrics -contains "v36_mixed_batch_points") -or !($schemaMetrics -contains "v38_diversified_points") -or !($schemaMetrics -contains "v39_roadmap_points")) {
+    throw "Runtime report schema does not include the v25/v28/v29/v30/v31/v32/v33/v34/v35/v36/v38/v39 production metrics."
 }
 
 $productionPoints = @(Get-Content -LiteralPath $ProductionBatchPath | Where-Object {
@@ -161,6 +167,20 @@ if ($v36MixedPoints.Count -ne 60) {
     throw "v36 mixed batch manifest does not define sixty points."
 }
 
+$v38DiversifiedPoints = @(Get-Content -LiteralPath $V38DiversifiedBatchPath | Where-Object {
+    $_.Trim().StartsWith("point ")
+})
+if ($v38DiversifiedPoints.Count -ne 30) {
+    throw "v38 diversified batch manifest does not define thirty points."
+}
+
+$v39RoadmapPoints = @(Get-Content -LiteralPath $V39RoadmapBatchPath | Where-Object {
+    $_.Trim().StartsWith("point ")
+})
+if ($v39RoadmapPoints.Count -ne 15) {
+    throw "v39 roadmap batch manifest does not define fifteen points."
+}
+
 $parent = Split-Path -Parent $OutputPath
 if (![string]::IsNullOrWhiteSpace($parent)) {
     New-Item -ItemType Directory -Force -Path $parent | Out-Null
@@ -182,6 +202,8 @@ if (![string]::IsNullOrWhiteSpace($parent)) {
     v34_aaa_foundation_batch_point_count = $v34AAAFoundationPoints.Count
     v35_engine_architecture_batch_point_count = $v35EngineArchitecturePoints.Count
     v36_mixed_batch_point_count = $v36MixedPoints.Count
+    v38_diversified_batch_point_count = $v38DiversifiedPoints.Count
+    v39_roadmap_batch_point_count = $v39RoadmapPoints.Count
     checks = $checks
 } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $OutputPath
 

@@ -61,6 +61,7 @@ Editor UI:
 - `Demo Director`: inspect the public vertical slice stage, objective distance, shard/anchor/gate/relay progress, checkpoint/retry/pressure/footstep/combo/collision/traversal/enemy/gamepad/audio/animation telemetry, recent gameplay events, and v30/v31/v32/v33 readiness while the demo is running.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters/production counters, and store/recall a mixer snapshot.
+- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, and public-demo event routes from one live readiness panel.
 
 ## Engine v0 Features
 
@@ -69,6 +70,21 @@ Editor UI:
 - Keyboard and raw mouse input.
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
+
+## Engine v39 Roadmap Batch Implemented
+
+- Added `Assets/Verification/V39RoadmapBatch.dfollowups`, a fifteen-point roadmap batch with five Engine, five Editor, and five Game points.
+- Extended `RuntimeCommandRegistry` with execution history, binding-conflict diagnostics, category summaries, required-category validation, and trace-ready runtime-report counters.
+- Expanded `EditorPanelRegistry` workspace descriptors with saved dock-layout paths, team-default flags, workspace command bindings, controller navigation hints, and toolbar customization slot counts.
+- Promoted `GameEventRouteCatalog` routes with replay flags, breadcrumb labels, selection-link metadata, trace channels, checkpoint/failure routes, and runtime-report coverage.
+- Split v39 readiness evaluation/report writing into `DisparityGame/Source/DisparityGame/GameRoadmapBatch.*`, then wired schema, baselines, performance history, source-split checks, release readiness, and production-batch review through v39.
+
+## Engine v38 Diversified Batch Implemented
+
+- Added engine-owned `RuntimeCommandRegistry` support for command categories, bindings, enable/disable state, duplicate tracking, execution diagnostics, and command search.
+- Promoted `EditorPanelRegistry` into a live panel/workspace surface with searchable panels, workspace application, navigation diagnostics, a `Panels`/`Workspaces` menu, and the `Engine Services` panel.
+- Added `DisparityGame/Source/DisparityGame/GameEventRouteCatalog.*` to document objective, encounter, traversal, audio, and failure event routes backed by telemetry counters and event channels.
+- Added `Assets/Verification/V38DiversifiedBatch.dfollowups`, a Profiler `Diversified Engine/Editor/Game Readiness v38` table, runtime report metrics for all `v38_point_*` entries, schema and baseline gates, release-readiness review, performance-history summaries, and production-batch review coverage.
 
 ## Engine v37 Source Split Correction Implemented
 

@@ -68,4 +68,63 @@ namespace DisparityGame
         } };
         return points;
     }
+
+    const std::array<GameFollowupPoint, V38DiversifiedBatchPointCount>& GetV38DiversifiedBatchPoints()
+    {
+        static const std::array<GameFollowupPoint, V38DiversifiedBatchPointCount> points = { {
+            { "v38_point_01_runtime_command_registry_module", "Engine", "Engine has a runtime command registry module" },
+            { "v38_point_02_runtime_command_categories", "Engine", "Runtime commands retain category metadata for editor surfaces" },
+            { "v38_point_03_runtime_command_enable_disable", "Engine", "Runtime commands can be enabled and disabled deterministically" },
+            { "v38_point_04_runtime_command_execution_counts", "Engine", "Runtime command execution and failed execution counts are tracked" },
+            { "v38_point_05_runtime_command_search", "Engine", "Runtime command search can find commands by name, category, description, or binding" },
+            { "v38_point_06_runtime_command_duplicate_tracking", "Engine", "Duplicate runtime command registrations are tracked" },
+            { "v38_point_07_runtime_command_diagnostics_report", "Engine", "Runtime report emits command registry diagnostics" },
+            { "v38_point_08_runtime_command_umbrella_header", "Engine", "Runtime command registry is exposed through the engine umbrella include" },
+            { "v38_point_09_runtime_command_manifest", "Engine", "v38 manifest includes runtime command coverage" },
+            { "v38_point_10_runtime_command_wrapper_gate", "Engine", "Runtime verification wrapper asserts command registry counters" },
+            { "v38_point_11_editor_workspace_registry", "Editor", "Editor panel registry owns workspace presets" },
+            { "v38_point_12_editor_workspace_apply", "Editor", "Workspace application changes panel visibility" },
+            { "v38_point_13_editor_panel_search", "Editor", "Panel search returns matching editor panels" },
+            { "v38_point_14_editor_panel_navigation", "Editor", "Panel registry supports next visible panel navigation" },
+            { "v38_point_15_editor_panel_workspace_diagnostics", "Editor", "Workspace diagnostics count presets, bindings, and missing references" },
+            { "v38_point_16_editor_panel_live_routing", "Editor", "Editor panel visibility is routed through the live panel registry" },
+            { "v38_point_17_editor_panel_menu_toggles", "Editor", "Main menu exposes registered panels and workspaces" },
+            { "v38_point_18_editor_engine_services_panel", "Editor", "Editor includes an Engine Services panel for service, command, telemetry, config, panel, and route diagnostics" },
+            { "v38_point_19_editor_profiler_v38_table", "Editor", "Profiler exposes the v38 diversified readiness table" },
+            { "v38_point_20_editor_schema_release_gates", "Editor", "Schema and release readiness include the v38 editor metrics" },
+            { "v38_point_21_game_event_route_catalog_split", "Game", "Public-demo event route catalog lives outside DisparityGame.cpp" },
+            { "v38_point_22_game_objective_routes", "Game", "Objective route metadata covers shards, anchors, gates, relays, and extraction" },
+            { "v38_point_23_game_encounter_routes", "Game", "Encounter route metadata covers enemy pressure and reactions" },
+            { "v38_point_24_game_traversal_routes", "Game", "Traversal route metadata covers dash and combo chains" },
+            { "v38_point_25_game_audio_failure_routes", "Game", "Audio and failure route metadata connect cue, footstep, and retry events" },
+            { "v38_point_26_game_route_telemetry_backing", "Game", "Every game route has a telemetry counter" },
+            { "v38_point_27_game_route_event_bus_backing", "Game", "Every game route has an event bus channel" },
+            { "v38_point_28_game_route_runtime_report", "Game", "Runtime report emits game route catalog diagnostics" },
+            { "v38_point_29_game_source_split_inventory", "Game", "Game module inventory includes the event route catalog" },
+            { "v38_point_30_game_docs_version_agents", "Game", "Docs, AGENTS context, versioning, baselines, and tooling describe v38" }
+        } };
+        return points;
+    }
+
+    const std::array<GameFollowupPoint, V39RoadmapBatchPointCount>& GetV39RoadmapBatchPoints()
+    {
+        static const std::array<GameFollowupPoint, V39RoadmapBatchPointCount> points = { {
+            { "v39_point_01_engine_command_history", "Engine", "Runtime command registry records execution history entries" },
+            { "v39_point_02_engine_binding_conflicts", "Engine", "Runtime command registry detects default binding conflicts" },
+            { "v39_point_03_engine_category_summaries", "Engine", "Runtime command registry builds category summaries for editor surfaces" },
+            { "v39_point_04_engine_required_category_validation", "Engine", "Runtime command registry validates required command categories" },
+            { "v39_point_05_engine_command_trace_report", "Engine", "Runtime report emits command history and binding diagnostics" },
+            { "v39_point_06_editor_saved_dock_layouts", "Editor", "Editor workspaces advertise saved dock-layout descriptors" },
+            { "v39_point_07_editor_team_default_workspaces", "Editor", "Editor workspaces can be marked as team defaults" },
+            { "v39_point_08_editor_workspace_command_bindings", "Editor", "Editor workspace metadata carries command binding counts" },
+            { "v39_point_09_editor_controller_navigation_hints", "Editor", "Editor workspace metadata carries controller navigation hints" },
+            { "v39_point_10_editor_toolbar_customization_slots", "Editor", "Editor workspace metadata carries toolbar customization slots" },
+            { "v39_point_11_game_route_replay_breadcrumbs", "Game", "Public-demo event routes expose replayable breadcrumb labels" },
+            { "v39_point_12_game_route_selection_links", "Game", "Public-demo event routes identify routes linkable to selected scene objects" },
+            { "v39_point_13_game_route_trace_channels", "Game", "Public-demo event routes group into trace channels for replay review" },
+            { "v39_point_14_game_failure_checkpoint_routes", "Game", "Failure and checkpoint routes are represented in the event catalog" },
+            { "v39_point_15_game_route_runtime_report", "Game", "Runtime report emits replay, selection, trace, and failure route diagnostics" }
+        } };
+        return points;
+    }
 }

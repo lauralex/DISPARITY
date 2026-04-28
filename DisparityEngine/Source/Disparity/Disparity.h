@@ -31,6 +31,7 @@
 #include "Disparity/Runtime/ConfigVarRegistry.h"
 #include "Disparity/Runtime/FrameScheduler.h"
 #include "Disparity/Runtime/JobSystem.h"
+#include "Disparity/Runtime/RuntimeCommandRegistry.h"
 #include "Disparity/Scripting/ScriptRunner.h"
 #include "Disparity/Scene/Camera.h"
 #include "Disparity/Scene/Material.h"

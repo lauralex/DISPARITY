@@ -99,6 +99,7 @@
     <ClInclude Include="Source\Disparity\Runtime\ConfigVarRegistry.h" />
     <ClInclude Include="Source\Disparity\Runtime\FrameScheduler.h" />
     <ClInclude Include="Source\Disparity\Runtime\JobSystem.h" />
+    <ClInclude Include="Source\Disparity\Runtime\RuntimeCommandRegistry.h" />
     <ClInclude Include="Source\Disparity\Scripting\ScriptRunner.h" />
     <ClInclude Include="Source\Disparity\Scene\Camera.h" />
     <ClInclude Include="Source\Disparity\Scene\Material.h" />
@@ -138,6 +139,7 @@
     <ClCompile Include="Source\Disparity\Runtime\ConfigVarRegistry.cpp" />
     <ClCompile Include="Source\Disparity\Runtime\FrameScheduler.cpp" />
     <ClCompile Include="Source\Disparity\Runtime\JobSystem.cpp" />
+    <ClCompile Include="Source\Disparity\Runtime\RuntimeCommandRegistry.cpp" />
     <ClCompile Include="Source\Disparity\Scripting\ScriptRunner.cpp" />
     <ClCompile Include="Source\Disparity\Scene\Camera.cpp" />
     <ClCompile Include="Source\Disparity\Scene\PrimitiveFactory.cpp" />
