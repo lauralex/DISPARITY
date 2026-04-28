@@ -71,6 +71,14 @@ Editor UI:
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
 
+## Engine v41 Breadth Batch Implemented
+
+- Added `Assets/Verification/V41BreadthBatch.dfollowups`, a twenty-point BFS-style batch that rotates through Engine, Editor, Game, and Verification/Docs instead of concentrating on one subsystem.
+- Engine coverage now cross-checks EventBus queued flushes, FrameScheduler phase breadth, SceneQueryWorld raycast coverage, AssetStreamingPlan scheduling, and RenderGraphBudget checks in one runtime report surface.
+- Editor coverage now links viewport/object/gizmo picking, high-resolution capture paths, persisted preferences plus toolbar actions, transform/command history, and Shot Director sequencing into v41 readiness metrics.
+- Game coverage now ties the public-demo objective route, traversal/collision, enemy archetypes, input/failure loops, and audio/animation content into one balanced demo-readiness gate.
+- Verification/docs coverage requires the v41 schema, baseline keys, release-readiness manifest, performance-history summary columns, and docs/AGENTS references to stay synchronized with the runtime report.
+
 ## Engine v40 Diversified Batch Implemented
 
 - Added `Assets/Verification/V40DiversifiedBatch.dfollowups`, a fifteen-point Engine/Editor/Game batch that continues the roadmap without touching the line-budgeted root game file.

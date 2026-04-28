@@ -54,6 +54,32 @@ namespace DisparityGame
         uint32_t GameEventRouteHudVisibleRoutes = 0;
     };
 
+    struct V41BreadthMetrics
+    {
+        uint32_t EngineEventBusFlushes = 0;
+        uint32_t EngineSchedulerPhaseCoverage = 0;
+        uint32_t EngineSceneQueryRaycasts = 0;
+        uint32_t EngineStreamingScheduledRequests = 0;
+        uint32_t EngineRenderGraphBudgetChecks = 0;
+        uint32_t EngineModuleSmokeTests = 0;
+        uint32_t EditorPickTests = 0;
+        uint32_t EditorGizmoPickTests = 0;
+        uint32_t EditorViewportCaptureTests = 0;
+        uint32_t EditorPreferenceToolbarTests = 0;
+        uint32_t EditorTransformHistoryTests = 0;
+        uint32_t EditorShotWorkflowTests = 0;
+        uint32_t GameObjectiveStages = 0;
+        uint32_t GameTraversalCollisionTests = 0;
+        uint32_t GameEnemyArchetypeTests = 0;
+        uint32_t GameInputFailureTests = 0;
+        uint32_t GameAudioAnimationTests = 0;
+        bool SchemaReady = false;
+        bool BaselineReady = false;
+        bool ReleaseReady = false;
+        bool PerformanceHistoryReady = false;
+        bool DocsReady = false;
+    };
+
     [[nodiscard]] std::array<uint32_t, V39RoadmapPointCount> EvaluateV39RoadmapBatch(
         const V39RoadmapMetrics& metrics,
         const RuntimeBaseline& baseline);
@@ -61,6 +87,9 @@ namespace DisparityGame
     [[nodiscard]] std::array<uint32_t, V40DiversifiedPointCount> EvaluateV40DiversifiedBatch(
         const V40DiversifiedMetrics& metrics);
     [[nodiscard]] uint32_t CountReadyV40DiversifiedPoints(const std::array<uint32_t, V40DiversifiedPointCount>& results);
+    [[nodiscard]] std::array<uint32_t, V41BreadthPointCount> EvaluateV41BreadthBatch(
+        const V41BreadthMetrics& metrics);
+    [[nodiscard]] uint32_t CountReadyV41BreadthPoints(const std::array<uint32_t, V41BreadthPointCount>& results);
     void CaptureV39RoadmapStats(
         EditorVerificationStats& stats,
         const Disparity::RuntimeCommandRegistryDiagnostics& commandDiagnostics,

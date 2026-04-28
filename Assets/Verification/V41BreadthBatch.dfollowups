@@ -1,0 +1,20 @@
+point v41_point_01_engine_event_bus_flush_coverage|Engine|Event bus flush diagnostics remain part of breadth verification.
+point v41_point_02_engine_scheduler_phase_coverage|Engine|Frame scheduler phase coverage remains part of breadth verification.
+point v41_point_03_engine_scene_query_raycast_coverage|Engine|Scene query raycast coverage remains part of breadth verification.
+point v41_point_04_engine_streaming_budget_coverage|Engine|Asset streaming schedule coverage remains part of breadth verification.
+point v41_point_05_engine_render_graph_budget_coverage|Engine|Render graph budget coverage remains part of breadth verification.
+point v41_point_06_editor_pick_gizmo_coverage|Editor|Object and gizmo picking remain part of breadth verification.
+point v41_point_07_editor_viewport_capture_coverage|Editor|Viewport overlay and high-resolution resolve remain part of breadth verification.
+point v41_point_08_editor_preferences_toolbar_coverage|Editor|Preference persistence, profiles, and viewport toolbar remain part of breadth verification.
+point v41_point_09_editor_transform_history_coverage|Editor|Transform precision and command-history filtering remain part of breadth verification.
+point v41_point_10_editor_shot_workflow_coverage|Editor|Shot Director and sequencer workflow remain part of breadth verification.
+point v41_point_11_game_objective_route_coverage|Game|Public-demo objective route coverage remains part of breadth verification.
+point v41_point_12_game_traversal_collision_coverage|Game|Traversal and collision coverage remain part of breadth verification.
+point v41_point_13_game_enemy_archetype_coverage|Game|Enemy chase/archetype coverage remains part of breadth verification.
+point v41_point_14_game_input_failure_coverage|Game|Gamepad, menu, and failure presentation coverage remain part of breadth verification.
+point v41_point_15_game_audio_animation_coverage|Game|Content audio and animation state coverage remain part of breadth verification.
+point v41_point_16_verification_schema_gate|Verification|Runtime report schema includes v41 breadth metrics.
+point v41_point_17_verification_baseline_gate|Verification|Runtime baselines include v41 breadth thresholds.
+point v41_point_18_verification_release_gate|Verification|Release readiness includes the v41 breadth manifest.
+point v41_point_19_verification_performance_history_gate|Verification|Performance history tracks v41 breadth metrics.
+point v41_point_20_docs_agent_roadmap_gate|Docs|README, feature guide, roadmap, and AGENTS document the v41 breadth batch.

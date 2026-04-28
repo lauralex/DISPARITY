@@ -1,11 +1,22 @@
 #include "DisparityGame/GameRoadmapBatch.h"
 #include "DisparityGame/GameFollowupCatalog.h"
+#include "Disparity/Core/FileSystem.h"
 
 #include <algorithm>
 #include <ostream>
+#include <string>
 
 namespace DisparityGame
 {
+    namespace
+    {
+        bool TextContains(const char* relativePath, const char* needle)
+        {
+            std::string text;
+            return Disparity::FileSystem::ReadTextFile(relativePath, text) && text.find(needle) != std::string::npos;
+        }
+    }
+
     std::array<uint32_t, V39RoadmapPointCount> EvaluateV39RoadmapBatch(
         const V39RoadmapMetrics& metrics,
         const RuntimeBaseline& baseline)
@@ -58,6 +69,38 @@ namespace DisparityGame
     }
 
     uint32_t CountReadyV40DiversifiedPoints(const std::array<uint32_t, V40DiversifiedPointCount>& results)
+    {
+        return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
+    }
+
+    std::array<uint32_t, V41BreadthPointCount> EvaluateV41BreadthBatch(
+        const V41BreadthMetrics& metrics)
+    {
+        std::array<uint32_t, V41BreadthPointCount> results = {};
+        results[0] = metrics.EngineEventBusFlushes >= 1 ? 1u : 0u;
+        results[1] = metrics.EngineSchedulerPhaseCoverage >= 7 ? 1u : 0u;
+        results[2] = metrics.EngineSceneQueryRaycasts >= 1 ? 1u : 0u;
+        results[3] = metrics.EngineStreamingScheduledRequests >= 2 ? 1u : 0u;
+        results[4] = metrics.EngineRenderGraphBudgetChecks >= 1 && metrics.EngineModuleSmokeTests >= 5 ? 1u : 0u;
+        results[5] = metrics.EditorPickTests >= 4 && metrics.EditorGizmoPickTests >= 3 ? 1u : 0u;
+        results[6] = metrics.EditorViewportCaptureTests >= 2 ? 1u : 0u;
+        results[7] = metrics.EditorPreferenceToolbarTests >= 3 ? 1u : 0u;
+        results[8] = metrics.EditorTransformHistoryTests >= 2 ? 1u : 0u;
+        results[9] = metrics.EditorShotWorkflowTests >= 2 ? 1u : 0u;
+        results[10] = metrics.GameObjectiveStages >= 30 ? 1u : 0u;
+        results[11] = metrics.GameTraversalCollisionTests >= 2 ? 1u : 0u;
+        results[12] = metrics.GameEnemyArchetypeTests >= 4 ? 1u : 0u;
+        results[13] = metrics.GameInputFailureTests >= 3 ? 1u : 0u;
+        results[14] = metrics.GameAudioAnimationTests >= 2 ? 1u : 0u;
+        results[15] = metrics.SchemaReady ? 1u : 0u;
+        results[16] = metrics.BaselineReady ? 1u : 0u;
+        results[17] = metrics.ReleaseReady ? 1u : 0u;
+        results[18] = metrics.PerformanceHistoryReady ? 1u : 0u;
+        results[19] = metrics.DocsReady ? 1u : 0u;
+        return results;
+    }
+
+    uint32_t CountReadyV41BreadthPoints(const std::array<uint32_t, V41BreadthPointCount>& results)
     {
         return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
     }
@@ -199,6 +242,93 @@ namespace DisparityGame
         for (size_t index = 0; index < v40Points.size(); ++index)
         {
             report << v40Points[index].Key << "=" << v40Results[index] << "\n";
+        }
+
+        const uint32_t editorViewportCaptureTests = stats.ViewportOverlayTests + stats.HighResResolveTests;
+        const uint32_t editorPreferenceToolbarTests = stats.EditorPreferencePersistenceTests +
+            stats.ViewportToolbarTests +
+            stats.EditorPreferenceProfileTests;
+        const uint32_t editorTransformHistoryTests = stats.TransformPrecisionTests + stats.CommandHistoryFilterTests;
+        const uint32_t editorShotWorkflowTests = stats.ShotDirectorTests + stats.ShotSequencerTests;
+        const uint32_t gameTraversalCollisionTests = stats.PublicDemoCollisionSolves + stats.PublicDemoTraversalActions;
+        const uint32_t gameEnemyArchetypeTests = stats.PublicDemoEnemyArchetypes + (stats.PublicDemoEnemyChases > 0 ? 1u : 0u);
+        const uint32_t gameInputFailureTests = stats.PublicDemoGamepadFrames +
+            stats.PublicDemoMenuTransitions +
+            stats.PublicDemoFailurePresentations;
+        const uint32_t gameAudioAnimationTests = stats.PublicDemoContentAudioCues + stats.PublicDemoAnimationStateChanges;
+        const bool schemaReady = stats.RuntimeSchemaManifestTests >= 1 &&
+            TextContains("Assets/Verification/RuntimeReportSchema.dschema", "v41_breadth_points");
+        const bool baselineReady =
+            TextContains("Assets/Verification/RuntimeBaseline.dverify", "min_v41_breadth_points") &&
+            TextContains("Assets/Verification/CameraSweepBaseline.dverify", "min_v41_breadth_points") &&
+            TextContains("Assets/Verification/EditorPrecisionBaseline.dverify", "min_v41_breadth_points") &&
+            TextContains("Assets/Verification/PostDebugBaseline.dverify", "min_v41_breadth_points") &&
+            TextContains("Assets/Verification/AssetReloadBaseline.dverify", "min_v41_breadth_points") &&
+            TextContains("Assets/Verification/GizmoDragBaseline.dverify", "min_v41_breadth_points");
+        const bool releaseReady = stats.ReleaseReadinessTests >= 1 &&
+            TextContains("Tools/ReviewReleaseReadiness.ps1", "V41BreadthBatchPath");
+        const bool performanceHistoryReady =
+            TextContains("Tools/RuntimeVerifyDisparity.ps1", "v41_breadth_points") &&
+            TextContains("Tools/SummarizePerformanceHistory.ps1", "v41_breadth_points");
+        const bool docsReady =
+            TextContains("README.md", "Engine v41 Breadth Batch Implemented") &&
+            TextContains("Docs/ROADMAP.md", "v41 Completed Breadth Batch") &&
+            TextContains("Docs/ENGINE_FEATURES.md", "v41_breadth_points") &&
+            TextContains("AGENTS.md", "Editor/runtime v41");
+
+        const V41BreadthMetrics v41Metrics = {
+            stats.EngineEventBusFlushes,
+            stats.EngineSchedulerPhases,
+            stats.EngineSceneQueryRaycasts,
+            stats.EngineStreamingScheduledRequests,
+            stats.EngineRenderGraphBudgetChecks,
+            stats.EngineModuleSmokeTests,
+            stats.ObjectPickTests,
+            stats.GizmoPickTests,
+            editorViewportCaptureTests,
+            editorPreferenceToolbarTests,
+            editorTransformHistoryTests,
+            editorShotWorkflowTests,
+            stats.PublicDemoObjectiveStages,
+            gameTraversalCollisionTests,
+            gameEnemyArchetypeTests,
+            gameInputFailureTests,
+            gameAudioAnimationTests,
+            schemaReady,
+            baselineReady,
+            releaseReady,
+            performanceHistoryReady,
+            docsReady
+        };
+        const auto v41Results = EvaluateV41BreadthBatch(v41Metrics);
+        const uint32_t v41ReadyPoints = CountReadyV41BreadthPoints(v41Results);
+
+        report << "v41_engine_event_bus_flushes=" << stats.EngineEventBusFlushes << "\n";
+        report << "v41_engine_scheduler_phase_coverage=" << stats.EngineSchedulerPhases << "\n";
+        report << "v41_engine_scene_query_raycasts=" << stats.EngineSceneQueryRaycasts << "\n";
+        report << "v41_engine_streaming_scheduled_requests=" << stats.EngineStreamingScheduledRequests << "\n";
+        report << "v41_engine_render_graph_budget_checks=" << stats.EngineRenderGraphBudgetChecks << "\n";
+        report << "v41_editor_pick_tests=" << stats.ObjectPickTests << "\n";
+        report << "v41_editor_viewport_capture_tests=" << editorViewportCaptureTests << "\n";
+        report << "v41_editor_preference_toolbar_tests=" << editorPreferenceToolbarTests << "\n";
+        report << "v41_editor_transform_history_tests=" << editorTransformHistoryTests << "\n";
+        report << "v41_editor_shot_workflow_tests=" << editorShotWorkflowTests << "\n";
+        report << "v41_game_objective_stages=" << stats.PublicDemoObjectiveStages << "\n";
+        report << "v41_game_traversal_collision_tests=" << gameTraversalCollisionTests << "\n";
+        report << "v41_game_enemy_archetype_tests=" << gameEnemyArchetypeTests << "\n";
+        report << "v41_game_input_failure_tests=" << gameInputFailureTests << "\n";
+        report << "v41_game_audio_animation_tests=" << gameAudioAnimationTests << "\n";
+        report << "v41_verification_schema_ready=" << (schemaReady ? 1u : 0u) << "\n";
+        report << "v41_verification_baseline_ready=" << (baselineReady ? 1u : 0u) << "\n";
+        report << "v41_verification_release_ready=" << (releaseReady ? 1u : 0u) << "\n";
+        report << "v41_verification_performance_history_ready=" << (performanceHistoryReady ? 1u : 0u) << "\n";
+        report << "v41_docs_ready=" << (docsReady ? 1u : 0u) << "\n";
+        report << "v41_breadth_points=" << v41ReadyPoints << "\n";
+
+        const auto& v41Points = GetV41BreadthBatchPoints();
+        for (size_t index = 0; index < v41Points.size(); ++index)
+        {
+            report << v41Points[index].Key << "=" << v41Results[index] << "\n";
         }
     }
 }
