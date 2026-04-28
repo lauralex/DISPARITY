@@ -6,7 +6,7 @@
 namespace Disparity::Version
 {
     inline constexpr uint32_t Major = 0;
-    inline constexpr uint32_t Minor = 43;
+    inline constexpr uint32_t Minor = 44;
     inline constexpr uint32_t Patch = 0;
     inline constexpr const char* Name = "DISPARITY Engine";
 

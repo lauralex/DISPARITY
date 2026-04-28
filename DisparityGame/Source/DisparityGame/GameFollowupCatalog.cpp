@@ -238,4 +238,35 @@ namespace DisparityGame
         } };
         return points;
     }
+
+    const std::array<GameFollowupPoint, V44RuntimeCatalogBatchPointCount>& GetV44RuntimeCatalogPoints()
+    {
+        static const std::array<GameFollowupPoint, V44RuntimeCatalogBatchPointCount> points = { {
+            { "v44_point_01_engine_event_trace_catalog_consumed", "Engine", "Event-trace manifest is consumed into the runtime production catalog" },
+            { "v44_point_02_engine_scheduler_budget_catalog_consumed", "Engine", "Scheduler budget manifest is consumed into the runtime production catalog" },
+            { "v44_point_03_engine_scene_query_catalog_consumed", "Engine", "Scene-query layer manifest is consumed into the runtime production catalog" },
+            { "v44_point_04_engine_streaming_catalog_consumed", "Engine", "Streaming budget manifest is consumed into the runtime production catalog" },
+            { "v44_point_05_engine_render_budget_catalog_consumed", "Engine", "Render budget manifest is consumed into the runtime production catalog" },
+            { "v44_point_06_engine_task_graph_catalog_consumed", "Engine", "Frame task graph manifest is consumed into the runtime production catalog" },
+            { "v44_point_07_editor_workspace_catalog_consumed", "Editor", "Workspace layout manifest is consumed into the editor production catalog" },
+            { "v44_point_08_editor_command_palette_catalog_consumed", "Editor", "Command palette manifest is consumed into the editor production catalog" },
+            { "v44_point_09_editor_viewport_bookmark_catalog_consumed", "Editor", "Viewport bookmark manifest is consumed into the editor production catalog" },
+            { "v44_point_10_editor_inspector_preset_catalog_consumed", "Editor", "Inspector preset manifest is consumed into the editor production catalog" },
+            { "v44_point_11_editor_dock_migration_catalog_consumed", "Editor", "Dock migration manifest is consumed into the editor production catalog" },
+            { "v44_point_12_editor_shot_track_catalog_consumed", "Editor", "Shot-track validation manifest is consumed into the editor production catalog" },
+            { "v44_point_13_game_encounter_catalog_consumed", "Game", "Encounter manifest is consumed into the playable demo production catalog" },
+            { "v44_point_14_game_controller_feel_catalog_consumed", "Game", "Controller feel manifest is consumed into the playable demo production catalog" },
+            { "v44_point_15_game_objective_route_catalog_consumed", "Game", "Objective route manifest is consumed into the playable demo production catalog" },
+            { "v44_point_16_game_accessibility_catalog_consumed", "Game", "Accessibility manifest is consumed into the playable demo production catalog" },
+            { "v44_point_17_game_save_slot_catalog_consumed", "Game", "Save-slot manifest is consumed into the playable demo production catalog" },
+            { "v44_point_18_game_combat_sandbox_catalog_consumed", "Game", "Combat sandbox manifest is consumed into the playable demo production catalog" },
+            { "v44_point_19_verification_manifest_gate", "Verification", "v44 runtime catalog activation manifest is present and reviewed" },
+            { "v44_point_20_verification_schema_gate", "Verification", "Runtime report schema includes v44 catalog metrics" },
+            { "v44_point_21_verification_baseline_gate", "Verification", "Runtime baselines include v44 catalog thresholds" },
+            { "v44_point_22_verification_release_gate", "Verification", "Release readiness includes the v44 runtime catalog manifest" },
+            { "v44_point_23_verification_performance_history_gate", "Verification", "Runtime and performance-history tooling track v44 catalog metrics" },
+            { "v44_point_24_docs_agent_roadmap_gate", "Docs", "README, feature guide, roadmap, and AGENTS document v44 runtime catalog activation" }
+        } };
+        return points;
+    }
 }

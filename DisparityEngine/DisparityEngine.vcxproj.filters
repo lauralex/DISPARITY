@@ -49,6 +49,7 @@
     <ClInclude Include="Source\Disparity\Assets\GltfLoader.h"><Filter>Source\Assets</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Assets\MaterialAsset.h"><Filter>Source\Assets</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Assets\Prefab.h"><Filter>Source\Assets</Filter></ClInclude>
+    <ClInclude Include="Source\Disparity\Assets\ProductionAssetRuntimeCatalog.h"><Filter>Source\Assets</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Assets\ProductionAssetValidator.h"><Filter>Source\Assets</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Assets\SimpleJson.h"><Filter>Source\Assets</Filter></ClInclude>
     <ClInclude Include="Source\Disparity\Audio\AudioSystem.h"><Filter>Source\Audio</Filter></ClInclude>
@@ -94,6 +95,7 @@
     <ClCompile Include="Source\Disparity\Assets\GltfLoader.cpp"><Filter>Source\Assets</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Assets\MaterialAsset.cpp"><Filter>Source\Assets</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Assets\Prefab.cpp"><Filter>Source\Assets</Filter></ClCompile>
+    <ClCompile Include="Source\Disparity\Assets\ProductionAssetRuntimeCatalog.cpp"><Filter>Source\Assets</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Assets\ProductionAssetValidator.cpp"><Filter>Source\Assets</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Assets\SimpleJson.cpp"><Filter>Source\Assets</Filter></ClCompile>
     <ClCompile Include="Source\Disparity\Audio\AudioSystem.cpp"><Filter>Source\Audio</Filter></ClCompile>

@@ -1,5 +1,6 @@
 #include "DisparityGame/GameRoadmapBatch.h"
 #include "DisparityGame/GameFollowupCatalog.h"
+#include "Disparity/Assets/ProductionAssetRuntimeCatalog.h"
 #include "Disparity/Assets/ProductionAssetValidator.h"
 #include "Disparity/Core/FileSystem.h"
 
@@ -55,6 +56,23 @@ namespace DisparityGame
                 report << "v43_asset_" << checks[index].MetricName << "_hash_low="
                     << static_cast<uint32_t>(result.ContentHash & 0xffffffffull) << "\n";
             }
+        }
+
+        [[nodiscard]] std::array<uint32_t, 6> BuildRuntimeCatalogReadiness(
+            const std::vector<Disparity::ProductionRuntimeAsset>& catalog,
+            const char* domain)
+        {
+            std::array<uint32_t, 6> readiness = {};
+            size_t outputIndex = 0;
+            for (const Disparity::ProductionRuntimeAsset& asset : catalog)
+            {
+                if (asset.Domain == domain && outputIndex < readiness.size())
+                {
+                    readiness[outputIndex] = asset.RuntimeReady ? 1u : 0u;
+                    ++outputIndex;
+                }
+            }
+            return readiness;
         }
     }
 
@@ -200,6 +218,35 @@ namespace DisparityGame
 
     uint32_t CountReadyV43LiveValidationPoints(
         const std::array<uint32_t, V43LiveValidationPointCount>& results)
+    {
+        return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
+    }
+
+    std::array<uint32_t, V44RuntimeCatalogPointCount> EvaluateV44RuntimeCatalog(
+        const V44RuntimeCatalogMetrics& metrics)
+    {
+        std::array<uint32_t, V44RuntimeCatalogPointCount> results = {};
+        for (size_t index = 0; index < metrics.EngineCatalogAssets.size(); ++index)
+        {
+            results[index] = metrics.EngineCatalogAssets[index] != 0u ? 1u : 0u;
+        }
+        for (size_t index = 0; index < metrics.EditorCatalogAssets.size(); ++index)
+        {
+            results[6 + index] = metrics.EditorCatalogAssets[index] != 0u ? 1u : 0u;
+        }
+        for (size_t index = 0; index < metrics.GameCatalogAssets.size(); ++index)
+        {
+            results[12 + index] = metrics.GameCatalogAssets[index] != 0u ? 1u : 0u;
+        }
+        for (size_t index = 0; index < metrics.VerificationAssets.size(); ++index)
+        {
+            results[18 + index] = metrics.VerificationAssets[index] != 0u ? 1u : 0u;
+        }
+        return results;
+    }
+
+    uint32_t CountReadyV44RuntimeCatalogPoints(
+        const std::array<uint32_t, V44RuntimeCatalogPointCount>& results)
     {
         return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
     }
@@ -584,6 +631,89 @@ namespace DisparityGame
         for (size_t index = 0; index < v43Points.size(); ++index)
         {
             report << v43Points[index].Key << "=" << v43Results[index] << "\n";
+        }
+
+        const std::vector<Disparity::ProductionRuntimeAssetRule> v44RuntimeRules = {
+            { v43EngineChecks[0].Rule, "Engine", "event_trace_channels" },
+            { v43EngineChecks[1].Rule, "Engine", "scheduler_budgets" },
+            { v43EngineChecks[2].Rule, "Engine", "scene_query_layers" },
+            { v43EngineChecks[3].Rule, "Engine", "streaming_budgets" },
+            { v43EngineChecks[4].Rule, "Engine", "render_budget_classes" },
+            { v43EngineChecks[5].Rule, "Engine", "frame_task_graph" },
+            { v43EditorChecks[0].Rule, "Editor", "workspace_layouts" },
+            { v43EditorChecks[1].Rule, "Editor", "command_palette" },
+            { v43EditorChecks[2].Rule, "Editor", "viewport_bookmarks" },
+            { v43EditorChecks[3].Rule, "Editor", "inspector_presets" },
+            { v43EditorChecks[4].Rule, "Editor", "dock_migration_plan" },
+            { v43EditorChecks[5].Rule, "Editor", "shot_track_validation" },
+            { v43GameChecks[0].Rule, "Game", "encounter_plan" },
+            { v43GameChecks[1].Rule, "Game", "controller_feel" },
+            { v43GameChecks[2].Rule, "Game", "objective_routes" },
+            { v43GameChecks[3].Rule, "Game", "accessibility" },
+            { v43GameChecks[4].Rule, "Game", "save_slots" },
+            { v43GameChecks[5].Rule, "Game", "combat_sandbox" }
+        };
+        const std::vector<Disparity::ProductionRuntimeAsset> v44Catalog =
+            Disparity::LoadProductionRuntimeCatalog(v44RuntimeRules);
+        const Disparity::ProductionRuntimeCatalogSummary v44Summary =
+            Disparity::SummarizeProductionRuntimeCatalog(v44Catalog);
+
+        const std::array<uint32_t, 6> v44EngineCatalogAssets =
+            BuildRuntimeCatalogReadiness(v44Catalog, "Engine");
+        const std::array<uint32_t, 6> v44EditorCatalogAssets =
+            BuildRuntimeCatalogReadiness(v44Catalog, "Editor");
+        const std::array<uint32_t, 6> v44GameCatalogAssets =
+            BuildRuntimeCatalogReadiness(v44Catalog, "Game");
+        const std::array<uint32_t, 6> v44VerificationAssets = {
+            TextContains("Assets/Verification/V44RuntimeCatalogActivation.dfollowups", "v44_point_24_docs_agent_roadmap_gate") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeReportSchema.dschema", "v44_catalog_points") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeBaseline.dverify", "min_v44_catalog_points") &&
+                TextContains("Assets/Verification/CameraSweepBaseline.dverify", "min_v44_catalog_points") &&
+                TextContains("Assets/Verification/EditorPrecisionBaseline.dverify", "min_v44_catalog_points") &&
+                TextContains("Assets/Verification/PostDebugBaseline.dverify", "min_v44_catalog_points") &&
+                TextContains("Assets/Verification/AssetReloadBaseline.dverify", "min_v44_catalog_points") &&
+                TextContains("Assets/Verification/GizmoDragBaseline.dverify", "min_v44_catalog_points") ? 1u : 0u,
+            TextContains("Tools/ReviewReleaseReadiness.ps1", "V44RuntimeCatalogPath") ? 1u : 0u,
+            TextContains("Tools/RuntimeVerifyDisparity.ps1", "v44_catalog_points") &&
+                TextContains("Tools/SummarizePerformanceHistory.ps1", "v44_catalog_points") ? 1u : 0u,
+            TextContains("README.md", "Engine v44 Runtime Catalog Activation Implemented") &&
+                TextContains("Docs/ROADMAP.md", "v44 Completed Runtime Catalog Activation Batch") &&
+                TextContains("Docs/ENGINE_FEATURES.md", "v44_catalog_points") &&
+                TextContains("AGENTS.md", "Editor/runtime v44") ? 1u : 0u
+        };
+        const V44RuntimeCatalogMetrics v44Metrics = {
+            v44EngineCatalogAssets,
+            v44EditorCatalogAssets,
+            v44GameCatalogAssets,
+            v44VerificationAssets
+        };
+        const auto v44Results = EvaluateV44RuntimeCatalog(v44Metrics);
+        const uint32_t v44EngineReady = static_cast<uint32_t>(std::count(v44EngineCatalogAssets.begin(), v44EngineCatalogAssets.end(), 1u));
+        const uint32_t v44EditorReady = static_cast<uint32_t>(std::count(v44EditorCatalogAssets.begin(), v44EditorCatalogAssets.end(), 1u));
+        const uint32_t v44GameReady = static_cast<uint32_t>(std::count(v44GameCatalogAssets.begin(), v44GameCatalogAssets.end(), 1u));
+        const uint32_t v44VerificationReady = static_cast<uint32_t>(std::count(v44VerificationAssets.begin(), v44VerificationAssets.end(), 1u));
+        const uint32_t v44ReadyPoints = CountReadyV44RuntimeCatalogPoints(v44Results);
+
+        report << "v44_engine_catalog_assets=" << v44EngineReady << "\n";
+        report << "v44_editor_catalog_assets=" << v44EditorReady << "\n";
+        report << "v44_game_catalog_assets=" << v44GameReady << "\n";
+        report << "v44_verification_assets=" << v44VerificationReady << "\n";
+        report << "v44_runtime_catalog_assets=" << v44Summary.RuntimeReadyAssets << "\n";
+        report << "v44_runtime_catalog_entries=" << v44Summary.EntryCount << "\n";
+        report << "v44_runtime_catalog_fields=" << v44Summary.FieldCount << "\n";
+        report << "v44_runtime_catalog_activations=" << v44Summary.ActivationEntries << "\n";
+        report << "v44_runtime_catalog_domains=" << v44Summary.DomainCount << "\n";
+        report << "v44_runtime_catalog_actions=" << v44Summary.ActionCount << "\n";
+        report << "v44_runtime_catalog_required_matches=" << v44Summary.RequiredEntryMatches << "\n";
+        report << "v44_runtime_catalog_missing_fields=" << v44Summary.MissingFields << "\n";
+        report << "v44_runtime_catalog_hash_low=" << static_cast<uint32_t>(v44Summary.CombinedHash & 0xffffffffull) << "\n";
+        report << "v44_docs_ready=" << v44VerificationAssets[5] << "\n";
+        report << "v44_catalog_points=" << v44ReadyPoints << "\n";
+
+        const auto& v44Points = GetV44RuntimeCatalogPoints();
+        for (size_t index = 0; index < v44Points.size(); ++index)
+        {
+            report << v44Points[index].Key << "=" << v44Results[index] << "\n";
         }
     }
 }

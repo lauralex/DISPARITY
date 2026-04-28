@@ -1,0 +1,24 @@
+point v44_point_01_engine_event_trace_catalog_consumed | Engine | Event-trace channel asset is loaded into a runtime production catalog with directive entries and activation state.
+point v44_point_02_engine_scheduler_budget_catalog_consumed | Engine | Scheduler budget asset is loaded into a runtime production catalog with per-phase fields.
+point v44_point_03_engine_scene_query_catalog_consumed | Engine | Scene-query layer asset is loaded into a runtime production catalog with layer metadata.
+point v44_point_04_engine_streaming_catalog_consumed | Engine | Streaming budget asset is loaded into a runtime production catalog with async budget metadata.
+point v44_point_05_engine_render_budget_catalog_consumed | Engine | Render budget class asset is loaded into a runtime production catalog with trailer-capture budget fields.
+point v44_point_06_engine_task_graph_catalog_consumed | Engine | Frame task graph asset is loaded into a runtime production catalog with dependency-edge metadata.
+point v44_point_07_editor_workspace_catalog_consumed | Editor | Workspace layout asset is loaded into an editor production catalog with focus/panel metadata.
+point v44_point_08_editor_command_palette_catalog_consumed | Editor | Command palette asset is loaded into an editor production catalog with command and binding metadata.
+point v44_point_09_editor_viewport_bookmark_catalog_consumed | Editor | Viewport bookmark asset is loaded into an editor production catalog with camera metadata.
+point v44_point_10_editor_inspector_preset_catalog_consumed | Editor | Inspector preset asset is loaded into an editor production catalog with material preset fields.
+point v44_point_11_editor_dock_migration_catalog_consumed | Editor | Dock migration asset is loaded into an editor production catalog with migration-step metadata.
+point v44_point_12_editor_shot_track_catalog_consumed | Editor | Shot track validation asset is loaded into an editor production catalog with track/rule metadata.
+point v44_point_13_game_encounter_catalog_consumed | Game | Encounter plan asset is loaded into a playable demo production catalog with pressure and checkpoint metadata.
+point v44_point_14_game_controller_feel_catalog_consumed | Game | Controller feel asset is loaded into a playable demo production catalog with movement tuning fields.
+point v44_point_15_game_objective_route_catalog_consumed | Game | Objective route asset is loaded into a playable demo production catalog with route-chain metadata.
+point v44_point_16_game_accessibility_catalog_consumed | Game | Accessibility asset is loaded into a playable demo production catalog with toggle fields.
+point v44_point_17_game_save_slot_catalog_consumed | Game | Save-slot plan asset is loaded into a playable demo production catalog with checkpoint persistence fields.
+point v44_point_18_game_combat_sandbox_catalog_consumed | Game | Combat sandbox asset is loaded into a playable demo production catalog with arena and wave metadata.
+point v44_point_19_verification_manifest_gate | Verification | v44 runtime catalog activation manifest is present and reviewed by production-batch tooling.
+point v44_point_20_verification_schema_gate | Verification | Runtime report schema includes v44 runtime catalog activation metrics.
+point v44_point_21_verification_baseline_gate | Verification | Runtime baselines include v44 runtime catalog activation thresholds.
+point v44_point_22_verification_release_gate | Verification | Release readiness includes the v44 runtime catalog activation manifest.
+point v44_point_23_verification_performance_history_gate | Verification | Runtime and performance-history tooling track v44 runtime catalog activation metrics.
+point v44_point_24_docs_agent_roadmap_gate | Docs | README, feature guide, roadmap, and AGENTS document the v44 runtime catalog activation batch.

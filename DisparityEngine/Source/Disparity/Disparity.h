@@ -7,6 +7,7 @@
 #include "Disparity/Assets/GltfLoader.h"
 #include "Disparity/Assets/MaterialAsset.h"
 #include "Disparity/Assets/Prefab.h"
+#include "Disparity/Assets/ProductionAssetRuntimeCatalog.h"
 #include "Disparity/Assets/ProductionAssetValidator.h"
 #include "Disparity/Audio/AudioSystem.h"
 #include "Disparity/Core/Application.h"

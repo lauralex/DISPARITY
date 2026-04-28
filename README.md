@@ -71,6 +71,14 @@ Editor UI:
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
 
+## Engine v44 Runtime Catalog Activation Implemented
+
+- Added `Assets/Verification/V44RuntimeCatalogActivation.dfollowups`, a twenty-four-point batch that consumes the v43-validated production assets into an engine-owned runtime catalog.
+- Added `ProductionAssetRuntimeCatalog` to parse directive entries and key/value metadata from engine, editor, and game production assets after validation succeeds.
+- Runtime reports now emit `v44_engine_catalog_assets`, `v44_editor_catalog_assets`, `v44_game_catalog_assets`, `v44_runtime_catalog_assets`, `v44_runtime_catalog_entries`, `v44_runtime_catalog_fields`, `v44_runtime_catalog_activations`, `v44_runtime_catalog_domains`, `v44_runtime_catalog_actions`, `v44_runtime_catalog_missing_fields`, `v44_catalog_points`, and all `v44_point_*` metrics.
+- The v44 catalog turns the production manifests into a reusable data surface for future EventBus, scheduler, streaming, editor workspace, command palette, encounter, route, save-slot, and combat-sandbox integration.
+- Schema checks, baselines, release readiness, production-batch review, performance-history summaries, README, docs, roadmap, and AGENTS context now require `v44_catalog_points=24`.
+
 ## Engine v43 Live Production Validation Implemented
 
 - Added `Assets/Verification/V43LiveProductionValidation.dfollowups`, a twenty-four-point batch that turns the v42 production-surface assets into structurally validated live content gates.

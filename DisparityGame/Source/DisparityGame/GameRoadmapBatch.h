@@ -96,6 +96,14 @@ namespace DisparityGame
         std::array<uint32_t, 6> VerificationAssets = {};
     };
 
+    struct V44RuntimeCatalogMetrics
+    {
+        std::array<uint32_t, 6> EngineCatalogAssets = {};
+        std::array<uint32_t, 6> EditorCatalogAssets = {};
+        std::array<uint32_t, 6> GameCatalogAssets = {};
+        std::array<uint32_t, 6> VerificationAssets = {};
+    };
+
     [[nodiscard]] std::array<uint32_t, V39RoadmapPointCount> EvaluateV39RoadmapBatch(
         const V39RoadmapMetrics& metrics,
         const RuntimeBaseline& baseline);
@@ -114,6 +122,10 @@ namespace DisparityGame
         const V43LiveValidationMetrics& metrics);
     [[nodiscard]] uint32_t CountReadyV43LiveValidationPoints(
         const std::array<uint32_t, V43LiveValidationPointCount>& results);
+    [[nodiscard]] std::array<uint32_t, V44RuntimeCatalogPointCount> EvaluateV44RuntimeCatalog(
+        const V44RuntimeCatalogMetrics& metrics);
+    [[nodiscard]] uint32_t CountReadyV44RuntimeCatalogPoints(
+        const std::array<uint32_t, V44RuntimeCatalogPointCount>& results);
     void CaptureV39RoadmapStats(
         EditorVerificationStats& stats,
         const Disparity::RuntimeCommandRegistryDiagnostics& commandDiagnostics,
