@@ -182,6 +182,10 @@ Invoke-Step "Dear ImGui ID conflict check" {
     & (Join-Path $PSScriptRoot "TestImGuiIds.ps1")
 }
 
+Invoke-Step "Game source split check" {
+    & (Join-Path $PSScriptRoot "VerifyGameSourceSplit.ps1")
+}
+
 Invoke-Step "Debug build, warning-free" {
     Invoke-MSBuildChecked -Configuration Debug
 }

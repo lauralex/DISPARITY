@@ -70,6 +70,13 @@ Editor UI:
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
 
+## Engine v37 Source Split Correction Implemented
+
+- `DisparityGame.cpp` has been cut from 15,096 lines to about 13,300 lines by extracting shared runtime types, helper functions, and legacy production followup catalogs.
+- New focused files live under `DisparityGame/Source/DisparityGame`: `GameRuntimeTypes.*`, `GameRuntimeHelpers.*`, and `GameProductionCatalog.*` join the existing followup catalog and module registry.
+- `Tools/VerifyGameSourceSplit.ps1` now fails the build if the root game file grows past the configured limit, if split files are missing from the Visual Studio project, or if extracted catalog/type blocks creep back into `DisparityGame.cpp`.
+- `Tools/VerifyDisparity.ps1` runs the game source split check before compiling, so this readability work is protected by the normal verification gate.
+
 ## Engine v36 Mixed Batch Implemented
 
 - Added engine-owned `ServiceRegistry`, `TelemetryStream`, `ConfigVarRegistry`, and `EditorPanelRegistry` modules for subsystem readiness, structured counters/events, typed runtime tuning, and deterministic editor panel ordering/visibility.

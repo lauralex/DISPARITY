@@ -36,6 +36,33 @@ namespace DisparityGame
                 true
             },
             {
+                "production followup catalog",
+                "Production",
+                "DisparityGame/GameProductionCatalog.cpp",
+                "Legacy v25-v35 verification catalogs are separated from the live layer so gameplay/editor code is easier to review.",
+                false,
+                false,
+                false
+            },
+            {
+                "runtime helper functions",
+                "Game",
+                "DisparityGame/GameRuntimeHelpers.cpp",
+                "Shared math, material-loading, and command-line parsing helpers are centralized outside the main layer.",
+                false,
+                false,
+                true
+            },
+            {
+                "runtime type surface",
+                "Game",
+                "DisparityGame/GameRuntimeTypes.h",
+                "Prototype data shapes and verification structs are documented in one header instead of living inline in DisparityGame.cpp.",
+                false,
+                true,
+                true
+            },
+            {
                 "service registry",
                 "Engine",
                 "Disparity/Core/ServiceRegistry.cpp",

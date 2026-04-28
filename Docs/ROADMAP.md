@@ -1,6 +1,13 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v36 versions of many requested followups, including engine-owned event routing, frame-phase scheduling, scene queries, streaming-budget planning, render-graph budget analysis, a service registry, structured telemetry, typed config variables, editor panel registry metadata, and the existing public vertical slice with collision traversal, enemy archetypes, controller-polish telemetry, blend-tree manifests, gamepad/menu flow, failure presentation, and content-backed cue/animation hooks. The next milestones should keep rotating through core engine architecture, gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, verification, and source-structure work so no production lane falls behind.
+The current engine now has functional v37 versions of many requested followups, including engine-owned event routing, frame-phase scheduling, scene queries, streaming-budget planning, render-graph budget analysis, a service registry, structured telemetry, typed config variables, editor panel registry metadata, a guarded game-source split, and the existing public vertical slice with collision traversal, enemy archetypes, controller-polish telemetry, blend-tree manifests, gamepad/menu flow, failure presentation, and content-backed cue/animation hooks. The next milestones should keep rotating through core engine architecture, gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, verification, and source-structure work so no production lane falls behind.
+
+## v37 Completed Source Split Correction
+
+- `DisparityGame.cpp` was reduced from 15,096 lines to roughly 13,300 lines by extracting shared runtime types, helper functions, argument parsing, and the v25-v35 production followup catalogs into focused files under `DisparityGame/Source/DisparityGame`.
+- Added `GameRuntimeTypes.h`, `GameRuntimeHelpers.*`, and `GameProductionCatalog.*` to the Visual Studio project; `GameModuleRegistry.*` now inventories those modules so source ownership is visible in diagnostics.
+- Added `Tools/VerifyGameSourceSplit.ps1` and wired it into `Tools/VerifyDisparity.ps1` so the root game file has a line budget, required split files must stay in the project, and extracted catalog/type blocks cannot silently return to `DisparityGame.cpp`.
+- Next source-structure passes should extract public-demo simulation/rendering, editor panels, runtime verification/report writing, and trailer/photo sequencing into real owner modules instead of letting the orchestration layer grow again.
 
 ## v36 Completed Mixed Engine/Game/Editor Batch
 
