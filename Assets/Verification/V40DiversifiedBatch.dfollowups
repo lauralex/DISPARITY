@@ -1,0 +1,15 @@
+point v40_point_01_engine_command_success_history|Engine|Runtime command history separates successful executions.
+point v40_point_02_engine_command_failure_history|Engine|Runtime command history separates failed executions.
+point v40_point_03_engine_command_binding_coverage|Engine|Runtime command diagnostics count bound commands and unique bindings.
+point v40_point_04_engine_command_documentation_coverage|Engine|Runtime command diagnostics count documented commands.
+point v40_point_05_engine_command_unique_binding_audit|Engine|Runtime command diagnostics keep binding conflicts auditable against unique bindings.
+point v40_point_06_editor_workspace_migration_readiness|Editor|Editor workspaces report migration-ready dock layout descriptors.
+point v40_point_07_editor_workspace_focus_targets|Editor|Editor workspaces report preferred focus targets for restoration.
+point v40_point_08_editor_workspace_gamepad_coverage|Editor|Editor workspaces report gamepad-navigation readiness.
+point v40_point_09_editor_workspace_toolbar_profiles|Editor|Editor workspaces report toolbar profile coverage.
+point v40_point_10_editor_workspace_command_routes|Editor|Editor workspaces report command-routed presets.
+point v40_point_11_game_checkpoint_linked_routes|Game|Public-demo event routes identify checkpoint-linked beats.
+point v40_point_12_game_save_relevant_routes|Game|Public-demo event routes identify save-relevant beats.
+point v40_point_13_game_chapter_replay_routes|Game|Public-demo event routes identify chapter replay coverage.
+point v40_point_14_game_accessibility_critical_routes|Game|Public-demo event routes identify accessibility-critical feedback.
+point v40_point_15_game_hud_visible_routes|Game|Public-demo event routes identify HUD-visible beats.

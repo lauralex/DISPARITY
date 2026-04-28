@@ -145,3 +145,7 @@ min_editor_dock_layout_descriptors=3
 min_editor_team_default_workspaces=2
 min_game_replayable_event_routes=10
 min_v39_roadmap_points=15
+min_runtime_command_history_failures=1
+min_editor_workspace_migration_ready=3
+min_game_checkpoint_route_links=5
+min_v40_diversified_points=15

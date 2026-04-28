@@ -183,16 +183,29 @@ namespace Disparity
         diagnostics.RequiredCategoriesSatisfied = m_requiredCategoriesSatisfied;
 
         std::set<std::string> categories;
+        std::set<std::string> uniqueBindings;
         for (const RuntimeCommandDescriptor& command : m_commands)
         {
             diagnostics.EnabledCommands += command.Enabled ? 1u : 0u;
             diagnostics.DisabledCommands += command.Enabled ? 0u : 1u;
+            diagnostics.DocumentedCommands += command.Description.empty() ? 0u : 1u;
+            if (!command.DefaultBinding.empty())
+            {
+                ++diagnostics.BoundCommands;
+                uniqueBindings.insert(command.DefaultBinding);
+            }
             if (!command.Category.empty())
             {
                 categories.insert(command.Category);
             }
         }
+        for (const RuntimeCommandHistoryEntry& entry : m_history)
+        {
+            diagnostics.HistorySuccesses += entry.Succeeded ? 1u : 0u;
+            diagnostics.HistoryFailures += entry.Succeeded ? 0u : 1u;
+        }
         diagnostics.Categories = static_cast<uint32_t>(categories.size());
+        diagnostics.UniqueBindings = static_cast<uint32_t>(uniqueBindings.size());
         diagnostics.CategorySummaries = static_cast<uint32_t>(BuildCategorySummaries().size());
         return diagnostics;
     }

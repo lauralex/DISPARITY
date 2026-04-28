@@ -18,6 +18,11 @@ namespace DisparityGame
         bool LinksSelection = false;
         const char* BreadcrumbLabel = "";
         const char* TraceChannel = "";
+        bool CheckpointLinked = false;
+        bool SaveRelevant = false;
+        bool ChapterReplayRoute = false;
+        bool AccessibilityCritical = false;
+        bool HudVisible = false;
     };
 
     struct GameEventRouteDiagnostics
@@ -35,6 +40,11 @@ namespace DisparityGame
         uint32_t SelectionLinkedRoutes = 0;
         uint32_t BreadcrumbRoutes = 0;
         uint32_t TraceChannels = 0;
+        uint32_t CheckpointLinkedRoutes = 0;
+        uint32_t SaveRelevantRoutes = 0;
+        uint32_t ChapterReplayRoutes = 0;
+        uint32_t AccessibilityCriticalRoutes = 0;
+        uint32_t HudVisibleRoutes = 0;
     };
 
     [[nodiscard]] std::vector<GameEventRouteDescriptor> BuildPublicDemoEventRouteCatalog();

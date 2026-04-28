@@ -1,6 +1,15 @@
 # DISPARITY Roadmap
 
-The current engine now has functional v39 versions of many requested followups, including engine-owned event routing, frame-phase scheduling, scene queries, streaming-budget planning, render-graph budget analysis, a service registry, structured telemetry, typed config variables, a runtime command registry with history/conflict/category diagnostics, editor panel/workspace registry metadata with saved layout/team-default/binding surfaces, a guarded game-source split, a replayable public-demo event-route catalog with trace channels, and the existing public vertical slice with collision traversal, enemy archetypes, controller-polish telemetry, blend-tree manifests, gamepad/menu flow, failure presentation, and content-backed cue/animation hooks. The next milestones should keep rotating through core engine architecture, gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, verification, and source-structure work so no production lane falls behind.
+The current engine now has functional v40 versions of many requested followups, including engine-owned event routing, frame-phase scheduling, scene queries, streaming-budget planning, render-graph budget analysis, a service registry, structured telemetry, typed config variables, a runtime command registry with history/conflict/category/binding/documentation diagnostics, editor panel/workspace registry metadata with saved layout/team-default/binding/focus/gamepad/toolbar surfaces, a guarded game-source split, a replayable public-demo event-route catalog with trace/checkpoint/save/replay/accessibility/HUD metadata, and the existing public vertical slice with collision traversal, enemy archetypes, controller-polish telemetry, blend-tree manifests, gamepad/menu flow, failure presentation, and content-backed cue/animation hooks. The next milestones should keep rotating through core engine architecture, gameplay, graph, editor viewport, shot-track, VFX, asset, audio, capture, verification, and source-structure work so no production lane falls behind.
+
+## v40 Completed Diversified Engine/Editor/Game Batch
+
+- Added `Assets/Verification/V40DiversifiedBatch.dfollowups`, a fifteen-point batch with five Engine, five Editor, and five Game points.
+- Engine work extends `RuntimeCommandRegistry` diagnostics with command-history success/failure counts, bound command counts, unique binding counts, and documented command counts so future command-palette work has audit-ready metadata.
+- Editor work extends `EditorPanelRegistry` workspace diagnostics with migration-ready layout counts, focus target coverage, gamepad navigation readiness, toolbar profile coverage, and command-routed workspace counts.
+- Game work extends `GameEventRouteCatalog` with checkpoint-linked, save-relevant, chapter-replay, accessibility-critical, and HUD-visible route metadata for the public demo loop.
+- Runtime report writing stays in `DisparityGame/Source/DisparityGame/GameRoadmapBatch.*`, preserving the root game file line budget while emitting all v40 metrics.
+- Baselines, runtime schema checks, release-readiness review, production-batch review, performance-history summaries, README, feature docs, roadmap, and AGENTS context all require the v40 diversified batch.
 
 ## v39 Completed Roadmap Engine/Editor/Game Batch
 

@@ -71,6 +71,14 @@ Editor UI:
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
 
+## Engine v40 Diversified Batch Implemented
+
+- Added `Assets/Verification/V40DiversifiedBatch.dfollowups`, a fifteen-point Engine/Editor/Game batch that continues the roadmap without touching the line-budgeted root game file.
+- Extended `RuntimeCommandRegistry` diagnostics with command-history success/failure splits, bound command counts, unique binding counts, and command documentation coverage.
+- Extended `EditorPanelRegistry` workspace diagnostics with migration-ready layouts, preferred focus targets, gamepad-ready workspaces, toolbar profile coverage, and command-routed workspace counts.
+- Extended `GameEventRouteCatalog` with checkpoint-link, save-relevant, chapter-replay, accessibility-critical, and HUD-visible route metadata for the public demo.
+- Runtime reports, schema checks, baselines, release-readiness review, production-batch review, and performance-history summaries now require all v40 counters and `v40_point_*` metrics.
+
 ## Engine v39 Roadmap Batch Implemented
 
 - Added `Assets/Verification/V39RoadmapBatch.dfollowups`, a fifteen-point roadmap batch with five Engine, five Editor, and five Game points.

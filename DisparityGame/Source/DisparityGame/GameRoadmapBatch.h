@@ -34,10 +34,33 @@ namespace DisparityGame
         bool RuntimeWrapperReady = false;
     };
 
+    struct V40DiversifiedMetrics
+    {
+        uint32_t RuntimeCommandHistorySuccesses = 0;
+        uint32_t RuntimeCommandHistoryFailures = 0;
+        uint32_t RuntimeCommandBoundCommands = 0;
+        uint32_t RuntimeCommandUniqueBindings = 0;
+        uint32_t RuntimeCommandDocumentedCommands = 0;
+        uint32_t RuntimeCommandBindingConflicts = 0;
+        uint32_t EditorWorkspaceMigrationReady = 0;
+        uint32_t EditorWorkspaceFocusTargets = 0;
+        uint32_t EditorWorkspaceGamepadReady = 0;
+        uint32_t EditorWorkspaceToolbarProfiles = 0;
+        uint32_t EditorWorkspaceCommandRoutes = 0;
+        uint32_t GameEventRouteCheckpointLinks = 0;
+        uint32_t GameEventRouteSaveRelevantRoutes = 0;
+        uint32_t GameEventRouteChapterReplayRoutes = 0;
+        uint32_t GameEventRouteAccessibilityRoutes = 0;
+        uint32_t GameEventRouteHudVisibleRoutes = 0;
+    };
+
     [[nodiscard]] std::array<uint32_t, V39RoadmapPointCount> EvaluateV39RoadmapBatch(
         const V39RoadmapMetrics& metrics,
         const RuntimeBaseline& baseline);
     [[nodiscard]] uint32_t CountReadyV39RoadmapPoints(const std::array<uint32_t, V39RoadmapPointCount>& results);
+    [[nodiscard]] std::array<uint32_t, V40DiversifiedPointCount> EvaluateV40DiversifiedBatch(
+        const V40DiversifiedMetrics& metrics);
+    [[nodiscard]] uint32_t CountReadyV40DiversifiedPoints(const std::array<uint32_t, V40DiversifiedPointCount>& results);
     void CaptureV39RoadmapStats(
         EditorVerificationStats& stats,
         const Disparity::RuntimeCommandRegistryDiagnostics& commandDiagnostics,

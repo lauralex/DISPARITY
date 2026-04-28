@@ -127,4 +127,26 @@ namespace DisparityGame
         } };
         return points;
     }
+
+    const std::array<GameFollowupPoint, V40DiversifiedBatchPointCount>& GetV40DiversifiedBatchPoints()
+    {
+        static const std::array<GameFollowupPoint, V40DiversifiedBatchPointCount> points = { {
+            { "v40_point_01_engine_command_success_history", "Engine", "Runtime command history separates successful executions" },
+            { "v40_point_02_engine_command_failure_history", "Engine", "Runtime command history separates failed executions" },
+            { "v40_point_03_engine_command_binding_coverage", "Engine", "Runtime command diagnostics count bound commands and unique bindings" },
+            { "v40_point_04_engine_command_documentation_coverage", "Engine", "Runtime command diagnostics count documented commands" },
+            { "v40_point_05_engine_command_unique_binding_audit", "Engine", "Runtime command diagnostics keep binding conflicts auditable against unique bindings" },
+            { "v40_point_06_editor_workspace_migration_readiness", "Editor", "Editor workspaces report migration-ready dock layout descriptors" },
+            { "v40_point_07_editor_workspace_focus_targets", "Editor", "Editor workspaces report preferred focus targets for restoration" },
+            { "v40_point_08_editor_workspace_gamepad_coverage", "Editor", "Editor workspaces report gamepad-navigation readiness" },
+            { "v40_point_09_editor_workspace_toolbar_profiles", "Editor", "Editor workspaces report toolbar profile coverage" },
+            { "v40_point_10_editor_workspace_command_routes", "Editor", "Editor workspaces report command-routed presets" },
+            { "v40_point_11_game_checkpoint_linked_routes", "Game", "Public-demo event routes identify checkpoint-linked beats" },
+            { "v40_point_12_game_save_relevant_routes", "Game", "Public-demo event routes identify save-relevant beats" },
+            { "v40_point_13_game_chapter_replay_routes", "Game", "Public-demo event routes identify chapter replay coverage" },
+            { "v40_point_14_game_accessibility_critical_routes", "Game", "Public-demo event routes identify accessibility-critical feedback" },
+            { "v40_point_15_game_hud_visible_routes", "Game", "Public-demo event routes identify HUD-visible beats" }
+        } };
+        return points;
+    }
 }

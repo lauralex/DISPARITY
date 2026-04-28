@@ -48,6 +48,11 @@ namespace Disparity
         uint32_t WorkspaceCommandBindings = 0;
         uint32_t ControllerNavigationHints = 0;
         uint32_t ToolbarCustomizationSlots = 0;
+        uint32_t MigrationReadyWorkspaces = 0;
+        uint32_t FocusTargetWorkspaces = 0;
+        uint32_t GamepadNavigableWorkspaces = 0;
+        uint32_t ToolbarProfileWorkspaces = 0;
+        uint32_t CommandRoutedWorkspaces = 0;
     };
 
     class EditorPanelRegistry

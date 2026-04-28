@@ -28,6 +28,11 @@ namespace Disparity
         uint32_t FailedExecuteOperations = 0;
         uint32_t SearchOperations = 0;
         uint32_t HistoryEntries = 0;
+        uint32_t HistorySuccesses = 0;
+        uint32_t HistoryFailures = 0;
+        uint32_t BoundCommands = 0;
+        uint32_t UniqueBindings = 0;
+        uint32_t DocumentedCommands = 0;
         uint32_t RequiredCategoriesSatisfied = 0;
     };
 

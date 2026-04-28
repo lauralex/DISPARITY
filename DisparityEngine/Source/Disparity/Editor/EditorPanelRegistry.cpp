@@ -229,6 +229,11 @@ namespace Disparity
             diagnostics.WorkspaceCommandBindings += static_cast<uint32_t>(workspace.CommandBindings.size());
             diagnostics.ControllerNavigationHints += static_cast<uint32_t>(workspace.ControllerNavigationHints.size());
             diagnostics.ToolbarCustomizationSlots += workspace.ToolbarSlots;
+            diagnostics.MigrationReadyWorkspaces += (!workspace.LayoutFile.empty() && !workspace.DockLayout.empty()) ? 1u : 0u;
+            diagnostics.FocusTargetWorkspaces += workspace.PreferredFocusPanel.empty() ? 0u : 1u;
+            diagnostics.GamepadNavigableWorkspaces += workspace.GamepadNavigable ? 1u : 0u;
+            diagnostics.ToolbarProfileWorkspaces += workspace.ToolbarSlots > 0u ? 1u : 0u;
+            diagnostics.CommandRoutedWorkspaces += workspace.CommandBindings.empty() ? 0u : 1u;
         }
         return diagnostics;
     }

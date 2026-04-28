@@ -771,6 +771,7 @@ inline constexpr size_t V34AAAFoundationPointCount = 60;
 inline constexpr size_t V35EngineArchitecturePointCount = 50;
 inline constexpr size_t V38DiversifiedPointCount = V38DiversifiedBatchPointCount;
 inline constexpr size_t V39RoadmapPointCount = V39RoadmapBatchPointCount;
+inline constexpr size_t V40DiversifiedPointCount = V40DiversifiedBatchPointCount;
 inline constexpr size_t PublicDemoShardCount = 6;
 inline constexpr size_t PublicDemoAnchorCount = 3;
 inline constexpr size_t PublicDemoResonanceGateCount = 2;
@@ -1157,6 +1158,22 @@ struct EditorVerificationStats
     uint32_t GameEventRouteTraceChannels = 0;
     uint32_t GameEventRouteFailureRoutes = 0;
     uint32_t V39RoadmapPointTests = 0;
+    uint32_t RuntimeCommandHistorySuccesses = 0;
+    uint32_t RuntimeCommandHistoryFailures = 0;
+    uint32_t RuntimeCommandBoundCommands = 0;
+    uint32_t RuntimeCommandUniqueBindings = 0;
+    uint32_t RuntimeCommandDocumentedCommands = 0;
+    uint32_t EditorWorkspaceMigrationReady = 0;
+    uint32_t EditorWorkspaceFocusTargets = 0;
+    uint32_t EditorWorkspaceGamepadReady = 0;
+    uint32_t EditorWorkspaceToolbarProfiles = 0;
+    uint32_t EditorWorkspaceCommandRoutes = 0;
+    uint32_t GameEventRouteCheckpointLinks = 0;
+    uint32_t GameEventRouteSaveRelevantRoutes = 0;
+    uint32_t GameEventRouteChapterReplayRoutes = 0;
+    uint32_t GameEventRouteAccessibilityRoutes = 0;
+    uint32_t GameEventRouteHudVisibleRoutes = 0;
+    uint32_t V40DiversifiedPointTests = 0;
 };
 
 }
