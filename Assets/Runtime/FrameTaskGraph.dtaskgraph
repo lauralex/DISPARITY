@@ -1,0 +1,15 @@
+schema = 1
+purpose = scheduler_dependency_visualization_seed
+node Input.Sample | phase Input | budget_ms 0.10
+node Game.Objectives | phase Simulation | budget_ms 0.35
+node Controller.Resolve | phase Physics | budget_ms 0.40
+node Animation.Blend | phase Animation | budget_ms 0.25
+node Audio.Cues | phase Audio | budget_ms 0.20
+node Renderer.Graph | phase Rendering | budget_ms 4.50
+node Editor.Panels | phase Editor | budget_ms 0.80
+edge Input->Simulation
+edge Simulation->Physics
+edge Physics->Animation
+edge Animation->Rendering
+edge Audio->Rendering
+edge Editor->Rendering

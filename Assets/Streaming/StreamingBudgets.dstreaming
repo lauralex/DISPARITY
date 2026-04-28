@@ -1,0 +1,7 @@
+schema = 1
+purpose = asset_streaming_budget_classes
+priority Critical | max_requests 8 | max_bytes 4194304 | preemptible false
+priority VisibleSoon | max_requests 12 | max_bytes 8388608 | preemptible true
+priority Background | max_requests 24 | max_bytes 16777216 | preemptible true
+dependency policy transitive | rollback_journal true | gpu_upload_budget_ms 1.50
+pin group PublicDemoCore | assets Materials,Shaders,AudioCues,BlendTree

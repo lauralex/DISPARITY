@@ -1,0 +1,7 @@
+schema = 1
+purpose = editor_dock_layout_migration
+migration v42 | from v38,v39,v40,v41 | to v42 | preserves focused_panel,toolbar_profile,workspace_name
+step normalize_panel_ids | required true
+step repair_missing_engine_services | required true
+step assign_default_focus_targets | required true
+step mark_trailer_capture_gamepad_ready | required false

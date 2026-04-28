@@ -80,6 +80,14 @@ namespace DisparityGame
         bool DocsReady = false;
     };
 
+    struct V42ProductionSurfaceMetrics
+    {
+        std::array<uint32_t, 6> EngineAssets = {};
+        std::array<uint32_t, 6> EditorAssets = {};
+        std::array<uint32_t, 6> GameAssets = {};
+        std::array<uint32_t, 6> VerificationAssets = {};
+    };
+
     [[nodiscard]] std::array<uint32_t, V39RoadmapPointCount> EvaluateV39RoadmapBatch(
         const V39RoadmapMetrics& metrics,
         const RuntimeBaseline& baseline);
@@ -90,6 +98,10 @@ namespace DisparityGame
     [[nodiscard]] std::array<uint32_t, V41BreadthPointCount> EvaluateV41BreadthBatch(
         const V41BreadthMetrics& metrics);
     [[nodiscard]] uint32_t CountReadyV41BreadthPoints(const std::array<uint32_t, V41BreadthPointCount>& results);
+    [[nodiscard]] std::array<uint32_t, V42ProductionSurfacePointCount> EvaluateV42ProductionSurface(
+        const V42ProductionSurfaceMetrics& metrics);
+    [[nodiscard]] uint32_t CountReadyV42ProductionSurfacePoints(
+        const std::array<uint32_t, V42ProductionSurfacePointCount>& results);
     void CaptureV39RoadmapStats(
         EditorVerificationStats& stats,
         const Disparity::RuntimeCommandRegistryDiagnostics& commandDiagnostics,

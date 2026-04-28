@@ -176,4 +176,35 @@ namespace DisparityGame
         } };
         return points;
     }
+
+    const std::array<GameFollowupPoint, V42ProductionSurfaceBatchPointCount>& GetV42ProductionSurfacePoints()
+    {
+        static const std::array<GameFollowupPoint, V42ProductionSurfaceBatchPointCount> points = { {
+            { "v42_point_01_engine_event_trace_channels", "Engine", "Event trace channel schema is present for replayable engine events" },
+            { "v42_point_02_engine_scheduler_budgets", "Engine", "Frame scheduler budget asset is present for per-phase budgets" },
+            { "v42_point_03_engine_scene_query_layers", "Engine", "Scene query layer schema is present for shared broad-phase work" },
+            { "v42_point_04_engine_streaming_budgets", "Engine", "Streaming budget asset is present for async asset pressure planning" },
+            { "v42_point_05_engine_render_budget_classes", "Engine", "Render budget class asset is present for renderer/capture budgets" },
+            { "v42_point_06_engine_task_graph_manifest", "Engine", "Task graph manifest is present for dependency-aware scheduler visualization" },
+            { "v42_point_07_editor_workspace_layouts", "Editor", "Editor workspace layout asset is present for project-level layout restoration" },
+            { "v42_point_08_editor_command_palette", "Editor", "Command palette asset is present for searchable command metadata" },
+            { "v42_point_09_editor_viewport_bookmarks", "Editor", "Viewport bookmark asset is present for repeatable editor camera locations" },
+            { "v42_point_10_editor_inspector_presets", "Editor", "Inspector preset asset is present for reusable transform/material editing" },
+            { "v42_point_11_editor_dock_migration_plan", "Editor", "Dock migration asset is present for layout version upgrades" },
+            { "v42_point_12_editor_shot_track_validation", "Editor", "Shot-track validation asset is present for sequencer review" },
+            { "v42_point_13_game_encounter_plan", "Game", "Public-demo encounter plan asset is present for data-driven enemy beats" },
+            { "v42_point_14_game_controller_feel", "Game", "Controller feel asset is present for replay-tested movement tuning" },
+            { "v42_point_15_game_objective_routes", "Game", "Objective route asset is present for public-demo route scripting" },
+            { "v42_point_16_game_accessibility_plan", "Game", "Accessibility plan asset is present for public-demo feedback options" },
+            { "v42_point_17_game_save_slot_plan", "Game", "Save-slot plan asset is present for persistence and replay planning" },
+            { "v42_point_18_game_combat_sandbox", "Game", "Combat sandbox asset is present for future encounter feel tests" },
+            { "v42_point_19_verification_manifest", "Verification", "v42 production surface manifest is present and reviewed" },
+            { "v42_point_20_verification_schema_gate", "Verification", "Runtime report schema includes v42 production-surface metrics" },
+            { "v42_point_21_verification_baseline_gate", "Verification", "Runtime baselines include v42 production-surface thresholds" },
+            { "v42_point_22_verification_release_gate", "Verification", "Release readiness includes the v42 production surface manifest" },
+            { "v42_point_23_verification_performance_history_gate", "Verification", "Performance history tracks v42 production-surface metrics" },
+            { "v42_point_24_docs_agent_roadmap_gate", "Docs", "README, feature guide, roadmap, and AGENTS document the v42 production surface" }
+        } };
+        return points;
+    }
 }

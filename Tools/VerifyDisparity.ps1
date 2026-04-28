@@ -296,6 +296,11 @@ Invoke-Step "Production followup manifest review" {
         -ExpectedCount 20 `
         -OutputPath "Saved/Verification/v41_breadth_batch_review.json" `
         -KeyPrefix "v41"
+    & (Join-Path $PSScriptRoot "ReviewProductionBatch.ps1") `
+        -ManifestPath "Assets/Verification/V42ProductionSurface.dfollowups" `
+        -ExpectedCount 24 `
+        -OutputPath "Saved/Verification/v42_production_surface_review.json" `
+        -KeyPrefix "v42"
 }
 
 Invoke-Step "Baseline approval manifest" {

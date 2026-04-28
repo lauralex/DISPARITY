@@ -1,0 +1,7 @@
+schema = 1
+purpose = public_demo_save_slot_plan
+slot public_demo_checkpoint | fields stage,shards,anchors,gates,relays,position,stability | autosave true
+slot trailer_setup | fields camera_bookmark,workspace,renderer_profile,audio_snapshot | autosave false
+slot verification_probe | fields replay_seed,baseline,metrics_hash | autosave false
+rule versioned_schema true
+rule rollback_on_load_failure true

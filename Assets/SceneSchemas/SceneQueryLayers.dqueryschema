@@ -1,0 +1,8 @@
+schema = 1
+purpose = shared_scene_query_layers
+layer WorldStatic | mask 0x0001 | participates collision,picking,visibility
+layer Player | mask 0x0002 | participates collision,picking,audio_listener
+layer Objective | mask 0x0004 | participates picking,route_guidance
+layer EnemyPerception | mask 0x0008 | participates line_of_sight,pressure
+layer Traversal | mask 0x0010 | participates collision,vault,dash
+layer AudioOccluder | mask 0x0020 | participates audio_occlusion

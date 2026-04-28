@@ -71,6 +71,14 @@ Editor UI:
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
 
+## Engine v42 Production Surface Implemented
+
+- Added `Assets/Verification/V42ProductionSurface.dfollowups`, a twenty-four-point production-surface batch with six Engine, six Editor, six Game, and six Verification/Docs points.
+- Added content-backed engine manifests for event trace channels, scheduler phase budgets, scheduler task graph edges, scene-query layers, streaming budget classes, and render budget classes.
+- Added editor manifests for workspace layouts, command palette metadata, viewport bookmarks, inspector presets, dock-layout migration, and Shot Director track validation.
+- Added public-demo manifests for encounter planning, controller feel tuning, objective routing, accessibility options, save-slot planning, and combat sandbox beats.
+- Runtime reports, schema checks, baselines, release readiness, performance-history summaries, README, docs, roadmap, and AGENTS context now require `v42_content_points=24`.
+
 ## Engine v41 Breadth Batch Implemented
 
 - Added `Assets/Verification/V41BreadthBatch.dfollowups`, a twenty-point BFS-style batch that rotates through Engine, Editor, Game, and Verification/Docs instead of concentrating on one subsystem.

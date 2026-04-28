@@ -105,6 +105,35 @@ namespace DisparityGame
         return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
     }
 
+    std::array<uint32_t, V42ProductionSurfacePointCount> EvaluateV42ProductionSurface(
+        const V42ProductionSurfaceMetrics& metrics)
+    {
+        std::array<uint32_t, V42ProductionSurfacePointCount> results = {};
+        for (size_t index = 0; index < metrics.EngineAssets.size(); ++index)
+        {
+            results[index] = metrics.EngineAssets[index] != 0u ? 1u : 0u;
+        }
+        for (size_t index = 0; index < metrics.EditorAssets.size(); ++index)
+        {
+            results[6 + index] = metrics.EditorAssets[index] != 0u ? 1u : 0u;
+        }
+        for (size_t index = 0; index < metrics.GameAssets.size(); ++index)
+        {
+            results[12 + index] = metrics.GameAssets[index] != 0u ? 1u : 0u;
+        }
+        for (size_t index = 0; index < metrics.VerificationAssets.size(); ++index)
+        {
+            results[18 + index] = metrics.VerificationAssets[index] != 0u ? 1u : 0u;
+        }
+        return results;
+    }
+
+    uint32_t CountReadyV42ProductionSurfacePoints(
+        const std::array<uint32_t, V42ProductionSurfacePointCount>& results)
+    {
+        return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
+    }
+
     void CaptureV39RoadmapStats(
         EditorVerificationStats& stats,
         const Disparity::RuntimeCommandRegistryDiagnostics& commandDiagnostics,
@@ -329,6 +358,73 @@ namespace DisparityGame
         for (size_t index = 0; index < v41Points.size(); ++index)
         {
             report << v41Points[index].Key << "=" << v41Results[index] << "\n";
+        }
+
+        const std::array<uint32_t, 6> v42EngineAssets = {
+            TextContains("Assets/Runtime/EventTraceChannels.deventschema", "channel gameplay.objective") ? 1u : 0u,
+            TextContains("Assets/Runtime/SchedulerBudgets.dscheduler", "phase Rendering") ? 1u : 0u,
+            TextContains("Assets/SceneSchemas/SceneQueryLayers.dqueryschema", "layer EnemyPerception") ? 1u : 0u,
+            TextContains("Assets/Streaming/StreamingBudgets.dstreaming", "priority Critical") ? 1u : 0u,
+            TextContains("Assets/Rendering/RenderBudgetClasses.drenderbudget", "class TrailerCapture") ? 1u : 0u,
+            TextContains("Assets/Runtime/FrameTaskGraph.dtaskgraph", "edge Simulation->Physics") ? 1u : 0u
+        };
+        const std::array<uint32_t, 6> v42EditorAssets = {
+            TextContains("Assets/Editor/WorkspaceLayouts.dworkspace", "workspace TrailerCapture") ? 1u : 0u,
+            TextContains("Assets/Editor/CommandPalette.dcommands", "command disparity.capture.highres") ? 1u : 0u,
+            TextContains("Assets/Editor/ViewportBookmarks.dbookmarks", "bookmark RiftHero") ? 1u : 0u,
+            TextContains("Assets/Editor/InspectorPresets.dinspector", "preset BeaconMaterial") ? 1u : 0u,
+            TextContains("Assets/Editor/DockMigrationPlan.ddockplan", "migration v42") ? 1u : 0u,
+            TextContains("Assets/Cinematics/ShotTrackValidation.dshotcheck", "track camera_spline") ? 1u : 0u
+        };
+        const std::array<uint32_t, 6> v42GameAssets = {
+            TextContains("Assets/Gameplay/PublicDemoEncounterPlan.dencounter", "encounter ResonanceAmbush") ? 1u : 0u,
+            TextContains("Assets/Gameplay/PublicDemoControllerFeel.dcontroller", "preset PublicDemoTuned") ? 1u : 0u,
+            TextContains("Assets/Gameplay/PublicDemoObjectiveRoutes.droute", "route extraction_complete") ? 1u : 0u,
+            TextContains("Assets/Gameplay/PublicDemoAccessibility.daccess", "option high_contrast_rift") ? 1u : 0u,
+            TextContains("Assets/Gameplay/PublicDemoSaveSlots.dsaveplan", "slot public_demo_checkpoint") ? 1u : 0u,
+            TextContains("Assets/Gameplay/PublicDemoCombatSandbox.dcombat", "sandbox RelayPressure") ? 1u : 0u
+        };
+        const std::array<uint32_t, 6> v42VerificationAssets = {
+            TextContains("Assets/Verification/V42ProductionSurface.dfollowups", "v42_point_24_docs_agent_roadmap_gate") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeReportSchema.dschema", "v42_content_points") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeBaseline.dverify", "min_v42_content_points") &&
+                TextContains("Assets/Verification/CameraSweepBaseline.dverify", "min_v42_content_points") &&
+                TextContains("Assets/Verification/EditorPrecisionBaseline.dverify", "min_v42_content_points") &&
+                TextContains("Assets/Verification/PostDebugBaseline.dverify", "min_v42_content_points") &&
+                TextContains("Assets/Verification/AssetReloadBaseline.dverify", "min_v42_content_points") &&
+                TextContains("Assets/Verification/GizmoDragBaseline.dverify", "min_v42_content_points") ? 1u : 0u,
+            TextContains("Tools/ReviewReleaseReadiness.ps1", "V42ProductionSurfacePath") ? 1u : 0u,
+            TextContains("Tools/RuntimeVerifyDisparity.ps1", "v42_content_points") &&
+                TextContains("Tools/SummarizePerformanceHistory.ps1", "v42_content_points") ? 1u : 0u,
+            TextContains("README.md", "Engine v42 Production Surface Implemented") &&
+                TextContains("Docs/ROADMAP.md", "v42 Completed Production Surface Batch") &&
+                TextContains("Docs/ENGINE_FEATURES.md", "v42_content_points") &&
+                TextContains("AGENTS.md", "Editor/runtime v42") ? 1u : 0u
+        };
+        const V42ProductionSurfaceMetrics v42Metrics = {
+            v42EngineAssets,
+            v42EditorAssets,
+            v42GameAssets,
+            v42VerificationAssets
+        };
+        const auto v42Results = EvaluateV42ProductionSurface(v42Metrics);
+        const uint32_t v42EngineReady = static_cast<uint32_t>(std::count(v42EngineAssets.begin(), v42EngineAssets.end(), 1u));
+        const uint32_t v42EditorReady = static_cast<uint32_t>(std::count(v42EditorAssets.begin(), v42EditorAssets.end(), 1u));
+        const uint32_t v42GameReady = static_cast<uint32_t>(std::count(v42GameAssets.begin(), v42GameAssets.end(), 1u));
+        const uint32_t v42VerificationReady = static_cast<uint32_t>(std::count(v42VerificationAssets.begin(), v42VerificationAssets.end(), 1u));
+        const uint32_t v42ReadyPoints = CountReadyV42ProductionSurfacePoints(v42Results);
+
+        report << "v42_engine_manifest_assets=" << v42EngineReady << "\n";
+        report << "v42_editor_manifest_assets=" << v42EditorReady << "\n";
+        report << "v42_game_manifest_assets=" << v42GameReady << "\n";
+        report << "v42_verification_manifest_assets=" << v42VerificationReady << "\n";
+        report << "v42_docs_ready=" << v42VerificationAssets[5] << "\n";
+        report << "v42_content_points=" << v42ReadyPoints << "\n";
+
+        const auto& v42Points = GetV42ProductionSurfacePoints();
+        for (size_t index = 0; index < v42Points.size(); ++index)
+        {
+            report << v42Points[index].Key << "=" << v42Results[index] << "\n";
         }
     }
 }

@@ -1,0 +1,7 @@
+schema = 1
+purpose = public_demo_accessibility_options
+option high_contrast_rift | default false | affects rift,shards,relays
+option reduce_flash | default true | affects lightning,pulse,bloom
+option subtitle_cues | default true | affects audio,objectives
+option hold_to_sprint | default false | affects controller,keyboard
+option camera_assist | default true | affects orbit,collision
