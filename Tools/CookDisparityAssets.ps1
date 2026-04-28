@@ -176,6 +176,25 @@ function Get-BytesSha256 {
     }
 }
 
+function Get-AssetFileSha256 {
+    param([string]$LiteralPath)
+
+    $fileHashCommand = Get-Command Get-FileHash -ErrorAction SilentlyContinue
+    if ($fileHashCommand) {
+        return (& $fileHashCommand -LiteralPath $LiteralPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $stream = [System.IO.File]::Open($LiteralPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+    try {
+        return (($sha.ComputeHash($stream) | ForEach-Object { $_.ToString("x2") }) -join "")
+    }
+    finally {
+        $stream.Dispose()
+        $sha.Dispose()
+    }
+}
+
 function New-OptimizedGltfPackage {
     param(
         [System.IO.FileInfo]$File,
@@ -363,7 +382,7 @@ $records = @()
 foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
     $relativePath = (Get-RelativePath -BasePath $root -Path $file.FullName).Replace("\", "/")
     $assetRelativePath = (Get-RelativePath -BasePath $AssetsPath -Path $file.FullName).Replace("\", "/")
-    $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    $hash = Get-AssetFileSha256 -LiteralPath $file.FullName
     $kind = Get-AssetKind -Extension $file.Extension
     $metadataName = ($assetRelativePath -replace "[\\/:\*\?`"<>|]", "_") + ".dcooked"
     $metadataPath = Join-Path $OutputPath $metadataName
@@ -417,7 +436,7 @@ foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
         [System.IO.File]::WriteAllBytes($binaryPath, $payload)
         $binaryRelativePath = (Get-RelativePath -BasePath $root -Path $binaryPath).Replace("\", "/")
         $binaryBytes = (Get-Item -LiteralPath $binaryPath).Length
-        $binaryHash = (Get-FileHash -LiteralPath $binaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        $binaryHash = Get-AssetFileSha256 -LiteralPath $binaryPath
 
         if ($kind -eq "glb_scene" -or $kind -eq "gltf_scene") {
             $optimizedPackage = New-OptimizedGltfPackage `
@@ -430,7 +449,7 @@ foreach ($file in Get-ChildItem -LiteralPath $AssetsPath -Recurse -File) {
             $optimizedPackage | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $optimizedPath
             $optimizedRelativePath = (Get-RelativePath -BasePath $root -Path $optimizedPath).Replace("\", "/")
             $optimizedBytes = (Get-Item -LiteralPath $optimizedPath).Length
-            $optimizedHash = (Get-FileHash -LiteralPath $optimizedPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            $optimizedHash = Get-AssetFileSha256 -LiteralPath $optimizedPath
         }
     }
 

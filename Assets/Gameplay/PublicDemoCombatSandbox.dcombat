@@ -1,6 +1,6 @@
 schema = 1
 purpose = public_demo_combat_sandbox_seed
-sandbox RelayPressure | arena_radius 12.0 | enemy_budget 3 | traversal_markers 4 | objective phase_relay
+sandbox RelayPressure | arena_radius 12.0 | enemy_budget 3 | traversal_markers 4 | objective phase_relay | wave=true
 sandbox GateHold | arena_radius 10.0 | enemy_budget 2 | traversal_markers 3 | objective resonance_gate
 sandbox ExtractionFinale | arena_radius 14.0 | enemy_budget 3 | traversal_markers 5 | objective extraction_complete
 telegraph readable_color magenta | dodge_window 0.45 | hit_reaction_seconds 0.35

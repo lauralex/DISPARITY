@@ -1,0 +1,24 @@
+point v43_point_01_engine_event_trace_live_validation | Engine | Event-trace channel asset is structurally validated with capture activation metadata.
+point v43_point_02_engine_scheduler_budget_live_validation | Engine | Scheduler budget asset is structurally validated with enforceable rendering budget metadata.
+point v43_point_03_engine_scene_query_layer_live_validation | Engine | Scene-query layer asset is structurally validated with broad-phase activation metadata.
+point v43_point_04_engine_streaming_budget_live_validation | Engine | Streaming budget asset is structurally validated with async critical-priority metadata.
+point v43_point_05_engine_render_budget_live_validation | Engine | Render budget class asset is structurally validated with enforceable trailer-capture budget metadata.
+point v43_point_06_engine_task_graph_live_validation | Engine | Frame task graph asset is structurally validated with active dependency-edge metadata.
+point v43_point_07_editor_workspace_live_validation | Editor | Workspace layout asset is structurally validated with editable trailer-capture workspace metadata.
+point v43_point_08_editor_command_palette_live_validation | Editor | Command palette asset is structurally validated with searchable high-resolution capture command metadata.
+point v43_point_09_editor_viewport_bookmark_live_validation | Editor | Viewport bookmark asset is structurally validated with editable hero camera bookmark metadata.
+point v43_point_10_editor_inspector_preset_live_validation | Editor | Inspector preset asset is structurally validated with apply-ready material preset metadata.
+point v43_point_11_editor_dock_migration_live_validation | Editor | Dock migration asset is structurally validated with migration activation metadata.
+point v43_point_12_editor_shot_track_live_validation | Editor | Shot track validation asset is structurally validated with active camera-spline validation metadata.
+point v43_point_13_game_encounter_live_validation | Game | Encounter plan asset is structurally validated with spawn-ready resonance ambush metadata.
+point v43_point_14_game_controller_feel_live_validation | Game | Controller feel asset is structurally validated with load-ready movement preset metadata.
+point v43_point_15_game_objective_route_live_validation | Game | Objective route asset is structurally validated with trigger-ready extraction route metadata.
+point v43_point_16_game_accessibility_live_validation | Game | Accessibility asset is structurally validated with toggle-ready high-contrast rift metadata.
+point v43_point_17_game_save_slot_live_validation | Game | Save slot asset is structurally validated with checkpoint-ready persistence metadata.
+point v43_point_18_game_combat_sandbox_live_validation | Game | Combat sandbox asset is structurally validated with wave-ready relay pressure metadata.
+point v43_point_19_verification_manifest_gate | Verification | v43 live production validation manifest is present and reviewed by production-batch tooling.
+point v43_point_20_verification_schema_gate | Verification | Runtime report schema includes v43 live production validation metrics.
+point v43_point_21_verification_baseline_gate | Verification | Runtime baselines include v43 live production validation thresholds.
+point v43_point_22_verification_release_gate | Verification | Release readiness includes the v43 live production validation manifest.
+point v43_point_23_verification_performance_history_gate | Verification | Runtime and performance-history tooling track v43 live production validation metrics.
+point v43_point_24_docs_agent_roadmap_gate | Docs | README, feature guide, roadmap, and AGENTS document the v43 live production validation batch.

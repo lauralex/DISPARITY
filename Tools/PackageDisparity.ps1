@@ -25,6 +25,25 @@ if (Test-Path $dist) {
     Remove-Item -LiteralPath $dist -Recurse -Force
 }
 
+function Get-DisparityFileSha256 {
+    param([string]$LiteralPath)
+
+    $fileHashCommand = Get-Command Get-FileHash -ErrorAction SilentlyContinue
+    if ($fileHashCommand) {
+        return (& $fileHashCommand -LiteralPath $LiteralPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $stream = [System.IO.File]::Open($LiteralPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+    try {
+        return (($sha.ComputeHash($stream) | ForEach-Object { $_.ToString("x2") }) -join "")
+    }
+    finally {
+        $stream.Dispose()
+        $sha.Dispose()
+    }
+}
+
 function Get-RelativePath {
     param(
         [string]$BasePath,
@@ -87,7 +106,7 @@ foreach ($file in Get-ChildItem -LiteralPath $dist -Recurse -File) {
     $files += [pscustomobject]@{
         path = $relativePath.Replace("\", "/")
         bytes = $file.Length
-        sha256 = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        sha256 = Get-DisparityFileSha256 -LiteralPath $file.FullName
     }
 }
 

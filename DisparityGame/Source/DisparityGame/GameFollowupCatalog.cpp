@@ -207,4 +207,35 @@ namespace DisparityGame
         } };
         return points;
     }
+
+    const std::array<GameFollowupPoint, V43LiveValidationBatchPointCount>& GetV43LiveValidationPoints()
+    {
+        static const std::array<GameFollowupPoint, V43LiveValidationBatchPointCount> points = { {
+            { "v43_point_01_engine_event_trace_live_validation", "Engine", "Event-trace asset validates capture-ready event channels" },
+            { "v43_point_02_engine_scheduler_budget_live_validation", "Engine", "Scheduler budget asset validates enforceable rendering budgets" },
+            { "v43_point_03_engine_scene_query_layer_live_validation", "Engine", "Scene-query layer asset validates broad-phase activation metadata" },
+            { "v43_point_04_engine_streaming_budget_live_validation", "Engine", "Streaming budget asset validates async critical-priority metadata" },
+            { "v43_point_05_engine_render_budget_live_validation", "Engine", "Render budget class asset validates enforceable trailer-capture metadata" },
+            { "v43_point_06_engine_task_graph_live_validation", "Engine", "Frame task graph asset validates active dependency-edge metadata" },
+            { "v43_point_07_editor_workspace_live_validation", "Editor", "Workspace layout asset validates editable trailer-capture metadata" },
+            { "v43_point_08_editor_command_palette_live_validation", "Editor", "Command palette asset validates searchable capture command metadata" },
+            { "v43_point_09_editor_viewport_bookmark_live_validation", "Editor", "Viewport bookmark asset validates editable hero camera metadata" },
+            { "v43_point_10_editor_inspector_preset_live_validation", "Editor", "Inspector preset asset validates apply-ready material metadata" },
+            { "v43_point_11_editor_dock_migration_live_validation", "Editor", "Dock migration asset validates migration activation metadata" },
+            { "v43_point_12_editor_shot_track_live_validation", "Editor", "Shot-track asset validates active camera-spline validation metadata" },
+            { "v43_point_13_game_encounter_live_validation", "Game", "Encounter plan asset validates spawn-ready resonance ambush metadata" },
+            { "v43_point_14_game_controller_feel_live_validation", "Game", "Controller feel asset validates load-ready movement preset metadata" },
+            { "v43_point_15_game_objective_route_live_validation", "Game", "Objective route asset validates trigger-ready extraction metadata" },
+            { "v43_point_16_game_accessibility_live_validation", "Game", "Accessibility asset validates toggle-ready high-contrast metadata" },
+            { "v43_point_17_game_save_slot_live_validation", "Game", "Save slot asset validates checkpoint-ready persistence metadata" },
+            { "v43_point_18_game_combat_sandbox_live_validation", "Game", "Combat sandbox asset validates wave-ready relay pressure metadata" },
+            { "v43_point_19_verification_manifest_gate", "Verification", "v43 live production validation manifest is present and reviewed" },
+            { "v43_point_20_verification_schema_gate", "Verification", "Runtime report schema includes v43 validation metrics" },
+            { "v43_point_21_verification_baseline_gate", "Verification", "Runtime baselines include v43 validation thresholds" },
+            { "v43_point_22_verification_release_gate", "Verification", "Release readiness includes the v43 validation manifest" },
+            { "v43_point_23_verification_performance_history_gate", "Verification", "Performance history tracks v43 validation metrics" },
+            { "v43_point_24_docs_agent_roadmap_gate", "Docs", "README, feature guide, roadmap, and AGENTS document v43 validation" }
+        } };
+        return points;
+    }
 }

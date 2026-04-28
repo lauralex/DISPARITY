@@ -1,6 +1,6 @@
 schema = 1
 purpose = replayable_engine_event_stream
-channel gameplay.objective | payload stage, stable_id, route, checkpoint | replayable true | saved true
+channel gameplay.objective | payload stage, stable_id, route, checkpoint | replayable true | saved true | capture=true
 channel gameplay.encounter | payload archetype, pressure, line_of_sight | replayable true | saved false
 channel editor.command | payload command_id, binding, result | replayable true | saved false
 channel rendering.capture | payload preset, frame, output_path | replayable false | saved true

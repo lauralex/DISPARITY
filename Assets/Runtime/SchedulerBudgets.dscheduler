@@ -5,5 +5,5 @@ phase Simulation | budget_ms 1.50 | critical true | owner Game
 phase Physics | budget_ms 0.80 | critical true | owner Game
 phase Animation | budget_ms 0.60 | critical false | owner Animation
 phase Audio | budget_ms 0.50 | critical false | owner Audio
-phase Rendering | budget_ms 6.00 | critical true | owner Renderer
+phase Rendering | budget_ms 6.00 | critical true | owner Renderer | enforce=true
 phase Editor | budget_ms 1.20 | critical false | owner Editor

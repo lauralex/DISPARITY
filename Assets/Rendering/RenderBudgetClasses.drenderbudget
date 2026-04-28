@@ -2,7 +2,7 @@ schema = 1
 purpose = renderer_budget_classes
 class RuntimeGameplay | color_passes 6 | shadow_passes 4 | gpu_ms 10.00 | transient_mb 96
 class EditorViewport | color_passes 8 | shadow_passes 4 | gpu_ms 12.00 | transient_mb 128
-class TrailerCapture | color_passes 10 | shadow_passes 4 | gpu_ms 18.00 | transient_mb 256
+class TrailerCapture | color_passes 10 | shadow_passes 4 | gpu_ms 18.00 | transient_mb 256 | enforce=true
 class Verification | color_passes 8 | shadow_passes 4 | gpu_ms 14.00 | transient_mb 160
 rule alias_lifetimes_required true
 rule capture_tiles_require_manifest true

@@ -1,6 +1,6 @@
 schema = 1
 purpose = public_demo_controller_feel_presets
-preset PublicDemoTuned | walk_speed 4.2 | sprint_speed 7.0 | dash_distance 3.5 | dash_cooldown 0.75
+preset PublicDemoTuned | walk_speed 4.2 | sprint_speed 7.0 | dash_distance 3.5 | dash_cooldown 0.75 | load=true
 grounding coyote_time 0.12 | snap_distance 0.35 | slope_limit_degrees 48
 camera collision_radius 0.35 | shoulder_offset 0.8 | obstruction_smooth 0.18
 accessibility slow_motion_scale 0.85 | reduced_camera_sway true

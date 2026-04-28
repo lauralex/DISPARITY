@@ -71,6 +71,15 @@ Editor UI:
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
 
+## Engine v43 Live Production Validation Implemented
+
+- Added `Assets/Verification/V43LiveProductionValidation.dfollowups`, a twenty-four-point batch that turns the v42 production-surface assets into structurally validated live content gates.
+- Added engine-owned `ProductionAssetValidator` support for line/directive counts, required tokens, activation metadata, missing-field counts, and stable content hashes.
+- Promoted the v42 engine/editor/game manifests with activation tags such as `capture=true`, `enforce=true`, `editable=true`, `spawn=true`, `trigger=true`, and `wave=true`.
+- Runtime reports now emit `v43_engine_live_assets`, `v43_editor_editable_assets`, `v43_game_playable_assets`, `v43_validated_assets`, `v43_activation_bindings`, `v43_missing_fields`, `v43_asset_hash_low`, per-asset hash/version lines, `v43_validation_points`, and all `v43_point_*` metrics.
+- Schema checks, baselines, release readiness, production-batch review, performance-history summaries, README, docs, roadmap, and AGENTS context now require `v43_validation_points=24`.
+- Hardened production PowerShell hashing in cook/package/symbol/crash/baseline tools with .NET SHA-256 fallbacks for shells where `Get-FileHash` is unavailable.
+
 ## Engine v42 Production Surface Implemented
 
 - Added `Assets/Verification/V42ProductionSurface.dfollowups`, a twenty-four-point production-surface batch with six Engine, six Editor, six Game, and six Verification/Docs points.
@@ -438,6 +447,11 @@ More detail lives in `Docs/ENGINE_FEATURES.md` and `Docs/ROADMAP.md`.
 
 ## Future Followups
 
+- Feed the v43-validated manifests into the live EventBus, FrameScheduler, SceneQueryWorld, asset streaming plan, and render-graph budget systems instead of only validating them in runtime reports.
+- Build editor authoring panels for the v43 manifests so workspace layouts, command palette entries, viewport bookmarks, inspector presets, dock migrations, and shot-track validation can be edited and revalidated in-session.
+- Use the validated gameplay manifests to drive encounter spawning, controller preset loading, objective triggers, accessibility toggles, save-slot checkpoints, and combat sandbox waves in the public demo.
+- Extend the validator with field types, numeric ranges, version migrations, and per-line diagnostics that can be surfaced in CI and the editor.
+- Extract the repeated PowerShell SHA-256 fallback into a shared verification helper once the tool suite gets a common module loader.
 - Promote the v35 event bus into a replayable engine event stream with scoped channels, payload schemas, editor event inspection, trace capture, and deterministic save/load playback.
 - Turn the v35 frame scheduler into the main engine tick orchestrator with dependency-aware jobs, phase budgets, task graph visualization, and per-system throttling.
 - Expand the v35 scene query world into a broad-phase acceleration structure used by picking, character collision, trigger volumes, audio occlusion, and AI perception.

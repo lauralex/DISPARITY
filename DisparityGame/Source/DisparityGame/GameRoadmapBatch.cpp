@@ -1,10 +1,12 @@
 #include "DisparityGame/GameRoadmapBatch.h"
 #include "DisparityGame/GameFollowupCatalog.h"
+#include "Disparity/Assets/ProductionAssetValidator.h"
 #include "Disparity/Core/FileSystem.h"
 
 #include <algorithm>
 #include <ostream>
 #include <string>
+#include <vector>
 
 namespace DisparityGame
 {
@@ -14,6 +16,45 @@ namespace DisparityGame
         {
             std::string text;
             return Disparity::FileSystem::ReadTextFile(relativePath, text) && text.find(needle) != std::string::npos;
+        }
+
+        struct V43AssetCheck
+        {
+            const char* MetricName = "";
+            Disparity::ProductionAssetValidationRule Rule = {};
+        };
+
+        using V43AssetCheckGroup = std::array<V43AssetCheck, 6>;
+
+        std::array<uint32_t, 6> ValidateV43AssetGroup(
+            const V43AssetCheckGroup& checks,
+            std::vector<Disparity::ProductionAssetValidationResult>& results)
+        {
+            std::array<uint32_t, 6> readiness = {};
+            for (size_t index = 0; index < checks.size(); ++index)
+            {
+                const Disparity::ProductionAssetValidationResult result =
+                    Disparity::ValidateProductionAsset(checks[index].Rule);
+                readiness[index] = result.Valid ? 1u : 0u;
+                results.push_back(result);
+            }
+            return readiness;
+        }
+
+        void WriteV43AssetValidationMetrics(
+            std::ostream& report,
+            const V43AssetCheckGroup& checks,
+            const std::vector<Disparity::ProductionAssetValidationResult>& results,
+            size_t offset)
+        {
+            for (size_t index = 0; index < checks.size(); ++index)
+            {
+                const Disparity::ProductionAssetValidationResult& result = results[offset + index];
+                report << "v43_asset_" << checks[index].MetricName << "_version=43\n";
+                report << "v43_asset_" << checks[index].MetricName << "_valid=" << (result.Valid ? 1u : 0u) << "\n";
+                report << "v43_asset_" << checks[index].MetricName << "_hash_low="
+                    << static_cast<uint32_t>(result.ContentHash & 0xffffffffull) << "\n";
+            }
         }
     }
 
@@ -130,6 +171,35 @@ namespace DisparityGame
 
     uint32_t CountReadyV42ProductionSurfacePoints(
         const std::array<uint32_t, V42ProductionSurfacePointCount>& results)
+    {
+        return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
+    }
+
+    std::array<uint32_t, V43LiveValidationPointCount> EvaluateV43LiveValidation(
+        const V43LiveValidationMetrics& metrics)
+    {
+        std::array<uint32_t, V43LiveValidationPointCount> results = {};
+        for (size_t index = 0; index < metrics.EngineLiveAssets.size(); ++index)
+        {
+            results[index] = metrics.EngineLiveAssets[index] != 0u ? 1u : 0u;
+        }
+        for (size_t index = 0; index < metrics.EditorEditableAssets.size(); ++index)
+        {
+            results[6 + index] = metrics.EditorEditableAssets[index] != 0u ? 1u : 0u;
+        }
+        for (size_t index = 0; index < metrics.GamePlayableAssets.size(); ++index)
+        {
+            results[12 + index] = metrics.GamePlayableAssets[index] != 0u ? 1u : 0u;
+        }
+        for (size_t index = 0; index < metrics.VerificationAssets.size(); ++index)
+        {
+            results[18 + index] = metrics.VerificationAssets[index] != 0u ? 1u : 0u;
+        }
+        return results;
+    }
+
+    uint32_t CountReadyV43LiveValidationPoints(
+        const std::array<uint32_t, V43LiveValidationPointCount>& results)
     {
         return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
     }
@@ -425,6 +495,95 @@ namespace DisparityGame
         for (size_t index = 0; index < v42Points.size(); ++index)
         {
             report << v42Points[index].Key << "=" << v42Results[index] << "\n";
+        }
+
+        const V43AssetCheckGroup v43EngineChecks = {{
+            { "event_trace_channels", { "Assets/Runtime/EventTraceChannels.deventschema", "channel", "gameplay.objective", "capture=true" } },
+            { "scheduler_budgets", { "Assets/Runtime/SchedulerBudgets.dscheduler", "phase", "Rendering", "enforce=true" } },
+            { "scene_query_layers", { "Assets/SceneSchemas/SceneQueryLayers.dqueryschema", "layer", "EnemyPerception", "broadphase=true" } },
+            { "streaming_budgets", { "Assets/Streaming/StreamingBudgets.dstreaming", "priority", "Critical", "async=true" } },
+            { "render_budget_classes", { "Assets/Rendering/RenderBudgetClasses.drenderbudget", "class", "TrailerCapture", "enforce=true" } },
+            { "frame_task_graph", { "Assets/Runtime/FrameTaskGraph.dtaskgraph", "edge", "Simulation->Physics", "active=true" } }
+        }};
+        const V43AssetCheckGroup v43EditorChecks = {{
+            { "workspace_layouts", { "Assets/Editor/WorkspaceLayouts.dworkspace", "workspace", "TrailerCapture", "editable=true" } },
+            { "command_palette", { "Assets/Editor/CommandPalette.dcommands", "command", "disparity.capture.highres", "search=true" } },
+            { "viewport_bookmarks", { "Assets/Editor/ViewportBookmarks.dbookmarks", "bookmark", "RiftHero", "editable=true" } },
+            { "inspector_presets", { "Assets/Editor/InspectorPresets.dinspector", "preset", "BeaconMaterial", "apply=true" } },
+            { "dock_migration_plan", { "Assets/Editor/DockMigrationPlan.ddockplan", "migration", "v42", "migrate=true" } },
+            { "shot_track_validation", { "Assets/Cinematics/ShotTrackValidation.dshotcheck", "track", "camera_spline", "validate=true" } }
+        }};
+        const V43AssetCheckGroup v43GameChecks = {{
+            { "encounter_plan", { "Assets/Gameplay/PublicDemoEncounterPlan.dencounter", "encounter", "ResonanceAmbush", "spawn=true" } },
+            { "controller_feel", { "Assets/Gameplay/PublicDemoControllerFeel.dcontroller", "preset", "PublicDemoTuned", "load=true" } },
+            { "objective_routes", { "Assets/Gameplay/PublicDemoObjectiveRoutes.droute", "route", "extraction_complete", "trigger=true" } },
+            { "accessibility", { "Assets/Gameplay/PublicDemoAccessibility.daccess", "option", "high_contrast_rift", "toggle=true" } },
+            { "save_slots", { "Assets/Gameplay/PublicDemoSaveSlots.dsaveplan", "slot", "public_demo_checkpoint", "checkpoint=true" } },
+            { "combat_sandbox", { "Assets/Gameplay/PublicDemoCombatSandbox.dcombat", "sandbox", "RelayPressure", "wave=true" } }
+        }};
+
+        std::vector<Disparity::ProductionAssetValidationResult> v43AssetResults;
+        v43AssetResults.reserve(v43EngineChecks.size() + v43EditorChecks.size() + v43GameChecks.size());
+        const std::array<uint32_t, 6> v43EngineLiveAssets = ValidateV43AssetGroup(v43EngineChecks, v43AssetResults);
+        const std::array<uint32_t, 6> v43EditorEditableAssets = ValidateV43AssetGroup(v43EditorChecks, v43AssetResults);
+        const std::array<uint32_t, 6> v43GamePlayableAssets = ValidateV43AssetGroup(v43GameChecks, v43AssetResults);
+        const Disparity::ProductionAssetValidationSummary v43Summary =
+            Disparity::SummarizeProductionAssetValidation(v43AssetResults);
+
+        const std::array<uint32_t, 6> v43VerificationAssets = {
+            TextContains("Assets/Verification/V43LiveProductionValidation.dfollowups", "v43_point_24_docs_agent_roadmap_gate") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeReportSchema.dschema", "v43_validation_points") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeBaseline.dverify", "min_v43_validation_points") &&
+                TextContains("Assets/Verification/CameraSweepBaseline.dverify", "min_v43_validation_points") &&
+                TextContains("Assets/Verification/EditorPrecisionBaseline.dverify", "min_v43_validation_points") &&
+                TextContains("Assets/Verification/PostDebugBaseline.dverify", "min_v43_validation_points") &&
+                TextContains("Assets/Verification/AssetReloadBaseline.dverify", "min_v43_validation_points") &&
+                TextContains("Assets/Verification/GizmoDragBaseline.dverify", "min_v43_validation_points") ? 1u : 0u,
+            TextContains("Tools/ReviewReleaseReadiness.ps1", "V43LiveValidationPath") ? 1u : 0u,
+            TextContains("Tools/RuntimeVerifyDisparity.ps1", "v43_validation_points") &&
+                TextContains("Tools/SummarizePerformanceHistory.ps1", "v43_validation_points") ? 1u : 0u,
+            TextContains("README.md", "Engine v43 Live Production Validation Implemented") &&
+                TextContains("Docs/ROADMAP.md", "v43 Completed Live Production Validation Batch") &&
+                TextContains("Docs/ENGINE_FEATURES.md", "v43_validation_points") &&
+                TextContains("AGENTS.md", "Editor/runtime v43") ? 1u : 0u
+        };
+        const V43LiveValidationMetrics v43Metrics = {
+            v43EngineLiveAssets,
+            v43EditorEditableAssets,
+            v43GamePlayableAssets,
+            v43VerificationAssets
+        };
+        const auto v43Results = EvaluateV43LiveValidation(v43Metrics);
+        const uint32_t v43EngineReady = static_cast<uint32_t>(std::count(v43EngineLiveAssets.begin(), v43EngineLiveAssets.end(), 1u));
+        const uint32_t v43EditorReady = static_cast<uint32_t>(std::count(v43EditorEditableAssets.begin(), v43EditorEditableAssets.end(), 1u));
+        const uint32_t v43GameReady = static_cast<uint32_t>(std::count(v43GamePlayableAssets.begin(), v43GamePlayableAssets.end(), 1u));
+        const uint32_t v43VerificationReady = static_cast<uint32_t>(std::count(v43VerificationAssets.begin(), v43VerificationAssets.end(), 1u));
+        const uint32_t v43ReadyPoints = CountReadyV43LiveValidationPoints(v43Results);
+
+        report << "v43_engine_live_assets=" << v43EngineReady << "\n";
+        report << "v43_editor_editable_assets=" << v43EditorReady << "\n";
+        report << "v43_game_playable_assets=" << v43GameReady << "\n";
+        report << "v43_verification_assets=" << v43VerificationReady << "\n";
+        report << "v43_validated_assets=" << v43Summary.ValidAssets << "\n";
+        report << "v43_validation_directives=" << v43Summary.DirectiveCount << "\n";
+        report << "v43_activation_bindings=" << v43Summary.ActivationCount << "\n";
+        report << "v43_missing_fields=" << v43Summary.MissingFields << "\n";
+        report << "v43_asset_hash_low=" << static_cast<uint32_t>(v43Summary.CombinedHash & 0xffffffffull) << "\n";
+        report << "v43_docs_ready=" << v43VerificationAssets[5] << "\n";
+        report << "v43_validation_points=" << v43ReadyPoints << "\n";
+
+        WriteV43AssetValidationMetrics(report, v43EngineChecks, v43AssetResults, 0);
+        WriteV43AssetValidationMetrics(report, v43EditorChecks, v43AssetResults, v43EngineChecks.size());
+        WriteV43AssetValidationMetrics(
+            report,
+            v43GameChecks,
+            v43AssetResults,
+            v43EngineChecks.size() + v43EditorChecks.size());
+
+        const auto& v43Points = GetV43LiveValidationPoints();
+        for (size_t index = 0; index < v43Points.size(); ++index)
+        {
+            report << v43Points[index].Key << "=" << v43Results[index] << "\n";
         }
     }
 }

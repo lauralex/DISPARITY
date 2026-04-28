@@ -1,6 +1,6 @@
 schema = 1
 purpose = repeatable_editor_camera_bookmarks
-bookmark RiftHero | position 0.0,4.0,-10.0 | target 0.0,1.4,0.0 | lens 0.72
+bookmark RiftHero | position 0.0,4.0,-10.0 | target 0.0,1.4,0.0 | lens 0.72 | editable=true
 bookmark RelayRoute | position -8.0,5.0,-6.0 | target 1.5,0.8,2.0 | lens 0.62
 bookmark EncounterRead | position 5.0,3.5,-7.0 | target 0.0,1.2,1.0 | lens 0.68
 bookmark ExtractionBeacon | position 3.0,2.5,-5.0 | target 0.0,0.8,-1.5 | lens 0.58

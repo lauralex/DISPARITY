@@ -2,6 +2,6 @@ schema = 1
 purpose = project_workspace_layouts
 workspace Gameplay | panels Viewport,DemoDirector,AudioMixer | focus Viewport | gamepad_ready true
 workspace Editor | panels Viewport,Hierarchy,Inspector,Assets,Profiler | focus Hierarchy | gamepad_ready false
-workspace TrailerCapture | panels Viewport,ShotDirector,Renderer,AudioMixer | focus ShotDirector | gamepad_ready true
+workspace TrailerCapture | panels Viewport,ShotDirector,Renderer,AudioMixer | focus ShotDirector | gamepad_ready true | editable=true
 workspace DebugSystems | panels EngineServices,Profiler,Assets,Renderer | focus EngineServices | gamepad_ready false
 layout_version v42

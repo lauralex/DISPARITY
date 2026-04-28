@@ -774,6 +774,7 @@ inline constexpr size_t V39RoadmapPointCount = V39RoadmapBatchPointCount;
 inline constexpr size_t V40DiversifiedPointCount = V40DiversifiedBatchPointCount;
 inline constexpr size_t V41BreadthPointCount = V41BreadthBatchPointCount;
 inline constexpr size_t V42ProductionSurfacePointCount = V42ProductionSurfaceBatchPointCount;
+inline constexpr size_t V43LiveValidationPointCount = V43LiveValidationBatchPointCount;
 inline constexpr size_t PublicDemoShardCount = 6;
 inline constexpr size_t PublicDemoAnchorCount = 3;
 inline constexpr size_t PublicDemoResonanceGateCount = 2;

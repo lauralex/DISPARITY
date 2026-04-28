@@ -11,6 +11,25 @@ if (![System.IO.Path]::IsPathRooted($OutputPath)) {
     $OutputPath = Join-Path $root $OutputPath
 }
 
+function Get-DisparityFileSha256 {
+    param([string]$LiteralPath)
+
+    $fileHashCommand = Get-Command Get-FileHash -ErrorAction SilentlyContinue
+    if ($fileHashCommand) {
+        return (& $fileHashCommand -LiteralPath $LiteralPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $stream = [System.IO.File]::Open($LiteralPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+    try {
+        return (($sha.ComputeHash($stream) | ForEach-Object { $_.ToString("x2") }) -join "")
+    }
+    finally {
+        $stream.Dispose()
+        $sha.Dispose()
+    }
+}
+
 Push-Location $root
 try {
     $head = (git rev-parse HEAD).Trim()
@@ -38,7 +57,7 @@ foreach ($pattern in $tracked) {
     foreach ($file in Get-ChildItem -Path (Join-Path $root $pattern) -File -ErrorAction SilentlyContinue) {
         $records += [pscustomobject]@{
             path = Resolve-Path -LiteralPath $file.FullName -Relative
-            sha256 = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            sha256 = Get-DisparityFileSha256 -LiteralPath $file.FullName
             bytes = $file.Length
         }
     }

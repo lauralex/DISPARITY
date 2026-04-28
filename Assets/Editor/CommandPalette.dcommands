@@ -1,6 +1,6 @@
 schema = 1
 purpose = searchable_command_palette_seed
-command disparity.capture.highres | category Capture | binding F9 | tags trailer,photo,verification
+command disparity.capture.highres | category Capture | binding F9 | tags trailer,photo,verification | search=true
 command disparity.demo.reset | category Game | binding F10 | tags public_demo,checkpoint
 command disparity.editor.frame_selection | category Editor | binding F | tags viewport,camera
 command disparity.renderer.post_debug_next | category Rendering | binding Ctrl+F9 | tags debug,post

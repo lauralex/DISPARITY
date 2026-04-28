@@ -4,4 +4,4 @@ route shard_collect | next phase_anchor | hud_visible true | save_relevant true
 route phase_anchor | next resonance_gate | hud_visible true | save_relevant true
 route resonance_gate | next phase_relay | hud_visible true | checkpoint_link gate_retry
 route phase_relay | next extraction_complete | hud_visible true | checkpoint_link relay_retry
-route extraction_complete | next credits_tease | hud_visible true | save_relevant true
+route extraction_complete | next credits_tease | hud_visible true | save_relevant true | trigger=true

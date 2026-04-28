@@ -1,6 +1,6 @@
 schema = 1
 purpose = shot_track_validation_rules
-track camera_spline | required true | min_keys 4 | interpolation catmull
+track camera_spline | required true | min_keys 4 | interpolation catmull | validate=true
 track renderer_pulse | required true | min_keys 2 | clamps 0.0,1.0
 track audio_cue | required true | min_keys 2 | allow_silence true
 track objective_focus | required true | min_keys 3 | route_linked true

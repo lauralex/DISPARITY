@@ -1,6 +1,6 @@
 schema = 1
 purpose = reusable_inspector_edit_presets
-preset BeaconMaterial | material emissive_cyan | bloom 1.20 | double_sided true
+preset BeaconMaterial | material emissive_cyan | bloom 1.20 | double_sided true | apply=true
 preset EnemyTelegraph | material warning_magenta | alpha 0.60 | double_sided true
 preset TraversalMarker | material route_yellow | scale 1.00,0.10,1.00
 preset RiftShard | material shard_pink | emissive 2.00 | bob_animation true

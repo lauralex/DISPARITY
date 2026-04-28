@@ -15,6 +15,25 @@ if (![System.IO.Path]::IsPathRooted($OutputPath)) {
     $OutputPath = Join-Path $root $OutputPath
 }
 
+function Get-DisparityFileSha256 {
+    param([string]$LiteralPath)
+
+    $fileHashCommand = Get-Command Get-FileHash -ErrorAction SilentlyContinue
+    if ($fileHashCommand) {
+        return (& $fileHashCommand -LiteralPath $LiteralPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $stream = [System.IO.File]::Open($LiteralPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+    try {
+        return (($sha.ComputeHash($stream) | ForEach-Object { $_.ToString("x2") }) -join "")
+    }
+    finally {
+        $stream.Dispose()
+        $sha.Dispose()
+    }
+}
+
 $patterns = @("*.dverify", "*.dperf", "*.dgoldenprofile", "*.ppm")
 $baselineFiles = @()
 foreach ($pattern in $patterns) {
@@ -65,11 +84,11 @@ $records = foreach ($file in $baselineFiles) {
     else {
         $relativePath = $fileFullPath.Replace("\", "/")
     }
-    $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $file.FullName
+    $hash = Get-DisparityFileSha256 -LiteralPath $file.FullName
     [ordered]@{
         path = $relativePath
         bytes = $file.Length
-        sha256 = $hash.Hash.ToLowerInvariant()
+        sha256 = $hash
     }
 }
 
@@ -95,7 +114,7 @@ if (![string]::IsNullOrWhiteSpace($parent)) {
 }
 
 $payload | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $OutputPath -Encoding UTF8
-$manifestHash = (Get-FileHash -LiteralPath $OutputPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$manifestHash = Get-DisparityFileSha256 -LiteralPath $OutputPath
 $payload.manifest_sha256 = $manifestHash
 $payload | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $OutputPath -Encoding UTF8
 Write-Host "Baseline approval manifest written: $OutputPath"
