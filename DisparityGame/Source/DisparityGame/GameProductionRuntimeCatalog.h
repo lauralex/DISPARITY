@@ -27,7 +27,14 @@ namespace DisparityGame
         uint32_t ClearRequests = 0;
         uint32_t DetailViews = 0;
         uint32_t FocusedBeaconDraws = 0;
+        uint32_t ExecuteRequests = 0;
+        uint32_t StopRequests = 0;
+        uint32_t ExecutionPulses = 0;
+        uint32_t ExecutionDetailRows = 0;
+        uint32_t WorldExecutionMarkers = 0;
+        uint32_t ActionRouteBeams = 0;
         bool PreviewActive = true;
+        bool ExecutionActive = false;
     };
 
     [[nodiscard]] std::vector<Disparity::ProductionRuntimeAssetRule> BuildProductionRuntimeCatalogRules();
@@ -50,6 +57,13 @@ namespace DisparityGame
     void ApplyProductionCatalogPreviewStats(
         const ProductionCatalogSnapshot& snapshot,
         const ProductionCatalogPreviewState& state,
+        EditorVerificationStats& stats);
+    void ExecuteProductionCatalogPreview(
+        const ProductionCatalogSnapshot& snapshot,
+        ProductionCatalogPreviewState& state,
+        EditorVerificationStats& stats);
+    void StopProductionCatalogExecution(
+        ProductionCatalogPreviewState& state,
         EditorVerificationStats& stats);
     [[nodiscard]] bool DrawProductionCatalogSnapshotPanel(
         const ProductionCatalogSnapshot& snapshot,

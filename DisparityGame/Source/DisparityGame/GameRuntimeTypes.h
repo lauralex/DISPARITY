@@ -778,6 +778,7 @@ inline constexpr size_t V43LiveValidationPointCount = V43LiveValidationBatchPoin
 inline constexpr size_t V44RuntimeCatalogPointCount = V44RuntimeCatalogBatchPointCount;
 inline constexpr size_t V45LiveCatalogPointCount = V45LiveCatalogBatchPointCount;
 inline constexpr size_t V46CatalogActionPreviewPointCount = V46CatalogActionPreviewBatchPointCount;
+inline constexpr size_t V47CatalogExecutionPointCount = V47CatalogExecutionBatchPointCount;
 inline constexpr size_t PublicDemoShardCount = 6;
 inline constexpr size_t PublicDemoAnchorCount = 3;
 inline constexpr size_t PublicDemoResonanceGateCount = 2;
@@ -1202,6 +1203,19 @@ struct EditorVerificationStats
     uint32_t V46GamePreviewBindings = 0;
     uint32_t V46RuntimeActionCommands = 0;
     uint32_t V46CatalogActionPreviewPointTests = 0;
+    uint32_t V47CatalogExecuteRequests = 0;
+    uint32_t V47CatalogExecutionStops = 0;
+    uint32_t V47CatalogExecutionPulses = 0;
+    uint32_t V47EngineExecutableBindings = 0;
+    uint32_t V47EditorExecutableBindings = 0;
+    uint32_t V47GameExecutableBindings = 0;
+    uint32_t V47EngineExecutionOverlays = 0;
+    uint32_t V47EditorExecutionOverlays = 0;
+    uint32_t V47GameExecutionOverlays = 0;
+    uint32_t V47WorldExecutionMarkers = 0;
+    uint32_t V47ActionRouteBeams = 0;
+    uint32_t V47ExecutionDetailRows = 0;
+    uint32_t V47CatalogExecutionPointTests = 0;
 };
 
 }

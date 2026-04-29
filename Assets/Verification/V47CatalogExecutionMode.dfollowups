@@ -1,0 +1,25 @@
+# DISPARITY v47 catalog execution mode batch
+point v47_point_01_engine_execution_state | Engine | Production catalog preview state now owns execution state outside DisparityGame.cpp.
+point v47_point_02_engine_execution_clamp | Engine | Execution safely clamps the selected binding after catalog reloads.
+point v47_point_03_engine_executable_domain_counts | Engine | Execution diagnostics count Engine, Editor, and Game executable bindings.
+point v47_point_04_engine_execution_public_api | Engine | Catalog execution helpers are exposed through the game catalog bridge.
+point v47_point_05_engine_execution_overlay_summary | Engine | Engine-domain catalog execution surfaces scheduler/render/streaming overlay intent.
+point v47_point_06_engine_root_file_budget_preserved | Engine | Catalog execution work stays in split modules without growing DisparityGame.cpp.
+point v47_point_07_editor_execution_panel_visible | Editor | Engine Services panel displays Production Catalogs v47 execution mode.
+point v47_point_08_editor_execute_button | Editor | Editor exposes an Execute Preview catalog action.
+point v47_point_09_editor_stop_button | Editor | Editor exposes a Stop Execution catalog action.
+point v47_point_10_editor_execution_detail_line | Editor | Editor shows the executed binding detail line.
+point v47_point_11_editor_execution_status_rows | Editor | Editor reports execution request, pulse, and marker counters.
+point v47_point_12_editor_unique_execution_ids | Editor | Catalog execution controls use stable ImGui IDs.
+point v47_point_13_game_execution_markers_visible | Game | Playable demo renders catalog execution markers around the rift.
+point v47_point_14_game_objective_route_beam | Game | Objective-route catalog execution renders a visible route beam.
+point v47_point_15_game_domain_execution_color | Game | Execution markers preserve Engine, Editor, and Game domain colors.
+point v47_point_16_game_execution_default_active | Game | Runtime verification primes execution on the public-demo objective route.
+point v47_point_17_game_execution_telemetry | Game | Runtime report emits catalog execution interaction metrics.
+point v47_point_18_game_execution_reload_survives | Game | Execution state remains valid after production catalog reloads.
+point v47_point_19_verification_manifest_gate | Verification | v47 catalog execution manifest is present and reviewed.
+point v47_point_20_verification_schema_gate | Verification | Runtime report schema includes v47 execution metrics.
+point v47_point_21_verification_baseline_gate | Verification | Runtime baselines include v47 execution thresholds.
+point v47_point_22_verification_release_gate | Verification | Release readiness includes the v47 execution manifest.
+point v47_point_23_verification_performance_history_gate | Verification | Runtime and performance-history tooling track v47 execution metrics.
+point v47_point_24_docs_agent_roadmap_gate | Docs | README, feature guide, roadmap, and AGENTS document v47 catalog execution mode.

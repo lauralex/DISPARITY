@@ -65,6 +65,7 @@ namespace DisparityGame
             {
                 state.SelectedBindingIndex = 0;
                 state.PreviewActive = false;
+                state.ExecutionActive = false;
                 return;
             }
             state.SelectedBindingIndex = std::min(state.SelectedBindingIndex, snapshot.Bindings.size() - 1u);
@@ -79,6 +80,7 @@ namespace DisparityGame
             {
                 state.SelectedBindingIndex = 0;
                 state.PreviewActive = false;
+                state.ExecutionActive = false;
                 return;
             }
             state.SelectedBindingIndex = std::min(index, snapshot.Bindings.size() - 1u);
@@ -96,7 +98,156 @@ namespace DisparityGame
                 [domain](const Disparity::ProductionRuntimeBinding& binding)
                 {
                     return binding.Domain == domain;
-                }));
+            }));
+        }
+
+        [[nodiscard]] const Disparity::ProductionRuntimeBinding* SelectedBinding(
+            const ProductionCatalogSnapshot& snapshot,
+            ProductionCatalogPreviewState& state)
+        {
+            ClampPreviewSelection(snapshot, state);
+            if (snapshot.Bindings.empty())
+            {
+                return nullptr;
+            }
+            return &snapshot.Bindings[state.SelectedBindingIndex];
+        }
+
+        [[nodiscard]] const char* ExecutionSummary(const Disparity::ProductionRuntimeBinding& binding)
+        {
+            if (binding.Domain == "Engine")
+            {
+                if (binding.Action == "scheduler_budgets")
+                {
+                    return "Scheduler budget overlay armed";
+                }
+                if (binding.Action == "render_budget_classes")
+                {
+                    return "Render budget class overlay armed";
+                }
+                if (binding.Action == "streaming_budgets")
+                {
+                    return "Streaming priority overlay armed";
+                }
+                return "Engine diagnostic overlay armed";
+            }
+            if (binding.Domain == "Editor")
+            {
+                if (binding.Action == "workspace_layouts")
+                {
+                    return "Workspace preset preview armed";
+                }
+                if (binding.Action == "command_palette")
+                {
+                    return "Command palette population preview armed";
+                }
+                if (binding.Action == "viewport_bookmarks")
+                {
+                    return "Viewport bookmark route armed";
+                }
+                return "Editor workflow action armed";
+            }
+            if (binding.Action == "objective_routes")
+            {
+                return "Public-demo objective route beam armed";
+            }
+            if (binding.Action == "encounter_plan")
+            {
+                return "Encounter spawn preview armed";
+            }
+            if (binding.Action == "combat_sandbox")
+            {
+                return "Combat sandbox wave preview armed";
+            }
+            return "Playable demo action marker armed";
+        }
+
+        [[nodiscard]] uint32_t DrawProductionCatalogExecutionMarkers(
+            Disparity::Renderer& renderer,
+            const ProductionCatalogSnapshot& snapshot,
+            ProductionCatalogPreviewState& preview,
+            EditorVerificationStats& stats,
+            float visualTime,
+            const DirectX::XMFLOAT3& center,
+            const Disparity::Material& baseMaterial,
+            Disparity::MeshHandle mesh)
+        {
+            const Disparity::ProductionRuntimeBinding* selected = SelectedBinding(snapshot, preview);
+            if (!selected || !preview.ExecutionActive)
+            {
+                return 0;
+            }
+
+            const DirectX::XMFLOAT3 color = DomainColor(selected->Domain);
+            const float pulse = 0.5f + 0.5f * std::sin(visualTime * 4.3f);
+            const float angle = visualTime * 0.18f + static_cast<float>(preview.SelectedBindingIndex) * 0.37f;
+            uint32_t drawCount = 0;
+            Disparity::Material material = baseMaterial;
+            material.Albedo = { color.x * 1.55f, color.y * 1.55f, color.z * 1.55f };
+            material.Emissive = color;
+            material.EmissiveIntensity = std::max(material.EmissiveIntensity, 3.2f + pulse * 1.4f);
+            material.Alpha = 0.82f;
+
+            if (selected->Domain == "Engine")
+            {
+                for (int index = 0; index < 4; ++index)
+                {
+                    Disparity::Transform marker;
+                    marker.Position = Add(center, {
+                        -1.2f + static_cast<float>(index) * 0.8f,
+                        2.10f + pulse * 0.18f,
+                        -2.55f
+                    });
+                    marker.Rotation = { 0.0f, angle, visualTime * 0.7f };
+                    marker.Scale = { 0.14f, 0.82f + static_cast<float>(index) * 0.10f, 0.14f };
+                    renderer.DrawMesh(mesh, marker, material);
+                    ++drawCount;
+                    ++stats.V47EngineExecutionOverlays;
+                }
+            }
+            else if (selected->Domain == "Editor")
+            {
+                for (int index = 0; index < 4; ++index)
+                {
+                    Disparity::Transform marker;
+                    marker.Position = Add(center, {
+                        2.35f,
+                        1.12f + static_cast<float>(index) * 0.32f,
+                        -1.25f + static_cast<float>(index) * 0.42f
+                    });
+                    marker.Rotation = { 0.0f, -0.45f + pulse * 0.12f, 0.0f };
+                    marker.Scale = { 0.52f, 0.08f, 0.28f };
+                    renderer.DrawMesh(mesh, marker, material);
+                    ++drawCount;
+                    ++stats.V47EditorExecutionOverlays;
+                }
+            }
+            else
+            {
+                for (int index = 0; index < 7; ++index)
+                {
+                    const float step = static_cast<float>(index);
+                    Disparity::Transform marker;
+                    marker.Position = Add(center, {
+                        std::sin(angle) * (0.85f + step * 0.42f),
+                        0.32f + pulse * 0.07f + step * 0.045f,
+                        std::cos(angle) * (0.85f + step * 0.42f)
+                    });
+                    marker.Rotation = { visualTime * 0.22f, angle, visualTime * 0.41f };
+                    marker.Scale = { 0.26f + pulse * 0.03f, 0.055f, 0.26f + pulse * 0.03f };
+                    renderer.DrawMesh(mesh, marker, material);
+                    ++drawCount;
+                    ++stats.V47GameExecutionOverlays;
+                }
+                stats.V47ActionRouteBeams += drawCount;
+                preview.ActionRouteBeams += drawCount;
+            }
+
+            preview.WorldExecutionMarkers += drawCount;
+            ++preview.ExecutionPulses;
+            stats.V47WorldExecutionMarkers += drawCount;
+            stats.V47CatalogExecutionPulses = std::max(stats.V47CatalogExecutionPulses, preview.ExecutionPulses);
+            return drawCount;
         }
 
     }
@@ -178,9 +329,12 @@ namespace DisparityGame
         EditorVerificationStats& stats)
     {
         SelectPreviewIndex(snapshot, state, FindPreferredPreviewIndex(snapshot));
+        ExecuteProductionCatalogPreview(snapshot, state, stats);
         state.PreviewCycles = std::max(state.PreviewCycles, 1u);
         state.ClearRequests = std::max(state.ClearRequests, 1u);
         state.DetailViews = std::max(state.DetailViews, 1u);
+        state.StopRequests = std::max(state.StopRequests, 1u);
+        state.ExecutionDetailRows = std::max(state.ExecutionDetailRows, 1u);
         ApplyProductionCatalogPreviewStats(snapshot, state, stats);
     }
 
@@ -209,6 +363,40 @@ namespace DisparityGame
         stats.V46EnginePreviewBindings = CountPreviewBindingsByDomain(snapshot, "Engine");
         stats.V46EditorPreviewBindings = CountPreviewBindingsByDomain(snapshot, "Editor");
         stats.V46GamePreviewBindings = CountPreviewBindingsByDomain(snapshot, "Game");
+        stats.V47CatalogExecuteRequests = state.ExecuteRequests + (state.ExecutionActive ? 1u : 0u);
+        stats.V47CatalogExecutionStops = state.StopRequests;
+        stats.V47CatalogExecutionPulses = state.ExecutionPulses + (state.ExecutionActive ? 1u : 0u);
+        stats.V47EngineExecutableBindings = CountPreviewBindingsByDomain(snapshot, "Engine");
+        stats.V47EditorExecutableBindings = CountPreviewBindingsByDomain(snapshot, "Editor");
+        stats.V47GameExecutableBindings = CountPreviewBindingsByDomain(snapshot, "Game");
+        stats.V47WorldExecutionMarkers = std::max(stats.V47WorldExecutionMarkers, state.WorldExecutionMarkers);
+        stats.V47ActionRouteBeams = std::max(stats.V47ActionRouteBeams, state.ActionRouteBeams);
+        stats.V47ExecutionDetailRows = state.ExecutionDetailRows;
+    }
+
+    void ExecuteProductionCatalogPreview(
+        const ProductionCatalogSnapshot& snapshot,
+        ProductionCatalogPreviewState& state,
+        EditorVerificationStats& stats)
+    {
+        if (!SelectedBinding(snapshot, state))
+        {
+            return;
+        }
+        state.PreviewActive = true;
+        state.ExecutionActive = true;
+        ++state.ExecuteRequests;
+        ++state.ExecutionPulses;
+        ApplyProductionCatalogPreviewStats(snapshot, state, stats);
+    }
+
+    void StopProductionCatalogExecution(
+        ProductionCatalogPreviewState& state,
+        EditorVerificationStats& stats)
+    {
+        state.ExecutionActive = false;
+        ++state.StopRequests;
+        stats.V47CatalogExecutionStops = state.StopRequests;
     }
 
     bool DrawProductionCatalogSnapshotPanel(
@@ -220,7 +408,7 @@ namespace DisparityGame
         ClampPreviewSelection(snapshot, preview);
         ApplyProductionCatalogPreviewStats(snapshot, preview, stats);
 
-        ImGui::SeparatorText("Production Catalogs v46");
+        ImGui::SeparatorText("Production Catalogs v47");
         ImGui::Text(
             "Bindings: %u live / %u ready  Engine %u  Editor %u  Game %u",
             snapshot.Diagnostics.BindingCount,
@@ -252,6 +440,16 @@ namespace DisparityGame
             preview.PreviewActive = false;
             ++preview.ClearRequests;
         }
+        ImGui::SameLine();
+        if (ImGui::Button("Execute Preview##ProductionCatalogExecution"))
+        {
+            ExecuteProductionCatalogPreview(snapshot, preview, stats);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Stop##ProductionCatalogExecution"))
+        {
+            StopProductionCatalogExecution(preview, stats);
+        }
 
         if (!snapshot.Bindings.empty())
         {
@@ -264,6 +462,13 @@ namespace DisparityGame
                 selected.FieldCount,
                 preview.PreviewActive ? "active" : "cleared");
             ++preview.DetailViews;
+            ImGui::Text(
+                "Execute: %s  requests %u  pulses %u  markers %u",
+                preview.ExecutionActive ? ExecutionSummary(selected) : "stopped",
+                preview.ExecuteRequests,
+                preview.ExecutionPulses,
+                preview.WorldExecutionMarkers);
+            ++preview.ExecutionDetailRows;
         }
 
         if (ImGui::BeginTable(
@@ -361,7 +566,16 @@ namespace DisparityGame
             }
         }
 
+        const uint32_t executionMarkers = DrawProductionCatalogExecutionMarkers(
+            renderer,
+            snapshot,
+            preview,
+            stats,
+            visualTime,
+            center,
+            baseMaterial,
+            mesh);
         ApplyProductionCatalogPreviewStats(snapshot, preview, stats);
-        return beaconCount;
+        return beaconCount + executionMarkers;
     }
 }

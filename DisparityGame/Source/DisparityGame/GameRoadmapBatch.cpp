@@ -298,7 +298,8 @@ namespace DisparityGame
         results[3] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "PrimeProductionCatalogPreview") ? 1u : 0u;
         results[4] = metrics.RuntimeActionCommands >= 1 ? 1u : 0u;
         results[5] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.h", "ApplyProductionCatalogPreviewStats") ? 1u : 0u;
-        results[6] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v46") ? 1u : 0u;
+    results[6] = (TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v46") ||
+                  TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v47")) ? 1u : 0u;
         results[7] = metrics.SelectableRows >= 8 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ImGui::Selectable") ? 1u : 0u;
         results[8] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Preview First##ProductionCatalogPreview") ? 1u : 0u;
         results[9] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Next##ProductionCatalogPreview") ? 1u : 0u;
@@ -319,6 +320,43 @@ namespace DisparityGame
 
     uint32_t CountReadyV46CatalogActionPreviewPoints(
         const std::array<uint32_t, V46CatalogActionPreviewPointCount>& results)
+    {
+        return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
+    }
+
+    std::array<uint32_t, V47CatalogExecutionPointCount> EvaluateV47CatalogExecution(
+        const V47CatalogExecutionMetrics& metrics)
+    {
+        std::array<uint32_t, V47CatalogExecutionPointCount> results = {};
+        results[0] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.h", "ExecutionActive") ? 1u : 0u;
+        results[1] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "SelectedBinding") ? 1u : 0u;
+        results[2] = metrics.EngineExecutableBindings >= 6 && metrics.EditorExecutableBindings >= 6 && metrics.GameExecutableBindings >= 6 ? 1u : 0u;
+        results[3] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.h", "ExecuteProductionCatalogPreview") ? 1u : 0u;
+        results[4] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Scheduler budget overlay armed") ? 1u : 0u;
+        results[5] = TextContains("Tools/VerifyGameSourceSplit.ps1", "MaxRootGameLines = 13800") ? 1u : 0u;
+        results[6] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v47") ? 1u : 0u;
+        results[7] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Execute Preview##ProductionCatalogExecution") ? 1u : 0u;
+        results[8] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Stop##ProductionCatalogExecution") ? 1u : 0u;
+        results[9] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ExecutionSummary") ? 1u : 0u;
+        results[10] = metrics.ExecuteRequests >= 1 && metrics.ExecutionPulses >= 1 ? 1u : 0u;
+        results[11] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ProductionCatalogExecution") ? 1u : 0u;
+        results[12] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "DrawProductionCatalogExecutionMarkers") ? 1u : 0u;
+        results[13] = metrics.ActionRouteBeams >= 1 ? 1u : 0u;
+        results[14] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "DomainColor(selected->Domain)") ? 1u : 0u;
+        results[15] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ExecuteProductionCatalogPreview(snapshot, state, stats)") ? 1u : 0u;
+        results[16] = metrics.WorldExecutionMarkers >= 1 && metrics.ExecutionDetailRows >= 1 ? 1u : 0u;
+        results[17] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ClampPreviewSelection(snapshot, preview)") ? 1u : 0u;
+        results[18] = metrics.VerificationAssets[0];
+        results[19] = metrics.VerificationAssets[1];
+        results[20] = metrics.VerificationAssets[2];
+        results[21] = metrics.VerificationAssets[3];
+        results[22] = metrics.VerificationAssets[4];
+        results[23] = metrics.VerificationAssets[5];
+        return results;
+    }
+
+    uint32_t CountReadyV47CatalogExecutionPoints(
+        const std::array<uint32_t, V47CatalogExecutionPointCount>& results)
     {
         return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
     }
@@ -896,6 +934,64 @@ namespace DisparityGame
         for (size_t index = 0; index < v46Points.size(); ++index)
         {
             report << v46Points[index].Key << "=" << v46Results[index] << "\n";
+        }
+
+        const std::array<uint32_t, 6> v47VerificationAssets = {
+            TextContains("Assets/Verification/V47CatalogExecutionMode.dfollowups", "v47_point_24_docs_agent_roadmap_gate") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeReportSchema.dschema", "v47_catalog_execution_points") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeBaseline.dverify", "min_v47_catalog_execution_points") &&
+                TextContains("Assets/Verification/CameraSweepBaseline.dverify", "min_v47_catalog_execution_points") &&
+                TextContains("Assets/Verification/EditorPrecisionBaseline.dverify", "min_v47_catalog_execution_points") &&
+                TextContains("Assets/Verification/PostDebugBaseline.dverify", "min_v47_catalog_execution_points") &&
+                TextContains("Assets/Verification/AssetReloadBaseline.dverify", "min_v47_catalog_execution_points") &&
+                TextContains("Assets/Verification/GizmoDragBaseline.dverify", "min_v47_catalog_execution_points") ? 1u : 0u,
+            TextContains("Tools/ReviewReleaseReadiness.ps1", "V47CatalogExecutionPath") ? 1u : 0u,
+            TextContains("Tools/RuntimeVerifyDisparity.ps1", "v47_catalog_execution_points") &&
+                TextContains("Tools/SummarizePerformanceHistory.ps1", "v47_catalog_execution_points") ? 1u : 0u,
+            TextContains("README.md", "Engine v47 Catalog Execution Mode Implemented") &&
+                TextContains("Docs/ROADMAP.md", "v47 Completed Catalog Execution Mode Batch") &&
+                TextContains("Docs/ENGINE_FEATURES.md", "v47_catalog_execution_points") &&
+                TextContains("AGENTS.md", "Editor/runtime v47") ? 1u : 0u
+        };
+        const V47CatalogExecutionMetrics v47Metrics = {
+            stats.V47CatalogExecuteRequests,
+            stats.V47CatalogExecutionStops,
+            stats.V47CatalogExecutionPulses,
+            std::max(stats.V47EngineExecutableBindings, v45Snapshot.Diagnostics.EngineBindings),
+            std::max(stats.V47EditorExecutableBindings, v45Snapshot.Diagnostics.EditorBindings),
+            std::max(stats.V47GameExecutableBindings, v45Snapshot.Diagnostics.GameBindings),
+            stats.V47EngineExecutionOverlays,
+            stats.V47EditorExecutionOverlays,
+            stats.V47GameExecutionOverlays,
+            stats.V47WorldExecutionMarkers,
+            stats.V47ActionRouteBeams,
+            stats.V47ExecutionDetailRows,
+            v47VerificationAssets
+        };
+        const auto v47Results = EvaluateV47CatalogExecution(v47Metrics);
+        const uint32_t v47VerificationReady = static_cast<uint32_t>(std::count(v47VerificationAssets.begin(), v47VerificationAssets.end(), 1u));
+        const uint32_t v47ReadyPoints = CountReadyV47CatalogExecutionPoints(v47Results);
+
+        report << "v47_catalog_execute_requests=" << v47Metrics.ExecuteRequests << "\n";
+        report << "v47_catalog_execution_stops=" << v47Metrics.ExecutionStops << "\n";
+        report << "v47_catalog_execution_pulses=" << v47Metrics.ExecutionPulses << "\n";
+        report << "v47_engine_executable_bindings=" << v47Metrics.EngineExecutableBindings << "\n";
+        report << "v47_editor_executable_bindings=" << v47Metrics.EditorExecutableBindings << "\n";
+        report << "v47_game_executable_bindings=" << v47Metrics.GameExecutableBindings << "\n";
+        report << "v47_engine_execution_overlays=" << v47Metrics.EngineExecutionOverlays << "\n";
+        report << "v47_editor_execution_overlays=" << v47Metrics.EditorExecutionOverlays << "\n";
+        report << "v47_game_execution_overlays=" << v47Metrics.GameExecutionOverlays << "\n";
+        report << "v47_world_execution_markers=" << v47Metrics.WorldExecutionMarkers << "\n";
+        report << "v47_action_route_beams=" << v47Metrics.ActionRouteBeams << "\n";
+        report << "v47_execution_detail_rows=" << v47Metrics.ExecutionDetailRows << "\n";
+        report << "v47_verification_assets=" << v47VerificationReady << "\n";
+        report << "v47_docs_ready=" << v47VerificationAssets[5] << "\n";
+        report << "v47_catalog_execution_points=" << v47ReadyPoints << "\n";
+
+        const auto& v47Points = GetV47CatalogExecutionPoints();
+        for (size_t index = 0; index < v47Points.size(); ++index)
+        {
+            report << v47Points[index].Key << "=" << v47Results[index] << "\n";
         }
     }
 }

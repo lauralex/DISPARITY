@@ -61,7 +61,7 @@ Editor UI:
 - `Demo Director`: inspect the public vertical slice stage, objective distance, shard/anchor/gate/relay progress, checkpoint/retry/pressure/footstep/combo/collision/traversal/enemy/gamepad/audio/animation telemetry, recent gameplay events, and v30/v31/v32/v33 readiness while the demo is running.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters/production counters, and store/recall a mixer snapshot.
-- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, public-demo event routes, and the live v46 production catalog table/reload/preview surface from one live readiness panel.
+- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, public-demo event routes, and the live v47 production catalog table/reload/preview/execution surface from one live readiness panel.
 
 ## Engine v0 Features
 
@@ -70,6 +70,14 @@ Editor UI:
 - Keyboard and raw mouse input.
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
+
+## Engine v47 Catalog Execution Mode Implemented
+
+- Added `Assets/Verification/V47CatalogExecutionMode.dfollowups`, a twenty-four-point batch that turns selectable catalog previews into executable editor/game actions.
+- `GameProductionRuntimeCatalog.*` now owns catalog execution state, execute/stop helpers, execution detail counters, domain executable counts, and rift-world marker accounting without growing `DisparityGame.cpp`.
+- `Engine Services > Production Catalogs v47` now has `Execute Preview` and `Stop` controls, plus a live execution status row that reports the selected binding action, request count, pulse count, and world marker count.
+- The playable scene now renders visible execution markers around the DISPARITY rift. The default objective-route action draws a pulsing route beam so you can see the catalog row affecting the game world immediately; Engine and Editor rows show different overlay marker patterns when selected and executed.
+- Runtime reports now emit `v47_catalog_execution_points`, execute/stop/pulse counters, Engine/Editor/Game executable binding counts, execution overlay and route-beam counters, verification assets, docs readiness, and every `v47_point_*` metric.
 
 ## Engine v46 Catalog Action Preview Implemented
 
