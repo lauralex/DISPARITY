@@ -15,9 +15,11 @@ namespace DisparityGame
         std::vector<Disparity::ProductionRuntimeAsset> Assets;
         std::vector<Disparity::ProductionRuntimeBinding> Bindings;
         std::vector<Disparity::ProductionRuntimeActionPlan> ActionPlans;
+        std::vector<Disparity::ProductionRuntimeMutationPlan> MutationPlans;
         Disparity::ProductionRuntimeCatalogSummary Summary;
         Disparity::ProductionRuntimeCatalogDiagnostics Diagnostics;
         Disparity::ProductionRuntimeActionPlanSummary ActionPlanSummary;
+        Disparity::ProductionRuntimeMutationPlanSummary MutationPlanSummary;
         uint32_t NegativeFixtureRejected = 0;
     };
 
@@ -43,9 +45,29 @@ namespace DisparityGame
         uint32_t DirectorEncounterGhosts = 0;
         uint32_t DirectorEditorQueueRows = 0;
         uint32_t DirectorPlanSummaryRows = 0;
+        uint32_t ActionMutationRequests = 0;
+        uint32_t MutationQueueDepth = 0;
+        uint32_t EngineBudgetMutations = 0;
+        uint32_t EngineSchedulerBudgetMutations = 0;
+        uint32_t EngineStreamingBudgetMutations = 0;
+        uint32_t EngineRenderBudgetMutations = 0;
+        uint32_t EditorWorkspaceMutations = 0;
+        uint32_t EditorCommandMutations = 0;
+        uint32_t EditorTraceEventRows = 0;
+        uint32_t GameSpawnedEncounterWaves = 0;
+        uint32_t GameObjectiveRouteMutations = 0;
+        uint32_t GameCombatSandboxMutations = 0;
+        uint32_t MutationWorldBursts = 0;
+        uint32_t MutationWorldPillars = 0;
+        uint32_t MutationWaveGhosts = 0;
+        uint32_t MutationPanelRows = 0;
         bool PreviewActive = true;
         bool ExecutionActive = false;
         bool DirectorActive = false;
+        bool MutationsActive = false;
+        std::string ActiveWorkspacePreset;
+        std::string ActiveCommandName;
+        std::string ActiveTraceChannel;
     };
 
     [[nodiscard]] std::vector<Disparity::ProductionRuntimeAssetRule> BuildProductionRuntimeCatalogRules();

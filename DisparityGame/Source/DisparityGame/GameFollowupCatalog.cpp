@@ -393,4 +393,35 @@ namespace DisparityGame
         } };
         return points;
     }
+
+    const std::array<GameFollowupPoint, V49ActionMutationBatchPointCount>& GetV49ActionMutationPoints()
+    {
+        static const std::array<GameFollowupPoint, V49ActionMutationBatchPointCount> points = { {
+            { "v49_point_01_engine_mutation_plan_model", "Engine", "Production runtime catalog exposes live mutation plans derived from action plans" },
+            { "v49_point_02_engine_mutation_plan_summary", "Engine", "Engine summarizes runtime, editor, gameplay, and budget-bound mutation plans" },
+            { "v49_point_03_engine_budget_bound_mutations", "Engine", "Budget-bound scheduler, streaming, and render mutation plans are tracked" },
+            { "v49_point_04_engine_scheduler_streaming_render_mutations", "Engine", "Live mutation requests touch scheduler, streaming, and render budget targets" },
+            { "v49_point_05_engine_runtime_report_mutation_counts", "Engine", "Runtime report emits v49 backend mutation diagnostics" },
+            { "v49_point_06_engine_root_file_budget_preserved", "Engine", "Live mutation work stays in engine/catalog split modules without growing DisparityGame.cpp" },
+            { "v49_point_07_editor_live_mutation_panel", "Editor", "Engine Services panel displays Production Catalogs v49 Live Mutations controls" },
+            { "v49_point_08_editor_apply_mutations_button", "Editor", "Editor exposes an Apply Mutations command for the live catalog queue" },
+            { "v49_point_09_editor_mutation_queue_table", "Editor", "Editor shows prioritized mutation targets from engine mutation plans" },
+            { "v49_point_10_editor_workspace_mutation_state", "Editor", "Action mutations surface the active workspace preset state" },
+            { "v49_point_11_editor_command_mutation_state", "Editor", "Action mutations surface the active command palette state" },
+            { "v49_point_12_editor_trace_rows_unique_ids", "Editor", "Live mutation controls and trace rows use stable ImGui IDs" },
+            { "v49_point_13_game_mutation_burst_visible", "Game", "Playable scene renders a live mutation burst around the public-demo rift" },
+            { "v49_point_14_game_mutation_pillars_visible", "Game", "Live mutation plans draw vertical target pillars in the world" },
+            { "v49_point_15_game_spawned_wave_markers", "Game", "Live mutation plans draw spawned encounter wave ghost markers" },
+            { "v49_point_16_game_objective_route_mutation", "Game", "Objective-route mutation state is tracked for the public demo" },
+            { "v49_point_17_game_combat_sandbox_mutation", "Game", "Combat sandbox mutation state is tracked for public-showcase pressure" },
+            { "v49_point_18_game_default_mutation_active", "Game", "Runtime verification primes live Action Director mutations by default" },
+            { "v49_point_19_verification_manifest_gate", "Verification", "v49 Action Mutation manifest is present and reviewed" },
+            { "v49_point_20_verification_schema_gate", "Verification", "Runtime report schema includes v49 live mutation metrics" },
+            { "v49_point_21_verification_baseline_gate", "Verification", "Runtime baselines include v49 live mutation thresholds" },
+            { "v49_point_22_verification_release_gate", "Verification", "Release readiness includes the v49 Action Mutation manifest" },
+            { "v49_point_23_verification_performance_history_gate", "Verification", "Runtime and performance-history tooling track v49 live mutation metrics" },
+            { "v49_point_24_docs_agent_roadmap_gate", "Docs", "README, feature guide, roadmap, and AGENTS document v49 live mutations" }
+        } };
+        return points;
+    }
 }

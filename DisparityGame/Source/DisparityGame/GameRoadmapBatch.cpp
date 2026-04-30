@@ -300,7 +300,8 @@ namespace DisparityGame
         results[5] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.h", "ApplyProductionCatalogPreviewStats") ? 1u : 0u;
         results[6] = (TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v46") ||
             TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v47") ||
-            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v48")) ? 1u : 0u;
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v48") ||
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v49")) ? 1u : 0u;
         results[7] = metrics.SelectableRows >= 8 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ImGui::Selectable") ? 1u : 0u;
         results[8] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Preview First##ProductionCatalogPreview") ? 1u : 0u;
         results[9] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Next##ProductionCatalogPreview") ? 1u : 0u;
@@ -336,7 +337,8 @@ namespace DisparityGame
         results[4] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Scheduler budget overlay armed") ? 1u : 0u;
         results[5] = TextContains("Tools/VerifyGameSourceSplit.ps1", "MaxRootGameLines = 13800") ? 1u : 0u;
         results[6] = (TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v47") ||
-            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v48")) ? 1u : 0u;
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v48") ||
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v49")) ? 1u : 0u;
         results[7] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Execute Preview##ProductionCatalogExecution") ? 1u : 0u;
         results[8] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Stop##ProductionCatalogExecution") ? 1u : 0u;
         results[9] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ExecutionSummary") ? 1u : 0u;
@@ -373,7 +375,8 @@ namespace DisparityGame
         results[3] = metrics.HighImpactActionPlans >= 4 && TextContains("DisparityEngine/Source/Disparity/Assets/ProductionAssetRuntimeCatalog.cpp", "PriorityScore") ? 1u : 0u;
         results[4] = metrics.EditorVisibleActionPlans >= 6 && metrics.PlayableActionPlans >= 6 ? 1u : 0u;
         results[5] = TextContains("Tools/VerifyGameSourceSplit.ps1", "MaxRootGameLines = 13800") ? 1u : 0u;
-        results[6] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v48 Action Director") ? 1u : 0u;
+        results[6] = (TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v48 Action Director") ||
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v49 Live Mutations")) ? 1u : 0u;
         results[7] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Director Burst##ProductionCatalogActionDirector") ? 1u : 0u;
         results[8] = metrics.ActionDirectorQueueDepth >= 6 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ProductionCatalogActionQueue##EngineServices") ? 1u : 0u;
         results[9] = metrics.ActionDirectorHistoryRows >= 1 ? 1u : 0u;
@@ -396,6 +399,43 @@ namespace DisparityGame
 
     uint32_t CountReadyV48ActionDirectorPoints(
         const std::array<uint32_t, V48ActionDirectorPointCount>& results)
+    {
+        return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
+    }
+
+    std::array<uint32_t, V49ActionMutationPointCount> EvaluateV49ActionMutation(
+        const V49ActionMutationMetrics& metrics)
+    {
+        std::array<uint32_t, V49ActionMutationPointCount> results = {};
+        results[0] = TextContains("DisparityEngine/Source/Disparity/Assets/ProductionAssetRuntimeCatalog.h", "ProductionRuntimeMutationPlan") ? 1u : 0u;
+        results[1] = TextContains("DisparityEngine/Source/Disparity/Assets/ProductionAssetRuntimeCatalog.h", "ProductionRuntimeMutationPlanSummary") ? 1u : 0u;
+        results[2] = metrics.RuntimeMutationPlans >= 18 && metrics.BudgetBoundMutationPlans >= 3 ? 1u : 0u;
+        results[3] = metrics.SchedulerBudgetMutations >= 1 && metrics.StreamingBudgetMutations >= 1 && metrics.RenderBudgetMutations >= 1 ? 1u : 0u;
+        results[4] = metrics.EngineBudgetMutations >= 3 && TextContains("DisparityGame/Source/DisparityGame/GameRoadmapBatch.cpp", "v49_engine_budget_mutations") ? 1u : 0u;
+        results[5] = TextContains("Tools/VerifyGameSourceSplit.ps1", "MaxRootGameLines = 13800") ? 1u : 0u;
+        results[6] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v49 Live Mutations") ? 1u : 0u;
+        results[7] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Apply Mutations##ProductionCatalogLiveMutations") ? 1u : 0u;
+        results[8] = metrics.MutationQueueDepth >= 6 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ProductionCatalogMutations##EngineServices") ? 1u : 0u;
+        results[9] = metrics.EditorWorkspaceMutations >= 1 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ActiveWorkspacePreset") ? 1u : 0u;
+        results[10] = metrics.EditorCommandMutations >= 1 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ActiveCommandName") ? 1u : 0u;
+        results[11] = metrics.TraceEventRows >= 1 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ProductionCatalogLiveMutations") ? 1u : 0u;
+        results[12] = metrics.MutationWorldBursts >= 1 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "DrawProductionCatalogMutationBurst") ? 1u : 0u;
+        results[13] = metrics.MutationWorldPillars >= 6 ? 1u : 0u;
+        results[14] = metrics.MutationWaveGhosts >= 3 ? 1u : 0u;
+        results[15] = metrics.GameObjectiveRouteMutations >= 1 ? 1u : 0u;
+        results[16] = metrics.GameCombatSandboxMutations >= 1 ? 1u : 0u;
+        results[17] = metrics.ActionMutationRequests >= 1 ? 1u : 0u;
+        results[18] = metrics.VerificationAssets[0];
+        results[19] = metrics.VerificationAssets[1];
+        results[20] = metrics.VerificationAssets[2];
+        results[21] = metrics.VerificationAssets[3];
+        results[22] = metrics.VerificationAssets[4];
+        results[23] = metrics.VerificationAssets[5];
+        return results;
+    }
+
+    uint32_t CountReadyV49ActionMutationPoints(
+        const std::array<uint32_t, V49ActionMutationPointCount>& results)
     {
         return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
     }
@@ -1091,6 +1131,82 @@ namespace DisparityGame
         for (size_t index = 0; index < v48Points.size(); ++index)
         {
             report << v48Points[index].Key << "=" << v48Results[index] << "\n";
+        }
+
+        const std::array<uint32_t, 6> v49VerificationAssets = {
+            TextContains("Assets/Verification/V49ActionMutation.dfollowups", "v49_point_24_docs_agent_roadmap_gate") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeReportSchema.dschema", "v49_action_mutation_points") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeBaseline.dverify", "min_v49_action_mutation_points") &&
+                TextContains("Assets/Verification/CameraSweepBaseline.dverify", "min_v49_action_mutation_points") &&
+                TextContains("Assets/Verification/EditorPrecisionBaseline.dverify", "min_v49_action_mutation_points") &&
+                TextContains("Assets/Verification/PostDebugBaseline.dverify", "min_v49_action_mutation_points") &&
+                TextContains("Assets/Verification/AssetReloadBaseline.dverify", "min_v49_action_mutation_points") &&
+                TextContains("Assets/Verification/GizmoDragBaseline.dverify", "min_v49_action_mutation_points") ? 1u : 0u,
+            TextContains("Tools/ReviewReleaseReadiness.ps1", "V49ActionMutationPath") ? 1u : 0u,
+            TextContains("Tools/RuntimeVerifyDisparity.ps1", "v49_action_mutation_points") &&
+                TextContains("Tools/SummarizePerformanceHistory.ps1", "v49_action_mutation_points") ? 1u : 0u,
+            TextContains("README.md", "Engine v49 Action Director Live Mutations Implemented") &&
+                TextContains("Docs/ROADMAP.md", "v49 Completed Action Mutation Batch") &&
+                TextContains("Docs/ENGINE_FEATURES.md", "v49_action_mutation_points") &&
+                TextContains("AGENTS.md", "Editor/runtime v49") ? 1u : 0u
+        };
+        const V49ActionMutationMetrics v49Metrics = {
+            std::max(stats.V49RuntimeMutationPlans, v45Snapshot.MutationPlanSummary.MutationPlanCount),
+            std::max(stats.V49RuntimeMutationRuntimePlans, v45Snapshot.MutationPlanSummary.RuntimeMutationPlans),
+            std::max(stats.V49EditorMutationPlans, v45Snapshot.MutationPlanSummary.EditorMutationPlans),
+            std::max(stats.V49GameplayMutationPlans, v45Snapshot.MutationPlanSummary.GameplayMutationPlans),
+            std::max(stats.V49BudgetBoundMutationPlans, v45Snapshot.MutationPlanSummary.BudgetBoundPlans),
+            stats.V49ActionMutationRequests,
+            stats.V49MutationQueueDepth,
+            stats.V49EngineBudgetMutations,
+            stats.V49SchedulerBudgetMutations,
+            stats.V49StreamingBudgetMutations,
+            stats.V49RenderBudgetMutations,
+            stats.V49EditorWorkspaceMutations,
+            stats.V49EditorCommandMutations,
+            stats.V49TraceEventRows,
+            stats.V49GameSpawnedEncounterWaves,
+            stats.V49GameObjectiveRouteMutations,
+            stats.V49GameCombatSandboxMutations,
+            stats.V49MutationWorldBursts,
+            stats.V49MutationWorldPillars,
+            stats.V49MutationWaveGhosts,
+            stats.V49MutationPanelRows,
+            v49VerificationAssets
+        };
+        const auto v49Results = EvaluateV49ActionMutation(v49Metrics);
+        const uint32_t v49VerificationReady = static_cast<uint32_t>(std::count(v49VerificationAssets.begin(), v49VerificationAssets.end(), 1u));
+        const uint32_t v49ReadyPoints = CountReadyV49ActionMutationPoints(v49Results);
+
+        report << "v49_runtime_mutation_plans=" << v49Metrics.RuntimeMutationPlans << "\n";
+        report << "v49_runtime_mutation_runtime_plans=" << v49Metrics.RuntimeMutationRuntimePlans << "\n";
+        report << "v49_editor_mutation_plans=" << v49Metrics.EditorMutationPlans << "\n";
+        report << "v49_gameplay_mutation_plans=" << v49Metrics.GameplayMutationPlans << "\n";
+        report << "v49_budget_bound_mutation_plans=" << v49Metrics.BudgetBoundMutationPlans << "\n";
+        report << "v49_action_mutation_requests=" << v49Metrics.ActionMutationRequests << "\n";
+        report << "v49_mutation_queue_depth=" << v49Metrics.MutationQueueDepth << "\n";
+        report << "v49_engine_budget_mutations=" << v49Metrics.EngineBudgetMutations << "\n";
+        report << "v49_scheduler_budget_mutations=" << v49Metrics.SchedulerBudgetMutations << "\n";
+        report << "v49_streaming_budget_mutations=" << v49Metrics.StreamingBudgetMutations << "\n";
+        report << "v49_render_budget_mutations=" << v49Metrics.RenderBudgetMutations << "\n";
+        report << "v49_editor_workspace_mutations=" << v49Metrics.EditorWorkspaceMutations << "\n";
+        report << "v49_editor_command_mutations=" << v49Metrics.EditorCommandMutations << "\n";
+        report << "v49_trace_event_rows=" << v49Metrics.TraceEventRows << "\n";
+        report << "v49_game_spawned_encounter_waves=" << v49Metrics.GameSpawnedEncounterWaves << "\n";
+        report << "v49_game_objective_route_mutations=" << v49Metrics.GameObjectiveRouteMutations << "\n";
+        report << "v49_game_combat_sandbox_mutations=" << v49Metrics.GameCombatSandboxMutations << "\n";
+        report << "v49_mutation_world_bursts=" << v49Metrics.MutationWorldBursts << "\n";
+        report << "v49_mutation_world_pillars=" << v49Metrics.MutationWorldPillars << "\n";
+        report << "v49_mutation_wave_ghosts=" << v49Metrics.MutationWaveGhosts << "\n";
+        report << "v49_mutation_panel_rows=" << v49Metrics.MutationPanelRows << "\n";
+        report << "v49_verification_assets=" << v49VerificationReady << "\n";
+        report << "v49_docs_ready=" << v49VerificationAssets[5] << "\n";
+        report << "v49_action_mutation_points=" << v49ReadyPoints << "\n";
+
+        const auto& v49Points = GetV49ActionMutationPoints();
+        for (size_t index = 0; index < v49Points.size(); ++index)
+        {
+            report << v49Points[index].Key << "=" << v49Results[index] << "\n";
         }
     }
 }

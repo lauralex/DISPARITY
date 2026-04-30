@@ -169,6 +169,32 @@ namespace DisparityGame
         std::array<uint32_t, 6> VerificationAssets = {};
     };
 
+    struct V49ActionMutationMetrics
+    {
+        uint32_t RuntimeMutationPlans = 0;
+        uint32_t RuntimeMutationRuntimePlans = 0;
+        uint32_t EditorMutationPlans = 0;
+        uint32_t GameplayMutationPlans = 0;
+        uint32_t BudgetBoundMutationPlans = 0;
+        uint32_t ActionMutationRequests = 0;
+        uint32_t MutationQueueDepth = 0;
+        uint32_t EngineBudgetMutations = 0;
+        uint32_t SchedulerBudgetMutations = 0;
+        uint32_t StreamingBudgetMutations = 0;
+        uint32_t RenderBudgetMutations = 0;
+        uint32_t EditorWorkspaceMutations = 0;
+        uint32_t EditorCommandMutations = 0;
+        uint32_t TraceEventRows = 0;
+        uint32_t GameSpawnedEncounterWaves = 0;
+        uint32_t GameObjectiveRouteMutations = 0;
+        uint32_t GameCombatSandboxMutations = 0;
+        uint32_t MutationWorldBursts = 0;
+        uint32_t MutationWorldPillars = 0;
+        uint32_t MutationWaveGhosts = 0;
+        uint32_t MutationPanelRows = 0;
+        std::array<uint32_t, 6> VerificationAssets = {};
+    };
+
     [[nodiscard]] std::array<uint32_t, V39RoadmapPointCount> EvaluateV39RoadmapBatch(
         const V39RoadmapMetrics& metrics,
         const RuntimeBaseline& baseline);
@@ -207,6 +233,10 @@ namespace DisparityGame
         const V48ActionDirectorMetrics& metrics);
     [[nodiscard]] uint32_t CountReadyV48ActionDirectorPoints(
         const std::array<uint32_t, V48ActionDirectorPointCount>& results);
+    [[nodiscard]] std::array<uint32_t, V49ActionMutationPointCount> EvaluateV49ActionMutation(
+        const V49ActionMutationMetrics& metrics);
+    [[nodiscard]] uint32_t CountReadyV49ActionMutationPoints(
+        const std::array<uint32_t, V49ActionMutationPointCount>& results);
     void CaptureV39RoadmapStats(
         EditorVerificationStats& stats,
         const Disparity::RuntimeCommandRegistryDiagnostics& commandDiagnostics,

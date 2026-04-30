@@ -61,7 +61,7 @@ Editor UI:
 - `Demo Director`: inspect the public vertical slice stage, objective distance, shard/anchor/gate/relay progress, checkpoint/retry/pressure/footstep/combo/collision/traversal/enemy/gamepad/audio/animation telemetry, recent gameplay events, and v30/v31/v32/v33 readiness while the demo is running.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters/production counters, and store/recall a mixer snapshot.
-- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, public-demo event routes, and the live v48 production catalog table/reload/preview/execution/Action Director surface from one live readiness panel.
+- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, public-demo event routes, and the live v49 production catalog table/reload/preview/execution/Action Director mutation surface from one live readiness panel.
 
 ## Engine v0 Features
 
@@ -70,6 +70,14 @@ Editor UI:
 - Keyboard and raw mouse input.
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
+
+## Engine v49 Action Director Live Mutations Implemented
+
+- Added `Assets/Verification/V49ActionMutation.dfollowups`, a twenty-four-point batch that turns Action Director plans into live engine/editor/game mutation state.
+- `ProductionAssetRuntimeCatalog` now builds `ProductionRuntimeMutationPlan` rows with mutation targets, runtime/editor/gameplay flags, budget-bound tags, deterministic costs, and summary diagnostics.
+- `Engine Services > Production Catalogs v49 Live Mutations` now shows mutation totals, live mutation state, active workspace/command/trace rows, a prioritized mutation table, and an `Apply Mutations` control.
+- The playable scene now renders v49 mutation pillars and spawned encounter wave markers around the DISPARITY rift, layered on top of the existing Action Director ribbon burst so the catalog visibly changes the showpiece area.
+- Runtime reports now emit `v49_action_mutation_points`, mutation plan counts, budget/workspace/command/trace/gameplay mutation counters, world pillar/wave counters, verification assets, docs readiness, and every `v49_point_*` metric.
 
 ## Engine v48 Action Director Implemented
 

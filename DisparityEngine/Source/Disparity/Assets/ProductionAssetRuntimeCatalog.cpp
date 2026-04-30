@@ -106,6 +106,47 @@ namespace Disparity
                 trimmedLine.find(validation.ActivationToken) != std::string::npos;
             return entry;
         }
+
+        [[nodiscard]] std::string MutationTargetForAction(const ProductionRuntimeActionPlan& plan)
+        {
+            if (plan.Action == "scheduler_budgets")
+            {
+                return "FrameScheduler.Rendering";
+            }
+            if (plan.Action == "streaming_budgets")
+            {
+                return "AssetStreaming.Critical";
+            }
+            if (plan.Action == "render_budget_classes")
+            {
+                return "RenderGraph.TrailerCapture";
+            }
+            if (plan.Action == "workspace_layouts")
+            {
+                return "EditorWorkspace.TrailerCapture";
+            }
+            if (plan.Action == "command_palette")
+            {
+                return "CommandPalette.disparity.capture.highres";
+            }
+            if (plan.Action == "event_trace_channels")
+            {
+                return "TraceChannel.gameplay.objective";
+            }
+            if (plan.Action == "objective_routes")
+            {
+                return "PublicDemo.Route.Extraction";
+            }
+            if (plan.Action == "encounter_plan")
+            {
+                return "Encounter.ResonanceAmbush";
+            }
+            if (plan.Action == "combat_sandbox")
+            {
+                return "CombatSandbox.RelayPressure";
+            }
+            return plan.Domain + "." + plan.Action;
+        }
     }
 
     std::vector<ProductionRuntimeAsset> LoadProductionRuntimeCatalog(
@@ -277,6 +318,55 @@ namespace Disparity
         return plans;
     }
 
+    std::vector<ProductionRuntimeMutationPlan> BuildProductionRuntimeMutationPlans(
+        const std::vector<ProductionRuntimeActionPlan>& actionPlans)
+    {
+        std::vector<ProductionRuntimeMutationPlan> plans;
+        plans.reserve(actionPlans.size());
+
+        for (const ProductionRuntimeActionPlan& actionPlan : actionPlans)
+        {
+            ProductionRuntimeMutationPlan mutation = {};
+            mutation.SourcePath = actionPlan.SourcePath;
+            mutation.Domain = actionPlan.Domain;
+            mutation.Action = actionPlan.Action;
+            mutation.Name = actionPlan.Name;
+            mutation.MutationTarget = MutationTargetForAction(actionPlan);
+            mutation.StageIndex = actionPlan.StageIndex;
+            mutation.MutatesRuntime = actionPlan.Domain == "Engine" ||
+                actionPlan.Action == "event_trace_channels" ||
+                actionPlan.Action == "scheduler_budgets" ||
+                actionPlan.Action == "streaming_budgets" ||
+                actionPlan.Action == "render_budget_classes";
+            mutation.MutatesEditor = actionPlan.Domain == "Editor" ||
+                actionPlan.Action == "workspace_layouts" ||
+                actionPlan.Action == "command_palette" ||
+                actionPlan.Action == "viewport_bookmarks";
+            mutation.MutatesGameplay = actionPlan.Domain == "Game" ||
+                actionPlan.Action == "objective_routes" ||
+                actionPlan.Action == "encounter_plan" ||
+                actionPlan.Action == "combat_sandbox";
+            mutation.BudgetBound = actionPlan.Action == "scheduler_budgets" ||
+                actionPlan.Action == "streaming_budgets" ||
+                actionPlan.Action == "render_budget_classes";
+            mutation.MutationCost = actionPlan.PriorityScore +
+                (mutation.MutatesRuntime ? 3u : 0u) +
+                (mutation.MutatesEditor ? 2u : 0u) +
+                (mutation.MutatesGameplay ? 4u : 0u) +
+                (mutation.BudgetBound ? 5u : 0u);
+            plans.push_back(std::move(mutation));
+        }
+
+        std::stable_sort(
+            plans.begin(),
+            plans.end(),
+            [](const ProductionRuntimeMutationPlan& left, const ProductionRuntimeMutationPlan& right)
+            {
+                return left.MutationCost > right.MutationCost;
+            });
+        return plans;
+    }
+
     ProductionRuntimeCatalogDiagnostics DiagnoseProductionRuntimeCatalog(
         const std::vector<ProductionRuntimeAsset>& catalog)
     {
@@ -313,6 +403,22 @@ namespace Disparity
             summary.EditorVisiblePlans += plan.EditorVisible ? 1u : 0u;
             summary.PlayablePlans += plan.Playable ? 1u : 0u;
             summary.MaxPriorityScore = std::max(summary.MaxPriorityScore, plan.PriorityScore);
+        }
+        return summary;
+    }
+
+    ProductionRuntimeMutationPlanSummary SummarizeProductionRuntimeMutationPlans(
+        const std::vector<ProductionRuntimeMutationPlan>& plans)
+    {
+        ProductionRuntimeMutationPlanSummary summary = {};
+        summary.MutationPlanCount = static_cast<uint32_t>(plans.size());
+        for (const ProductionRuntimeMutationPlan& plan : plans)
+        {
+            summary.RuntimeMutationPlans += plan.MutatesRuntime ? 1u : 0u;
+            summary.EditorMutationPlans += plan.MutatesEditor ? 1u : 0u;
+            summary.GameplayMutationPlans += plan.MutatesGameplay ? 1u : 0u;
+            summary.BudgetBoundPlans += plan.BudgetBound ? 1u : 0u;
+            summary.MaxMutationCost = std::max(summary.MaxMutationCost, plan.MutationCost);
         }
         return summary;
     }

@@ -107,6 +107,31 @@ namespace Disparity
         uint32_t MaxPriorityScore = 0;
     };
 
+    struct ProductionRuntimeMutationPlan
+    {
+        std::filesystem::path SourcePath;
+        std::string Domain;
+        std::string Action;
+        std::string Name;
+        std::string MutationTarget;
+        uint32_t StageIndex = 0;
+        uint32_t MutationCost = 0;
+        bool MutatesRuntime = false;
+        bool MutatesEditor = false;
+        bool MutatesGameplay = false;
+        bool BudgetBound = false;
+    };
+
+    struct ProductionRuntimeMutationPlanSummary
+    {
+        uint32_t MutationPlanCount = 0;
+        uint32_t RuntimeMutationPlans = 0;
+        uint32_t EditorMutationPlans = 0;
+        uint32_t GameplayMutationPlans = 0;
+        uint32_t BudgetBoundPlans = 0;
+        uint32_t MaxMutationCost = 0;
+    };
+
     [[nodiscard]] std::vector<ProductionRuntimeAsset> LoadProductionRuntimeCatalog(
         const std::vector<ProductionRuntimeAssetRule>& rules);
     [[nodiscard]] ProductionRuntimeCatalogSummary SummarizeProductionRuntimeCatalog(
@@ -115,10 +140,14 @@ namespace Disparity
         const std::vector<ProductionRuntimeAsset>& catalog);
     [[nodiscard]] std::vector<ProductionRuntimeActionPlan> BuildProductionRuntimeActionPlans(
         const std::vector<ProductionRuntimeBinding>& bindings);
+    [[nodiscard]] std::vector<ProductionRuntimeMutationPlan> BuildProductionRuntimeMutationPlans(
+        const std::vector<ProductionRuntimeActionPlan>& actionPlans);
     [[nodiscard]] ProductionRuntimeCatalogDiagnostics DiagnoseProductionRuntimeCatalog(
         const std::vector<ProductionRuntimeAsset>& catalog);
     [[nodiscard]] ProductionRuntimeActionPlanSummary SummarizeProductionRuntimeActionPlans(
         const std::vector<ProductionRuntimeActionPlan>& plans);
+    [[nodiscard]] ProductionRuntimeMutationPlanSummary SummarizeProductionRuntimeMutationPlans(
+        const std::vector<ProductionRuntimeMutationPlan>& plans);
     [[nodiscard]] const ProductionRuntimeAssetField* FindProductionRuntimeField(
         const ProductionRuntimeAssetEntry& entry,
         const std::string& key);

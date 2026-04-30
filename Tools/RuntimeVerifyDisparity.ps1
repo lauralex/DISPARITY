@@ -914,6 +914,62 @@ function Assert-RuntimeReportSchema {
             throw "Runtime verification report did not satisfy v48 metric '$metric'."
         }
     }
+    if ($Metrics.ContainsKey("v49_action_mutation_points") -and [int]$Metrics["v49_action_mutation_points"] -lt 24) {
+        throw "Runtime verification report did not verify all twenty-four v49 Action Mutation points."
+    }
+    foreach ($metric in ($Metrics.Keys | Where-Object { $_ -like "v49_point_*" })) {
+        if ([int]$Metrics[$metric] -lt 1) {
+            throw "Runtime verification report did not mark v49 readiness metric '$metric' ready."
+        }
+    }
+    foreach ($metric in @(
+        "v49_runtime_mutation_plans"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 18) {
+            throw "Runtime verification report recorded too few v49 mutation plans for '$metric'."
+        }
+    }
+    foreach ($metric in @(
+        "v49_runtime_mutation_runtime_plans",
+        "v49_editor_mutation_plans",
+        "v49_gameplay_mutation_plans",
+        "v49_mutation_queue_depth",
+        "v49_mutation_panel_rows"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 6) {
+            throw "Runtime verification report recorded too few v49 readiness values for '$metric'."
+        }
+    }
+    foreach ($metric in @(
+        "v49_budget_bound_mutation_plans",
+        "v49_engine_budget_mutations",
+        "v49_mutation_wave_ghosts"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 3) {
+            throw "Runtime verification report recorded too few v49 mutation values for '$metric'."
+        }
+    }
+    foreach ($metric in @(
+        "v49_action_mutation_requests",
+        "v49_scheduler_budget_mutations",
+        "v49_streaming_budget_mutations",
+        "v49_render_budget_mutations",
+        "v49_editor_workspace_mutations",
+        "v49_editor_command_mutations",
+        "v49_trace_event_rows",
+        "v49_game_spawned_encounter_waves",
+        "v49_game_objective_route_mutations",
+        "v49_game_combat_sandbox_mutations",
+        "v49_mutation_world_bursts",
+        "v49_docs_ready"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 1) {
+            throw "Runtime verification report did not satisfy v49 metric '$metric'."
+        }
+    }
+    if ($Metrics.ContainsKey("v49_mutation_world_pillars") -and [int]$Metrics["v49_mutation_world_pillars"] -lt 6) {
+        throw "Runtime verification report drew too few v49 mutation pillars."
+    }
     if ($Metrics.ContainsKey("public_demo_blend_tree_clips") -and [int]$Metrics["public_demo_blend_tree_clips"] -lt 4) {
         throw "Runtime verification report recorded too few public demo blend-tree clips."
     }
@@ -1048,6 +1104,7 @@ if (!$DisablePerfHistory) {
     $historyHeader += ",v46_catalog_selectable_rows,v46_catalog_preview_selections,v46_catalog_preview_cycles,v46_catalog_preview_clears,v46_catalog_preview_details,v46_catalog_focused_beacons,v46_engine_preview_bindings,v46_editor_preview_bindings,v46_game_preview_bindings,v46_runtime_action_commands,v46_verification_assets,v46_docs_ready,v46_catalog_action_preview_points"
     $historyHeader += ",v47_catalog_execute_requests,v47_catalog_execution_stops,v47_catalog_execution_pulses,v47_engine_executable_bindings,v47_editor_executable_bindings,v47_game_executable_bindings,v47_engine_execution_overlays,v47_editor_execution_overlays,v47_game_execution_overlays,v47_world_execution_markers,v47_action_route_beams,v47_execution_detail_rows,v47_verification_assets,v47_docs_ready,v47_catalog_execution_points"
     $historyHeader += ",v48_runtime_action_plans,v48_runtime_ready_action_plans,v48_high_impact_action_plans,v48_editor_visible_action_plans,v48_playable_action_plans,v48_action_director_requests,v48_action_director_queue_depth,v48_action_director_history_rows,v48_director_cinematic_bursts,v48_director_route_ribbons,v48_director_encounter_ghosts,v48_director_editor_queue_rows,v48_director_plan_summary_rows,v48_verification_assets,v48_docs_ready,v48_action_director_points"
+    $historyHeader += ",v49_runtime_mutation_plans,v49_runtime_mutation_runtime_plans,v49_editor_mutation_plans,v49_gameplay_mutation_plans,v49_budget_bound_mutation_plans,v49_action_mutation_requests,v49_mutation_queue_depth,v49_engine_budget_mutations,v49_scheduler_budget_mutations,v49_streaming_budget_mutations,v49_render_budget_mutations,v49_editor_workspace_mutations,v49_editor_command_mutations,v49_trace_event_rows,v49_game_spawned_encounter_waves,v49_game_objective_route_mutations,v49_game_combat_sandbox_mutations,v49_mutation_world_bursts,v49_mutation_world_pillars,v49_mutation_wave_ghosts,v49_mutation_panel_rows,v49_verification_assets,v49_docs_ready,v49_action_mutation_points"
     if (Test-Path -LiteralPath $HistoryPath) {
         $currentHeader = Get-Content -LiteralPath $HistoryPath -First 1
         if ($currentHeader -ne $historyHeader) {
@@ -1418,7 +1475,31 @@ if (!$DisablePerfHistory) {
         $metrics["v48_director_plan_summary_rows"],
         $metrics["v48_verification_assets"],
         $metrics["v48_docs_ready"],
-        $metrics["v48_action_director_points"]
+        $metrics["v48_action_director_points"],
+        $metrics["v49_runtime_mutation_plans"],
+        $metrics["v49_runtime_mutation_runtime_plans"],
+        $metrics["v49_editor_mutation_plans"],
+        $metrics["v49_gameplay_mutation_plans"],
+        $metrics["v49_budget_bound_mutation_plans"],
+        $metrics["v49_action_mutation_requests"],
+        $metrics["v49_mutation_queue_depth"],
+        $metrics["v49_engine_budget_mutations"],
+        $metrics["v49_scheduler_budget_mutations"],
+        $metrics["v49_streaming_budget_mutations"],
+        $metrics["v49_render_budget_mutations"],
+        $metrics["v49_editor_workspace_mutations"],
+        $metrics["v49_editor_command_mutations"],
+        $metrics["v49_trace_event_rows"],
+        $metrics["v49_game_spawned_encounter_waves"],
+        $metrics["v49_game_objective_route_mutations"],
+        $metrics["v49_game_combat_sandbox_mutations"],
+        $metrics["v49_mutation_world_bursts"],
+        $metrics["v49_mutation_world_pillars"],
+        $metrics["v49_mutation_wave_ghosts"],
+        $metrics["v49_mutation_panel_rows"],
+        $metrics["v49_verification_assets"],
+        $metrics["v49_docs_ready"],
+        $metrics["v49_action_mutation_points"]
     ) | ForEach-Object {
         '"' + ([string]$_ -replace '"', '""') + '"'
     }

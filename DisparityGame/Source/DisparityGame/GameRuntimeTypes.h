@@ -780,6 +780,7 @@ inline constexpr size_t V45LiveCatalogPointCount = V45LiveCatalogBatchPointCount
 inline constexpr size_t V46CatalogActionPreviewPointCount = V46CatalogActionPreviewBatchPointCount;
 inline constexpr size_t V47CatalogExecutionPointCount = V47CatalogExecutionBatchPointCount;
 inline constexpr size_t V48ActionDirectorPointCount = V48ActionDirectorBatchPointCount;
+inline constexpr size_t V49ActionMutationPointCount = V49ActionMutationBatchPointCount;
 inline constexpr size_t PublicDemoShardCount = 6;
 inline constexpr size_t PublicDemoAnchorCount = 3;
 inline constexpr size_t PublicDemoResonanceGateCount = 2;
@@ -1231,6 +1232,28 @@ struct EditorVerificationStats
     uint32_t V48DirectorEditorQueueRows = 0;
     uint32_t V48DirectorPlanSummaryRows = 0;
     uint32_t V48ActionDirectorPointTests = 0;
+    uint32_t V49RuntimeMutationPlans = 0;
+    uint32_t V49RuntimeMutationRuntimePlans = 0;
+    uint32_t V49EditorMutationPlans = 0;
+    uint32_t V49GameplayMutationPlans = 0;
+    uint32_t V49BudgetBoundMutationPlans = 0;
+    uint32_t V49ActionMutationRequests = 0;
+    uint32_t V49MutationQueueDepth = 0;
+    uint32_t V49EngineBudgetMutations = 0;
+    uint32_t V49SchedulerBudgetMutations = 0;
+    uint32_t V49StreamingBudgetMutations = 0;
+    uint32_t V49RenderBudgetMutations = 0;
+    uint32_t V49EditorWorkspaceMutations = 0;
+    uint32_t V49EditorCommandMutations = 0;
+    uint32_t V49TraceEventRows = 0;
+    uint32_t V49GameSpawnedEncounterWaves = 0;
+    uint32_t V49GameObjectiveRouteMutations = 0;
+    uint32_t V49GameCombatSandboxMutations = 0;
+    uint32_t V49MutationWorldBursts = 0;
+    uint32_t V49MutationWorldPillars = 0;
+    uint32_t V49MutationWaveGhosts = 0;
+    uint32_t V49MutationPanelRows = 0;
+    uint32_t V49ActionMutationPointTests = 0;
 };
 
 }

@@ -182,6 +182,126 @@ namespace DisparityGame
             stats.V48DirectorPlanSummaryRows = std::max(stats.V48DirectorPlanSummaryRows, state.DirectorPlanSummaryRows);
         }
 
+        void ApplyMutationDirectorStats(
+            const ProductionCatalogSnapshot& snapshot,
+            const ProductionCatalogPreviewState& state,
+            EditorVerificationStats& stats)
+        {
+            stats.V49RuntimeMutationPlans = snapshot.MutationPlanSummary.MutationPlanCount;
+            stats.V49RuntimeMutationRuntimePlans = snapshot.MutationPlanSummary.RuntimeMutationPlans;
+            stats.V49EditorMutationPlans = snapshot.MutationPlanSummary.EditorMutationPlans;
+            stats.V49GameplayMutationPlans = snapshot.MutationPlanSummary.GameplayMutationPlans;
+            stats.V49BudgetBoundMutationPlans = snapshot.MutationPlanSummary.BudgetBoundPlans;
+            stats.V49ActionMutationRequests = state.ActionMutationRequests + (state.MutationsActive ? 1u : 0u);
+            stats.V49MutationQueueDepth = std::max(
+                state.MutationQueueDepth,
+                static_cast<uint32_t>(std::min<size_t>(snapshot.MutationPlans.size(), 6u)));
+            stats.V49EngineBudgetMutations = std::max(stats.V49EngineBudgetMutations, state.EngineBudgetMutations);
+            stats.V49SchedulerBudgetMutations = std::max(stats.V49SchedulerBudgetMutations, state.EngineSchedulerBudgetMutations);
+            stats.V49StreamingBudgetMutations = std::max(stats.V49StreamingBudgetMutations, state.EngineStreamingBudgetMutations);
+            stats.V49RenderBudgetMutations = std::max(stats.V49RenderBudgetMutations, state.EngineRenderBudgetMutations);
+            stats.V49EditorWorkspaceMutations = std::max(stats.V49EditorWorkspaceMutations, state.EditorWorkspaceMutations);
+            stats.V49EditorCommandMutations = std::max(stats.V49EditorCommandMutations, state.EditorCommandMutations);
+            stats.V49TraceEventRows = std::max(stats.V49TraceEventRows, state.EditorTraceEventRows);
+            stats.V49GameSpawnedEncounterWaves = std::max(stats.V49GameSpawnedEncounterWaves, state.GameSpawnedEncounterWaves);
+            stats.V49GameObjectiveRouteMutations = std::max(stats.V49GameObjectiveRouteMutations, state.GameObjectiveRouteMutations);
+            stats.V49GameCombatSandboxMutations = std::max(stats.V49GameCombatSandboxMutations, state.GameCombatSandboxMutations);
+            stats.V49MutationWorldBursts = std::max(stats.V49MutationWorldBursts, state.MutationWorldBursts);
+            stats.V49MutationWorldPillars = std::max(stats.V49MutationWorldPillars, state.MutationWorldPillars);
+            stats.V49MutationWaveGhosts = std::max(stats.V49MutationWaveGhosts, state.MutationWaveGhosts);
+            stats.V49MutationPanelRows = std::max(stats.V49MutationPanelRows, state.MutationPanelRows);
+        }
+
+        void ApplyProductionActionDirectorMutations(
+            const ProductionCatalogSnapshot& snapshot,
+            ProductionCatalogPreviewState& state,
+            EditorVerificationStats& stats)
+        {
+            if (snapshot.MutationPlans.empty())
+            {
+                state.MutationsActive = false;
+                return;
+            }
+
+            state.MutationsActive = true;
+            state.DirectorActive = true;
+            state.ExecutionActive = true;
+            ++state.ActionMutationRequests;
+            state.MutationQueueDepth = static_cast<uint32_t>(std::min<size_t>(snapshot.MutationPlans.size(), 6u));
+            state.MutationPanelRows = std::max(state.MutationPanelRows, state.MutationQueueDepth);
+
+            uint32_t budgetMutations = 0;
+            uint32_t schedulerMutations = 0;
+            uint32_t streamingMutations = 0;
+            uint32_t renderMutations = 0;
+            uint32_t workspaceMutations = 0;
+            uint32_t commandMutations = 0;
+            uint32_t traceRows = 0;
+            uint32_t encounterWaves = 0;
+            uint32_t objectiveMutations = 0;
+            uint32_t combatMutations = 0;
+
+            for (const Disparity::ProductionRuntimeMutationPlan& plan : snapshot.MutationPlans)
+            {
+                if (plan.BudgetBound || plan.MutatesRuntime)
+                {
+                    ++budgetMutations;
+                }
+                if (plan.Action == "scheduler_budgets")
+                {
+                    ++schedulerMutations;
+                }
+                if (plan.Action == "streaming_budgets")
+                {
+                    ++streamingMutations;
+                }
+                if (plan.Action == "render_budget_classes")
+                {
+                    ++renderMutations;
+                }
+                if (plan.Action == "workspace_layouts")
+                {
+                    ++workspaceMutations;
+                    state.ActiveWorkspacePreset = "TrailerCapture";
+                }
+                if (plan.Action == "command_palette")
+                {
+                    ++commandMutations;
+                    state.ActiveCommandName = "disparity.capture.highres";
+                }
+                if (plan.Action == "event_trace_channels")
+                {
+                    ++traceRows;
+                    state.ActiveTraceChannel = "gameplay.objective";
+                }
+                if (plan.Action == "encounter_plan")
+                {
+                    encounterWaves += 2u;
+                }
+                if (plan.Action == "objective_routes")
+                {
+                    ++objectiveMutations;
+                }
+                if (plan.Action == "combat_sandbox")
+                {
+                    ++combatMutations;
+                    ++encounterWaves;
+                }
+            }
+
+            state.EngineBudgetMutations = std::max(state.EngineBudgetMutations, budgetMutations);
+            state.EngineSchedulerBudgetMutations = std::max(state.EngineSchedulerBudgetMutations, schedulerMutations);
+            state.EngineStreamingBudgetMutations = std::max(state.EngineStreamingBudgetMutations, streamingMutations);
+            state.EngineRenderBudgetMutations = std::max(state.EngineRenderBudgetMutations, renderMutations);
+            state.EditorWorkspaceMutations = std::max(state.EditorWorkspaceMutations, workspaceMutations);
+            state.EditorCommandMutations = std::max(state.EditorCommandMutations, commandMutations);
+            state.EditorTraceEventRows = std::max(state.EditorTraceEventRows, traceRows);
+            state.GameSpawnedEncounterWaves = std::max(state.GameSpawnedEncounterWaves, encounterWaves);
+            state.GameObjectiveRouteMutations = std::max(state.GameObjectiveRouteMutations, objectiveMutations);
+            state.GameCombatSandboxMutations = std::max(state.GameCombatSandboxMutations, combatMutations);
+            ApplyMutationDirectorStats(snapshot, state, stats);
+        }
+
         void ArmProductionActionDirector(
             const ProductionCatalogSnapshot& snapshot,
             ProductionCatalogPreviewState& state,
@@ -200,6 +320,7 @@ namespace DisparityGame
             state.DirectorEditorQueueRows = std::max(state.DirectorEditorQueueRows, state.ActionDirectorQueueDepth);
             state.DirectorPlanSummaryRows = std::max(state.DirectorPlanSummaryRows, 1u);
             ++state.ActionDirectorRequests;
+            ApplyProductionActionDirectorMutations(snapshot, state, stats);
             ApplyActionDirectorStats(snapshot, state, stats);
         }
 
@@ -277,6 +398,94 @@ namespace DisparityGame
             stats.V48DirectorRouteRibbons += ribbonSegments;
             stats.V48DirectorEncounterGhosts += ghostCount;
             ApplyActionDirectorStats(snapshot, preview, stats);
+            return drawCount;
+        }
+
+        [[nodiscard]] uint32_t DrawProductionCatalogMutationBurst(
+            Disparity::Renderer& renderer,
+            const ProductionCatalogSnapshot& snapshot,
+            ProductionCatalogPreviewState& preview,
+            EditorVerificationStats& stats,
+            float visualTime,
+            const DirectX::XMFLOAT3& center,
+            const Disparity::Material& baseMaterial,
+            Disparity::MeshHandle mesh)
+        {
+            if (!preview.MutationsActive || snapshot.MutationPlans.empty())
+            {
+                return 0;
+            }
+
+            const float pulse = 0.5f + 0.5f * std::sin(visualTime * 6.4f);
+            const float spin = visualTime * 0.72f + static_cast<float>(preview.ActionMutationRequests) * 0.19f;
+            const uint32_t pillarCount = static_cast<uint32_t>(std::min<size_t>(snapshot.MutationPlans.size(), 6u));
+            uint32_t drawCount = 0;
+
+            for (uint32_t index = 0; index < pillarCount; ++index)
+            {
+                const Disparity::ProductionRuntimeMutationPlan& plan = snapshot.MutationPlans[index];
+                const DirectX::XMFLOAT3 color = DomainColor(plan.Domain);
+                const float t = static_cast<float>(index) / static_cast<float>(std::max(1u, pillarCount));
+                const float angle = spin + t * TwoPi;
+                const float radius = 4.15f + static_cast<float>(index % 2u) * 0.55f;
+
+                Disparity::Material pillarMaterial = baseMaterial;
+                pillarMaterial.Albedo = {
+                    color.x * (1.35f + pulse * 0.45f),
+                    color.y * (1.35f + pulse * 0.45f),
+                    color.z * (1.35f + pulse * 0.45f)
+                };
+                pillarMaterial.Emissive = color;
+                pillarMaterial.EmissiveIntensity = std::max(pillarMaterial.EmissiveIntensity, 3.9f + pulse * 1.8f);
+                pillarMaterial.Alpha = 0.68f;
+
+                Disparity::Transform pillar;
+                pillar.Position = Add(center, {
+                    std::sin(angle) * radius,
+                    1.18f + static_cast<float>(index) * 0.12f + pulse * 0.24f,
+                    std::cos(angle) * radius * 0.76f
+                });
+                pillar.Rotation = { 0.0f, -angle, visualTime * 0.21f };
+                pillar.Scale = { 0.16f + pulse * 0.025f, 1.38f + static_cast<float>(index) * 0.10f, 0.16f + pulse * 0.025f };
+                renderer.DrawMesh(mesh, pillar, pillarMaterial);
+                ++drawCount;
+
+                Disparity::Transform cap = pillar;
+                cap.Position.y += 1.02f + pulse * 0.18f;
+                cap.Rotation = { visualTime * 0.58f, angle, visualTime * 0.47f };
+                cap.Scale = { 0.42f, 0.055f, 0.42f };
+                renderer.DrawMesh(mesh, cap, pillarMaterial);
+                ++drawCount;
+            }
+
+            const uint32_t ghostCount = std::max(
+                3u,
+                std::min(6u, preview.GameSpawnedEncounterWaves + preview.GameCombatSandboxMutations));
+            Disparity::Material waveMaterial = baseMaterial;
+            waveMaterial.Albedo = { 1.0f, 0.30f + pulse * 0.25f, 0.62f };
+            waveMaterial.Emissive = { 1.0f, 0.18f, 0.72f };
+            waveMaterial.EmissiveIntensity = std::max(waveMaterial.EmissiveIntensity, 5.0f + pulse * 1.4f);
+            waveMaterial.Alpha = 0.56f;
+
+            for (uint32_t index = 0; index < ghostCount; ++index)
+            {
+                const float angle = -spin * 0.82f + static_cast<float>(index) / static_cast<float>(ghostCount) * TwoPi;
+                Disparity::Transform ghost;
+                ghost.Position = Add(center, {
+                    std::sin(angle) * 5.3f,
+                    0.68f + pulse * 0.18f,
+                    std::cos(angle) * 3.95f
+                });
+                ghost.Rotation = { 0.0f, angle + visualTime * 0.55f, 0.0f };
+                ghost.Scale = { 0.32f + pulse * 0.05f, 0.88f + pulse * 0.16f, 0.32f + pulse * 0.05f };
+                renderer.DrawMesh(mesh, ghost, waveMaterial);
+                ++drawCount;
+            }
+
+            preview.MutationWorldBursts += 1u;
+            preview.MutationWorldPillars += pillarCount;
+            preview.MutationWaveGhosts += ghostCount;
+            ApplyMutationDirectorStats(snapshot, preview, stats);
             return drawCount;
         }
 
@@ -400,9 +609,11 @@ namespace DisparityGame
         snapshot.Assets = Disparity::LoadProductionRuntimeCatalog(BuildProductionRuntimeCatalogRules());
         snapshot.Bindings = Disparity::BuildProductionRuntimeBindings(snapshot.Assets);
         snapshot.ActionPlans = Disparity::BuildProductionRuntimeActionPlans(snapshot.Bindings);
+        snapshot.MutationPlans = Disparity::BuildProductionRuntimeMutationPlans(snapshot.ActionPlans);
         snapshot.Summary = Disparity::SummarizeProductionRuntimeCatalog(snapshot.Assets);
         snapshot.Diagnostics = Disparity::DiagnoseProductionRuntimeCatalog(snapshot.Assets);
         snapshot.ActionPlanSummary = Disparity::SummarizeProductionRuntimeActionPlans(snapshot.ActionPlans);
+        snapshot.MutationPlanSummary = Disparity::SummarizeProductionRuntimeMutationPlans(snapshot.MutationPlans);
 
         const Disparity::ProductionAssetValidationRule malformedRule = {
             "Assets/Verification/V45MalformedCatalog.dprod",
@@ -442,6 +653,7 @@ namespace DisparityGame
         stats.V45CatalogEncounterBindings = CountProductionCatalogBindingsByAction(snapshot, "encounter_plan");
         stats.V45CatalogNegativeFixtureTests = snapshot.NegativeFixtureRejected;
         ApplyActionDirectorStats(snapshot, {}, stats);
+        ApplyMutationDirectorStats(snapshot, {}, stats);
     }
 
     void PrimeProductionCatalogPreview(
@@ -494,6 +706,7 @@ namespace DisparityGame
         stats.V47ActionRouteBeams = std::max(stats.V47ActionRouteBeams, state.ActionRouteBeams);
         stats.V47ExecutionDetailRows = state.ExecutionDetailRows;
         ApplyActionDirectorStats(snapshot, state, stats);
+        ApplyMutationDirectorStats(snapshot, state, stats);
     }
 
     void ExecuteProductionCatalogPreview(
@@ -519,9 +732,11 @@ namespace DisparityGame
     {
         state.ExecutionActive = false;
         state.DirectorActive = false;
+        state.MutationsActive = false;
         ++state.StopRequests;
         stats.V47CatalogExecutionStops = state.StopRequests;
         stats.V48ActionDirectorHistoryRows = std::max(stats.V48ActionDirectorHistoryRows, state.StopRequests);
+        stats.V49ActionMutationRequests = std::max(stats.V49ActionMutationRequests, state.ActionMutationRequests);
     }
 
     bool DrawProductionCatalogSnapshotPanel(
@@ -533,7 +748,7 @@ namespace DisparityGame
         ClampPreviewSelection(snapshot, preview);
         ApplyProductionCatalogPreviewStats(snapshot, preview, stats);
 
-        ImGui::SeparatorText("Production Catalogs v48 Action Director");
+        ImGui::SeparatorText("Production Catalogs v49 Live Mutations");
         ImGui::Text(
             "Bindings: %u live / %u ready  Engine %u  Editor %u  Game %u",
             snapshot.Diagnostics.BindingCount,
@@ -555,6 +770,14 @@ namespace DisparityGame
             snapshot.ActionPlanSummary.EditorVisiblePlans,
             snapshot.ActionPlanSummary.PlayablePlans,
             snapshot.ActionPlanSummary.MaxPriorityScore);
+        ImGui::Text(
+            "Mutations: %u total  runtime %u  editor %u  game %u  budget %u  max cost %u",
+            snapshot.MutationPlanSummary.MutationPlanCount,
+            snapshot.MutationPlanSummary.RuntimeMutationPlans,
+            snapshot.MutationPlanSummary.EditorMutationPlans,
+            snapshot.MutationPlanSummary.GameplayMutationPlans,
+            snapshot.MutationPlanSummary.BudgetBoundPlans,
+            snapshot.MutationPlanSummary.MaxMutationCost);
         ++preview.DirectorPlanSummaryRows;
         const bool reloadRequested = ImGui::Button("Reload Catalog##ProductionCatalogPanel");
         ImGui::SameLine();
@@ -583,6 +806,11 @@ namespace DisparityGame
         if (ImGui::Button("Director Burst##ProductionCatalogActionDirector"))
         {
             ArmProductionActionDirector(snapshot, preview, stats);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Apply Mutations##ProductionCatalogLiveMutations"))
+        {
+            ApplyProductionActionDirectorMutations(snapshot, preview, stats);
         }
         ImGui::SameLine();
         if (ImGui::Button("Stop##ProductionCatalogExecution"))
@@ -616,6 +844,50 @@ namespace DisparityGame
                 preview.ActionDirectorHistoryRows,
                 preview.DirectorRouteRibbons,
                 preview.DirectorEncounterGhosts);
+            ImGui::Text(
+                "Mutations: %s  requests %u  queue %u  budgets %u  waves %u",
+                preview.MutationsActive ? "applied" : "idle",
+                preview.ActionMutationRequests,
+                preview.MutationQueueDepth,
+                preview.EngineBudgetMutations,
+                preview.GameSpawnedEncounterWaves);
+            ImGui::Text(
+                "State: workspace %s  command %s  trace %s",
+                preview.ActiveWorkspacePreset.empty() ? "pending" : preview.ActiveWorkspacePreset.c_str(),
+                preview.ActiveCommandName.empty() ? "pending" : preview.ActiveCommandName.c_str(),
+                preview.ActiveTraceChannel.empty() ? "pending" : preview.ActiveTraceChannel.c_str());
+        }
+
+        if (ImGui::BeginTable(
+            "ProductionCatalogMutations##EngineServices",
+            4,
+            ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp,
+            ImVec2(0.0f, 92.0f)))
+        {
+            ImGui::TableSetupColumn("Cost", ImGuiTableColumnFlags_WidthFixed, 48.0f);
+            ImGui::TableSetupColumn("Target", ImGuiTableColumnFlags_WidthStretch, 1.25f);
+            ImGui::TableSetupColumn("Domain", ImGuiTableColumnFlags_WidthFixed, 64.0f);
+            ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+            ImGui::TableHeadersRow();
+
+            const size_t rowCount = std::min<size_t>(snapshot.MutationPlans.size(), 6u);
+            preview.MutationQueueDepth = static_cast<uint32_t>(rowCount);
+            preview.MutationPanelRows += static_cast<uint32_t>(rowCount);
+            for (size_t index = 0; index < rowCount; ++index)
+            {
+                const Disparity::ProductionRuntimeMutationPlan& plan = snapshot.MutationPlans[index];
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%u", plan.MutationCost);
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextUnformatted(plan.MutationTarget.c_str());
+                ImGui::TableSetColumnIndex(2);
+                ImGui::TextUnformatted(plan.Domain.c_str());
+                ImGui::TableSetColumnIndex(3);
+                ImGui::TextUnformatted(plan.Action.c_str());
+            }
+
+            ImGui::EndTable();
         }
 
         if (ImGui::BeginTable(
@@ -763,7 +1035,16 @@ namespace DisparityGame
             center,
             baseMaterial,
             mesh);
+        const uint32_t mutationMarkers = DrawProductionCatalogMutationBurst(
+            renderer,
+            snapshot,
+            preview,
+            stats,
+            visualTime,
+            center,
+            baseMaterial,
+            mesh);
         ApplyProductionCatalogPreviewStats(snapshot, preview, stats);
-        return beaconCount + executionMarkers + directorMarkers;
+        return beaconCount + executionMarkers + directorMarkers + mutationMarkers;
     }
 }
