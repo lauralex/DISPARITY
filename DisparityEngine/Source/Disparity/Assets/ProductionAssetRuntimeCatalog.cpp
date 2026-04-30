@@ -230,6 +230,53 @@ namespace Disparity
         return bindings;
     }
 
+    std::vector<ProductionRuntimeActionPlan> BuildProductionRuntimeActionPlans(
+        const std::vector<ProductionRuntimeBinding>& bindings)
+    {
+        std::vector<ProductionRuntimeActionPlan> plans;
+        plans.reserve(bindings.size());
+
+        uint32_t stageIndex = 0;
+        for (const ProductionRuntimeBinding& binding : bindings)
+        {
+            ProductionRuntimeActionPlan plan = {};
+            plan.SourcePath = binding.SourcePath;
+            plan.Domain = binding.Domain;
+            plan.Action = binding.Action;
+            plan.Name = binding.Name;
+            plan.StageIndex = stageIndex++;
+            plan.RuntimeReady = binding.RuntimeReady;
+            plan.HighImpact = binding.Action == "objective_routes" ||
+                binding.Action == "encounter_plan" ||
+                binding.Action == "combat_sandbox" ||
+                binding.Action == "render_budget_classes" ||
+                binding.Action == "scheduler_budgets";
+            plan.EditorVisible = binding.Domain == "Editor" ||
+                binding.Action == "command_palette" ||
+                binding.Action == "workspace_layouts" ||
+                binding.Action == "viewport_bookmarks";
+            plan.Playable = binding.Domain == "Game" ||
+                binding.Action == "objective_routes" ||
+                binding.Action == "encounter_plan" ||
+                binding.Action == "combat_sandbox";
+            plan.PriorityScore = binding.FieldCount * 2u +
+                (binding.RuntimeReady ? 8u : 0u) +
+                (plan.HighImpact ? 6u : 0u) +
+                (plan.EditorVisible ? 3u : 0u) +
+                (plan.Playable ? 4u : 0u);
+            plans.push_back(std::move(plan));
+        }
+
+        std::stable_sort(
+            plans.begin(),
+            plans.end(),
+            [](const ProductionRuntimeActionPlan& left, const ProductionRuntimeActionPlan& right)
+            {
+                return left.PriorityScore > right.PriorityScore;
+            });
+        return plans;
+    }
+
     ProductionRuntimeCatalogDiagnostics DiagnoseProductionRuntimeCatalog(
         const std::vector<ProductionRuntimeAsset>& catalog)
     {
@@ -249,6 +296,25 @@ namespace Disparity
         }
 
         return diagnostics;
+    }
+
+    ProductionRuntimeActionPlanSummary SummarizeProductionRuntimeActionPlans(
+        const std::vector<ProductionRuntimeActionPlan>& plans)
+    {
+        ProductionRuntimeActionPlanSummary summary = {};
+        summary.ActionPlanCount = static_cast<uint32_t>(plans.size());
+        for (const ProductionRuntimeActionPlan& plan : plans)
+        {
+            summary.RuntimeReadyPlans += plan.RuntimeReady ? 1u : 0u;
+            summary.EnginePlans += plan.Domain == "Engine" ? 1u : 0u;
+            summary.EditorPlans += plan.Domain == "Editor" ? 1u : 0u;
+            summary.GamePlans += plan.Domain == "Game" ? 1u : 0u;
+            summary.HighImpactPlans += plan.HighImpact ? 1u : 0u;
+            summary.EditorVisiblePlans += plan.EditorVisible ? 1u : 0u;
+            summary.PlayablePlans += plan.Playable ? 1u : 0u;
+            summary.MaxPriorityScore = std::max(summary.MaxPriorityScore, plan.PriorityScore);
+        }
+        return summary;
     }
 
     const ProductionRuntimeAssetField* FindProductionRuntimeField(

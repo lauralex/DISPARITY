@@ -779,6 +779,7 @@ inline constexpr size_t V44RuntimeCatalogPointCount = V44RuntimeCatalogBatchPoin
 inline constexpr size_t V45LiveCatalogPointCount = V45LiveCatalogBatchPointCount;
 inline constexpr size_t V46CatalogActionPreviewPointCount = V46CatalogActionPreviewBatchPointCount;
 inline constexpr size_t V47CatalogExecutionPointCount = V47CatalogExecutionBatchPointCount;
+inline constexpr size_t V48ActionDirectorPointCount = V48ActionDirectorBatchPointCount;
 inline constexpr size_t PublicDemoShardCount = 6;
 inline constexpr size_t PublicDemoAnchorCount = 3;
 inline constexpr size_t PublicDemoResonanceGateCount = 2;
@@ -1216,6 +1217,20 @@ struct EditorVerificationStats
     uint32_t V47ActionRouteBeams = 0;
     uint32_t V47ExecutionDetailRows = 0;
     uint32_t V47CatalogExecutionPointTests = 0;
+    uint32_t V48RuntimeActionPlans = 0;
+    uint32_t V48RuntimeReadyActionPlans = 0;
+    uint32_t V48HighImpactActionPlans = 0;
+    uint32_t V48EditorVisibleActionPlans = 0;
+    uint32_t V48PlayableActionPlans = 0;
+    uint32_t V48ActionDirectorRequests = 0;
+    uint32_t V48ActionDirectorQueueDepth = 0;
+    uint32_t V48ActionDirectorHistoryRows = 0;
+    uint32_t V48DirectorCinematicBursts = 0;
+    uint32_t V48DirectorRouteRibbons = 0;
+    uint32_t V48DirectorEncounterGhosts = 0;
+    uint32_t V48DirectorEditorQueueRows = 0;
+    uint32_t V48DirectorPlanSummaryRows = 0;
+    uint32_t V48ActionDirectorPointTests = 0;
 };
 
 }

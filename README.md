@@ -61,7 +61,7 @@ Editor UI:
 - `Demo Director`: inspect the public vertical slice stage, objective distance, shard/anchor/gate/relay progress, checkpoint/retry/pressure/footstep/combo/collision/traversal/enemy/gamepad/audio/animation telemetry, recent gameplay events, and v30/v31/v32/v33 readiness while the demo is running.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters/production counters, and store/recall a mixer snapshot.
-- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, public-demo event routes, and the live v47 production catalog table/reload/preview/execution surface from one live readiness panel.
+- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, public-demo event routes, and the live v48 production catalog table/reload/preview/execution/Action Director surface from one live readiness panel.
 
 ## Engine v0 Features
 
@@ -70,6 +70,14 @@ Editor UI:
 - Keyboard and raw mouse input.
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
+
+## Engine v48 Action Director Implemented
+
+- Added `Assets/Verification/V48ActionDirector.dfollowups`, a twenty-four-point batch that turns executable catalog previews into a stronger Action Director surface.
+- `ProductionAssetRuntimeCatalog` now builds prioritized runtime action plans with deterministic scores, high-impact/editor-visible/playable flags, and summary diagnostics usable by engine, editor, and game code.
+- `Engine Services > Production Catalogs v48 Action Director` now shows action-plan totals, a prioritized action queue, `Director Burst` control, and execution history/queue/ribbon/ghost counters.
+- The playable scene now renders a larger Action Director burst around the DISPARITY rift: animated route ribbon segments spiral from the selected action and encounter ghost markers orbit the rift for a more showable public-demo moment.
+- Runtime reports now emit `v48_action_director_points`, action-plan counts, director request/history/queue counters, visible ribbon/ghost counters, verification assets, docs readiness, and every `v48_point_*` metric.
 
 ## Engine v47 Catalog Execution Mode Implemented
 

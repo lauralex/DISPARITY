@@ -298,8 +298,9 @@ namespace DisparityGame
         results[3] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "PrimeProductionCatalogPreview") ? 1u : 0u;
         results[4] = metrics.RuntimeActionCommands >= 1 ? 1u : 0u;
         results[5] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.h", "ApplyProductionCatalogPreviewStats") ? 1u : 0u;
-    results[6] = (TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v46") ||
-                  TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v47")) ? 1u : 0u;
+        results[6] = (TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v46") ||
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v47") ||
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v48")) ? 1u : 0u;
         results[7] = metrics.SelectableRows >= 8 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ImGui::Selectable") ? 1u : 0u;
         results[8] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Preview First##ProductionCatalogPreview") ? 1u : 0u;
         results[9] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Next##ProductionCatalogPreview") ? 1u : 0u;
@@ -334,7 +335,8 @@ namespace DisparityGame
         results[3] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.h", "ExecuteProductionCatalogPreview") ? 1u : 0u;
         results[4] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Scheduler budget overlay armed") ? 1u : 0u;
         results[5] = TextContains("Tools/VerifyGameSourceSplit.ps1", "MaxRootGameLines = 13800") ? 1u : 0u;
-        results[6] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v47") ? 1u : 0u;
+        results[6] = (TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v47") ||
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v48")) ? 1u : 0u;
         results[7] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Execute Preview##ProductionCatalogExecution") ? 1u : 0u;
         results[8] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Stop##ProductionCatalogExecution") ? 1u : 0u;
         results[9] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ExecutionSummary") ? 1u : 0u;
@@ -357,6 +359,43 @@ namespace DisparityGame
 
     uint32_t CountReadyV47CatalogExecutionPoints(
         const std::array<uint32_t, V47CatalogExecutionPointCount>& results)
+    {
+        return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
+    }
+
+    std::array<uint32_t, V48ActionDirectorPointCount> EvaluateV48ActionDirector(
+        const V48ActionDirectorMetrics& metrics)
+    {
+        std::array<uint32_t, V48ActionDirectorPointCount> results = {};
+        results[0] = TextContains("DisparityEngine/Source/Disparity/Assets/ProductionAssetRuntimeCatalog.h", "ProductionRuntimeActionPlan") ? 1u : 0u;
+        results[1] = TextContains("DisparityEngine/Source/Disparity/Assets/ProductionAssetRuntimeCatalog.h", "ProductionRuntimeActionPlanSummary") ? 1u : 0u;
+        results[2] = metrics.RuntimeActionPlans >= 18 && metrics.RuntimeReadyActionPlans >= 18 ? 1u : 0u;
+        results[3] = metrics.HighImpactActionPlans >= 4 && TextContains("DisparityEngine/Source/Disparity/Assets/ProductionAssetRuntimeCatalog.cpp", "PriorityScore") ? 1u : 0u;
+        results[4] = metrics.EditorVisibleActionPlans >= 6 && metrics.PlayableActionPlans >= 6 ? 1u : 0u;
+        results[5] = TextContains("Tools/VerifyGameSourceSplit.ps1", "MaxRootGameLines = 13800") ? 1u : 0u;
+        results[6] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Production Catalogs v48 Action Director") ? 1u : 0u;
+        results[7] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Director Burst##ProductionCatalogActionDirector") ? 1u : 0u;
+        results[8] = metrics.ActionDirectorQueueDepth >= 6 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "ProductionCatalogActionQueue##EngineServices") ? 1u : 0u;
+        results[9] = metrics.ActionDirectorHistoryRows >= 1 ? 1u : 0u;
+        results[10] = metrics.DirectorPlanSummaryRows >= 1 ? 1u : 0u;
+        results[11] = metrics.DirectorEditorQueueRows >= 6 ? 1u : 0u;
+        results[12] = metrics.DirectorCinematicBursts >= 1 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "DrawProductionCatalogDirectorBurst") ? 1u : 0u;
+        results[13] = metrics.DirectorRouteRibbons >= 12 ? 1u : 0u;
+        results[14] = metrics.DirectorEncounterGhosts >= 3 ? 1u : 0u;
+        results[15] = metrics.ActionDirectorRequests >= 1 ? 1u : 0u;
+        results[16] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "V48DirectorRouteRibbons") ? 1u : 0u;
+        results[17] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "DomainColor(selected->Domain)") ? 1u : 0u;
+        results[18] = metrics.VerificationAssets[0];
+        results[19] = metrics.VerificationAssets[1];
+        results[20] = metrics.VerificationAssets[2];
+        results[21] = metrics.VerificationAssets[3];
+        results[22] = metrics.VerificationAssets[4];
+        results[23] = metrics.VerificationAssets[5];
+        return results;
+    }
+
+    uint32_t CountReadyV48ActionDirectorPoints(
+        const std::array<uint32_t, V48ActionDirectorPointCount>& results)
     {
         return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
     }
@@ -992,6 +1031,66 @@ namespace DisparityGame
         for (size_t index = 0; index < v47Points.size(); ++index)
         {
             report << v47Points[index].Key << "=" << v47Results[index] << "\n";
+        }
+
+        const std::array<uint32_t, 6> v48VerificationAssets = {
+            TextContains("Assets/Verification/V48ActionDirector.dfollowups", "v48_point_24_docs_agent_roadmap_gate") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeReportSchema.dschema", "v48_action_director_points") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeBaseline.dverify", "min_v48_action_director_points") &&
+                TextContains("Assets/Verification/CameraSweepBaseline.dverify", "min_v48_action_director_points") &&
+                TextContains("Assets/Verification/EditorPrecisionBaseline.dverify", "min_v48_action_director_points") &&
+                TextContains("Assets/Verification/PostDebugBaseline.dverify", "min_v48_action_director_points") &&
+                TextContains("Assets/Verification/AssetReloadBaseline.dverify", "min_v48_action_director_points") &&
+                TextContains("Assets/Verification/GizmoDragBaseline.dverify", "min_v48_action_director_points") ? 1u : 0u,
+            TextContains("Tools/ReviewReleaseReadiness.ps1", "V48ActionDirectorPath") ? 1u : 0u,
+            TextContains("Tools/RuntimeVerifyDisparity.ps1", "v48_action_director_points") &&
+                TextContains("Tools/SummarizePerformanceHistory.ps1", "v48_action_director_points") ? 1u : 0u,
+            TextContains("README.md", "Engine v48 Action Director Implemented") &&
+                TextContains("Docs/ROADMAP.md", "v48 Completed Action Director Batch") &&
+                TextContains("Docs/ENGINE_FEATURES.md", "v48_action_director_points") &&
+                TextContains("AGENTS.md", "Editor/runtime v48") ? 1u : 0u
+        };
+        const V48ActionDirectorMetrics v48Metrics = {
+            std::max(stats.V48RuntimeActionPlans, v45Snapshot.ActionPlanSummary.ActionPlanCount),
+            std::max(stats.V48RuntimeReadyActionPlans, v45Snapshot.ActionPlanSummary.RuntimeReadyPlans),
+            std::max(stats.V48HighImpactActionPlans, v45Snapshot.ActionPlanSummary.HighImpactPlans),
+            std::max(stats.V48EditorVisibleActionPlans, v45Snapshot.ActionPlanSummary.EditorVisiblePlans),
+            std::max(stats.V48PlayableActionPlans, v45Snapshot.ActionPlanSummary.PlayablePlans),
+            stats.V48ActionDirectorRequests,
+            stats.V48ActionDirectorQueueDepth,
+            stats.V48ActionDirectorHistoryRows,
+            stats.V48DirectorCinematicBursts,
+            stats.V48DirectorRouteRibbons,
+            stats.V48DirectorEncounterGhosts,
+            stats.V48DirectorEditorQueueRows,
+            stats.V48DirectorPlanSummaryRows,
+            v48VerificationAssets
+        };
+        const auto v48Results = EvaluateV48ActionDirector(v48Metrics);
+        const uint32_t v48VerificationReady = static_cast<uint32_t>(std::count(v48VerificationAssets.begin(), v48VerificationAssets.end(), 1u));
+        const uint32_t v48ReadyPoints = CountReadyV48ActionDirectorPoints(v48Results);
+
+        report << "v48_runtime_action_plans=" << v48Metrics.RuntimeActionPlans << "\n";
+        report << "v48_runtime_ready_action_plans=" << v48Metrics.RuntimeReadyActionPlans << "\n";
+        report << "v48_high_impact_action_plans=" << v48Metrics.HighImpactActionPlans << "\n";
+        report << "v48_editor_visible_action_plans=" << v48Metrics.EditorVisibleActionPlans << "\n";
+        report << "v48_playable_action_plans=" << v48Metrics.PlayableActionPlans << "\n";
+        report << "v48_action_director_requests=" << v48Metrics.ActionDirectorRequests << "\n";
+        report << "v48_action_director_queue_depth=" << v48Metrics.ActionDirectorQueueDepth << "\n";
+        report << "v48_action_director_history_rows=" << v48Metrics.ActionDirectorHistoryRows << "\n";
+        report << "v48_director_cinematic_bursts=" << v48Metrics.DirectorCinematicBursts << "\n";
+        report << "v48_director_route_ribbons=" << v48Metrics.DirectorRouteRibbons << "\n";
+        report << "v48_director_encounter_ghosts=" << v48Metrics.DirectorEncounterGhosts << "\n";
+        report << "v48_director_editor_queue_rows=" << v48Metrics.DirectorEditorQueueRows << "\n";
+        report << "v48_director_plan_summary_rows=" << v48Metrics.DirectorPlanSummaryRows << "\n";
+        report << "v48_verification_assets=" << v48VerificationReady << "\n";
+        report << "v48_docs_ready=" << v48VerificationAssets[5] << "\n";
+        report << "v48_action_director_points=" << v48ReadyPoints << "\n";
+
+        const auto& v48Points = GetV48ActionDirectorPoints();
+        for (size_t index = 0; index < v48Points.size(); ++index)
+        {
+            report << v48Points[index].Key << "=" << v48Results[index] << "\n";
         }
     }
 }

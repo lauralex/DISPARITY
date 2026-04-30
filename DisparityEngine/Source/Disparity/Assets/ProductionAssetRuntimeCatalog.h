@@ -68,6 +68,20 @@ namespace Disparity
         bool RuntimeReady = false;
     };
 
+    struct ProductionRuntimeActionPlan
+    {
+        std::filesystem::path SourcePath;
+        std::string Domain;
+        std::string Action;
+        std::string Name;
+        uint32_t StageIndex = 0;
+        uint32_t PriorityScore = 0;
+        bool RuntimeReady = false;
+        bool HighImpact = false;
+        bool EditorVisible = false;
+        bool Playable = false;
+    };
+
     struct ProductionRuntimeCatalogDiagnostics
     {
         uint32_t BindingCount = 0;
@@ -80,14 +94,31 @@ namespace Disparity
         uint32_t MaxFieldsPerEntry = 0;
     };
 
+    struct ProductionRuntimeActionPlanSummary
+    {
+        uint32_t ActionPlanCount = 0;
+        uint32_t RuntimeReadyPlans = 0;
+        uint32_t EnginePlans = 0;
+        uint32_t EditorPlans = 0;
+        uint32_t GamePlans = 0;
+        uint32_t HighImpactPlans = 0;
+        uint32_t EditorVisiblePlans = 0;
+        uint32_t PlayablePlans = 0;
+        uint32_t MaxPriorityScore = 0;
+    };
+
     [[nodiscard]] std::vector<ProductionRuntimeAsset> LoadProductionRuntimeCatalog(
         const std::vector<ProductionRuntimeAssetRule>& rules);
     [[nodiscard]] ProductionRuntimeCatalogSummary SummarizeProductionRuntimeCatalog(
         const std::vector<ProductionRuntimeAsset>& catalog);
     [[nodiscard]] std::vector<ProductionRuntimeBinding> BuildProductionRuntimeBindings(
         const std::vector<ProductionRuntimeAsset>& catalog);
+    [[nodiscard]] std::vector<ProductionRuntimeActionPlan> BuildProductionRuntimeActionPlans(
+        const std::vector<ProductionRuntimeBinding>& bindings);
     [[nodiscard]] ProductionRuntimeCatalogDiagnostics DiagnoseProductionRuntimeCatalog(
         const std::vector<ProductionRuntimeAsset>& catalog);
+    [[nodiscard]] ProductionRuntimeActionPlanSummary SummarizeProductionRuntimeActionPlans(
+        const std::vector<ProductionRuntimeActionPlan>& plans);
     [[nodiscard]] const ProductionRuntimeAssetField* FindProductionRuntimeField(
         const ProductionRuntimeAssetEntry& entry,
         const std::string& key);

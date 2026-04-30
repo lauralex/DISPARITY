@@ -151,6 +151,24 @@ namespace DisparityGame
         std::array<uint32_t, 6> VerificationAssets = {};
     };
 
+    struct V48ActionDirectorMetrics
+    {
+        uint32_t RuntimeActionPlans = 0;
+        uint32_t RuntimeReadyActionPlans = 0;
+        uint32_t HighImpactActionPlans = 0;
+        uint32_t EditorVisibleActionPlans = 0;
+        uint32_t PlayableActionPlans = 0;
+        uint32_t ActionDirectorRequests = 0;
+        uint32_t ActionDirectorQueueDepth = 0;
+        uint32_t ActionDirectorHistoryRows = 0;
+        uint32_t DirectorCinematicBursts = 0;
+        uint32_t DirectorRouteRibbons = 0;
+        uint32_t DirectorEncounterGhosts = 0;
+        uint32_t DirectorEditorQueueRows = 0;
+        uint32_t DirectorPlanSummaryRows = 0;
+        std::array<uint32_t, 6> VerificationAssets = {};
+    };
+
     [[nodiscard]] std::array<uint32_t, V39RoadmapPointCount> EvaluateV39RoadmapBatch(
         const V39RoadmapMetrics& metrics,
         const RuntimeBaseline& baseline);
@@ -185,6 +203,10 @@ namespace DisparityGame
         const V47CatalogExecutionMetrics& metrics);
     [[nodiscard]] uint32_t CountReadyV47CatalogExecutionPoints(
         const std::array<uint32_t, V47CatalogExecutionPointCount>& results);
+    [[nodiscard]] std::array<uint32_t, V48ActionDirectorPointCount> EvaluateV48ActionDirector(
+        const V48ActionDirectorMetrics& metrics);
+    [[nodiscard]] uint32_t CountReadyV48ActionDirectorPoints(
+        const std::array<uint32_t, V48ActionDirectorPointCount>& results);
     void CaptureV39RoadmapStats(
         EditorVerificationStats& stats,
         const Disparity::RuntimeCommandRegistryDiagnostics& commandDiagnostics,

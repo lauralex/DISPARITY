@@ -162,6 +162,124 @@ namespace DisparityGame
             return "Playable demo action marker armed";
         }
 
+        void ApplyActionDirectorStats(
+            const ProductionCatalogSnapshot& snapshot,
+            const ProductionCatalogPreviewState& state,
+            EditorVerificationStats& stats)
+        {
+            stats.V48RuntimeActionPlans = snapshot.ActionPlanSummary.ActionPlanCount;
+            stats.V48RuntimeReadyActionPlans = snapshot.ActionPlanSummary.RuntimeReadyPlans;
+            stats.V48HighImpactActionPlans = snapshot.ActionPlanSummary.HighImpactPlans;
+            stats.V48EditorVisibleActionPlans = snapshot.ActionPlanSummary.EditorVisiblePlans;
+            stats.V48PlayableActionPlans = snapshot.ActionPlanSummary.PlayablePlans;
+            stats.V48ActionDirectorRequests = state.ActionDirectorRequests + (state.DirectorActive ? 1u : 0u);
+            stats.V48ActionDirectorQueueDepth = std::max(state.ActionDirectorQueueDepth, static_cast<uint32_t>(std::min<size_t>(snapshot.ActionPlans.size(), 6u)));
+            stats.V48ActionDirectorHistoryRows = state.ActionDirectorHistoryRows;
+            stats.V48DirectorCinematicBursts = std::max(stats.V48DirectorCinematicBursts, state.DirectorCinematicBursts);
+            stats.V48DirectorRouteRibbons = std::max(stats.V48DirectorRouteRibbons, state.DirectorRouteRibbons);
+            stats.V48DirectorEncounterGhosts = std::max(stats.V48DirectorEncounterGhosts, state.DirectorEncounterGhosts);
+            stats.V48DirectorEditorQueueRows = std::max(stats.V48DirectorEditorQueueRows, state.DirectorEditorQueueRows);
+            stats.V48DirectorPlanSummaryRows = std::max(stats.V48DirectorPlanSummaryRows, state.DirectorPlanSummaryRows);
+        }
+
+        void ArmProductionActionDirector(
+            const ProductionCatalogSnapshot& snapshot,
+            ProductionCatalogPreviewState& state,
+            EditorVerificationStats& stats)
+        {
+            if (snapshot.ActionPlans.empty())
+            {
+                state.DirectorActive = false;
+                return;
+            }
+
+            state.DirectorActive = true;
+            state.ExecutionActive = true;
+            state.ActionDirectorQueueDepth = static_cast<uint32_t>(std::min<size_t>(snapshot.ActionPlans.size(), 6u));
+            state.ActionDirectorHistoryRows = std::max(state.ActionDirectorHistoryRows, state.ExecuteRequests + 1u);
+            state.DirectorEditorQueueRows = std::max(state.DirectorEditorQueueRows, state.ActionDirectorQueueDepth);
+            state.DirectorPlanSummaryRows = std::max(state.DirectorPlanSummaryRows, 1u);
+            ++state.ActionDirectorRequests;
+            ApplyActionDirectorStats(snapshot, state, stats);
+        }
+
+        [[nodiscard]] uint32_t DrawProductionCatalogDirectorBurst(
+            Disparity::Renderer& renderer,
+            const ProductionCatalogSnapshot& snapshot,
+            ProductionCatalogPreviewState& preview,
+            EditorVerificationStats& stats,
+            float visualTime,
+            const DirectX::XMFLOAT3& center,
+            const Disparity::Material& baseMaterial,
+            Disparity::MeshHandle mesh)
+        {
+            const Disparity::ProductionRuntimeBinding* selected = SelectedBinding(snapshot, preview);
+            if (!selected || !preview.DirectorActive || snapshot.ActionPlans.empty())
+            {
+                return 0;
+            }
+
+            const DirectX::XMFLOAT3 color = DomainColor(selected->Domain);
+            const float pulse = 0.5f + 0.5f * std::sin(visualTime * 5.7f);
+            const float swirl = visualTime * 1.2f + static_cast<float>(preview.ActionDirectorRequests) * 0.31f;
+            uint32_t drawCount = 0;
+
+            Disparity::Material ribbonMaterial = baseMaterial;
+            ribbonMaterial.Albedo = { color.x * 1.75f, color.y * 1.75f, color.z * 1.75f };
+            ribbonMaterial.Emissive = color;
+            ribbonMaterial.EmissiveIntensity = std::max(ribbonMaterial.EmissiveIntensity, 4.5f + pulse * 2.2f);
+            ribbonMaterial.Alpha = 0.78f;
+
+            const uint32_t ribbonSegments = 12u;
+            for (uint32_t index = 0; index < ribbonSegments; ++index)
+            {
+                const float t = static_cast<float>(index) / static_cast<float>(ribbonSegments);
+                const float angle = swirl + t * TwoPi * 1.45f;
+                const float radius = 1.25f + t * 3.25f + pulse * 0.18f;
+                Disparity::Transform ribbon;
+                ribbon.Position = Add(center, {
+                    std::sin(angle) * radius,
+                    0.48f + t * 1.05f + pulse * 0.16f,
+                    std::cos(angle) * radius * 0.68f
+                });
+                ribbon.Rotation = { visualTime * 0.34f + t, -angle, visualTime * 0.72f };
+                ribbon.Scale = { 0.46f - t * 0.015f, 0.035f, 0.12f + pulse * 0.025f };
+                renderer.DrawMesh(mesh, ribbon, ribbonMaterial);
+                ++drawCount;
+            }
+
+            Disparity::Material ghostMaterial = baseMaterial;
+            ghostMaterial.Albedo = { 1.0f, 0.22f + color.y * 0.55f, 0.82f + color.z * 0.35f };
+            ghostMaterial.Emissive = { 1.0f, 0.24f, 0.86f };
+            ghostMaterial.EmissiveIntensity = std::max(ghostMaterial.EmissiveIntensity, 3.8f + pulse);
+            ghostMaterial.Alpha = 0.62f;
+
+            const uint32_t ghostCount = 3u;
+            for (uint32_t index = 0; index < ghostCount; ++index)
+            {
+                const float angle = -swirl * 0.62f + static_cast<float>(index) / static_cast<float>(ghostCount) * TwoPi;
+                Disparity::Transform ghost;
+                ghost.Position = Add(center, {
+                    std::sin(angle) * 3.9f,
+                    0.72f + pulse * 0.22f,
+                    std::cos(angle) * 2.85f
+                });
+                ghost.Rotation = { 0.0f, angle + visualTime * 0.4f, 0.0f };
+                ghost.Scale = { 0.36f, 1.1f + pulse * 0.22f, 0.36f };
+                renderer.DrawMesh(mesh, ghost, ghostMaterial);
+                ++drawCount;
+            }
+
+            preview.DirectorCinematicBursts += 1u;
+            preview.DirectorRouteRibbons += ribbonSegments;
+            preview.DirectorEncounterGhosts += ghostCount;
+            stats.V48DirectorCinematicBursts += 1u;
+            stats.V48DirectorRouteRibbons += ribbonSegments;
+            stats.V48DirectorEncounterGhosts += ghostCount;
+            ApplyActionDirectorStats(snapshot, preview, stats);
+            return drawCount;
+        }
+
         [[nodiscard]] uint32_t DrawProductionCatalogExecutionMarkers(
             Disparity::Renderer& renderer,
             const ProductionCatalogSnapshot& snapshot,
@@ -281,8 +399,10 @@ namespace DisparityGame
         ProductionCatalogSnapshot snapshot = {};
         snapshot.Assets = Disparity::LoadProductionRuntimeCatalog(BuildProductionRuntimeCatalogRules());
         snapshot.Bindings = Disparity::BuildProductionRuntimeBindings(snapshot.Assets);
+        snapshot.ActionPlans = Disparity::BuildProductionRuntimeActionPlans(snapshot.Bindings);
         snapshot.Summary = Disparity::SummarizeProductionRuntimeCatalog(snapshot.Assets);
         snapshot.Diagnostics = Disparity::DiagnoseProductionRuntimeCatalog(snapshot.Assets);
+        snapshot.ActionPlanSummary = Disparity::SummarizeProductionRuntimeActionPlans(snapshot.ActionPlans);
 
         const Disparity::ProductionAssetValidationRule malformedRule = {
             "Assets/Verification/V45MalformedCatalog.dprod",
@@ -321,6 +441,7 @@ namespace DisparityGame
         stats.V45CatalogObjectiveBindings = CountProductionCatalogBindingsByAction(snapshot, "objective_routes");
         stats.V45CatalogEncounterBindings = CountProductionCatalogBindingsByAction(snapshot, "encounter_plan");
         stats.V45CatalogNegativeFixtureTests = snapshot.NegativeFixtureRejected;
+        ApplyActionDirectorStats(snapshot, {}, stats);
     }
 
     void PrimeProductionCatalogPreview(
@@ -372,6 +493,7 @@ namespace DisparityGame
         stats.V47WorldExecutionMarkers = std::max(stats.V47WorldExecutionMarkers, state.WorldExecutionMarkers);
         stats.V47ActionRouteBeams = std::max(stats.V47ActionRouteBeams, state.ActionRouteBeams);
         stats.V47ExecutionDetailRows = state.ExecutionDetailRows;
+        ApplyActionDirectorStats(snapshot, state, stats);
     }
 
     void ExecuteProductionCatalogPreview(
@@ -387,6 +509,7 @@ namespace DisparityGame
         state.ExecutionActive = true;
         ++state.ExecuteRequests;
         ++state.ExecutionPulses;
+        ArmProductionActionDirector(snapshot, state, stats);
         ApplyProductionCatalogPreviewStats(snapshot, state, stats);
     }
 
@@ -395,8 +518,10 @@ namespace DisparityGame
         EditorVerificationStats& stats)
     {
         state.ExecutionActive = false;
+        state.DirectorActive = false;
         ++state.StopRequests;
         stats.V47CatalogExecutionStops = state.StopRequests;
+        stats.V48ActionDirectorHistoryRows = std::max(stats.V48ActionDirectorHistoryRows, state.StopRequests);
     }
 
     bool DrawProductionCatalogSnapshotPanel(
@@ -408,7 +533,7 @@ namespace DisparityGame
         ClampPreviewSelection(snapshot, preview);
         ApplyProductionCatalogPreviewStats(snapshot, preview, stats);
 
-        ImGui::SeparatorText("Production Catalogs v47");
+        ImGui::SeparatorText("Production Catalogs v48 Action Director");
         ImGui::Text(
             "Bindings: %u live / %u ready  Engine %u  Editor %u  Game %u",
             snapshot.Diagnostics.BindingCount,
@@ -422,6 +547,15 @@ namespace DisparityGame
             snapshot.Summary.AssetCount,
             snapshot.Summary.FieldCount,
             snapshot.NegativeFixtureRejected != 0u ? "rejected" : "missing");
+        ImGui::Text(
+            "Action plans: %u ready / %u total  high %u  editor %u  playable %u  max priority %u",
+            snapshot.ActionPlanSummary.RuntimeReadyPlans,
+            snapshot.ActionPlanSummary.ActionPlanCount,
+            snapshot.ActionPlanSummary.HighImpactPlans,
+            snapshot.ActionPlanSummary.EditorVisiblePlans,
+            snapshot.ActionPlanSummary.PlayablePlans,
+            snapshot.ActionPlanSummary.MaxPriorityScore);
+        ++preview.DirectorPlanSummaryRows;
         const bool reloadRequested = ImGui::Button("Reload Catalog##ProductionCatalogPanel");
         ImGui::SameLine();
         if (ImGui::Button("Preview First##ProductionCatalogPreview"))
@@ -444,6 +578,11 @@ namespace DisparityGame
         if (ImGui::Button("Execute Preview##ProductionCatalogExecution"))
         {
             ExecuteProductionCatalogPreview(snapshot, preview, stats);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Director Burst##ProductionCatalogActionDirector"))
+        {
+            ArmProductionActionDirector(snapshot, preview, stats);
         }
         ImGui::SameLine();
         if (ImGui::Button("Stop##ProductionCatalogExecution"))
@@ -469,6 +608,46 @@ namespace DisparityGame
                 preview.ExecutionPulses,
                 preview.WorldExecutionMarkers);
             ++preview.ExecutionDetailRows;
+            ImGui::Text(
+                "Director: %s  requests %u  queue %u  history %u  ribbons %u  ghosts %u",
+                preview.DirectorActive ? "burst armed" : "idle",
+                preview.ActionDirectorRequests,
+                preview.ActionDirectorQueueDepth,
+                preview.ActionDirectorHistoryRows,
+                preview.DirectorRouteRibbons,
+                preview.DirectorEncounterGhosts);
+        }
+
+        if (ImGui::BeginTable(
+            "ProductionCatalogActionQueue##EngineServices",
+            4,
+            ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp,
+            ImVec2(0.0f, 92.0f)))
+        {
+            ImGui::TableSetupColumn("Priority", ImGuiTableColumnFlags_WidthFixed, 58.0f);
+            ImGui::TableSetupColumn("Domain", ImGuiTableColumnFlags_WidthFixed, 64.0f);
+            ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+            ImGui::TableSetupColumn("Entry", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+            ImGui::TableHeadersRow();
+
+            const size_t rowCount = std::min<size_t>(snapshot.ActionPlans.size(), 6u);
+            preview.ActionDirectorQueueDepth = static_cast<uint32_t>(rowCount);
+            preview.DirectorEditorQueueRows += static_cast<uint32_t>(rowCount);
+            for (size_t index = 0; index < rowCount; ++index)
+            {
+                const Disparity::ProductionRuntimeActionPlan& plan = snapshot.ActionPlans[index];
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%u", plan.PriorityScore);
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextUnformatted(plan.Domain.c_str());
+                ImGui::TableSetColumnIndex(2);
+                ImGui::TextUnformatted(plan.Action.c_str());
+                ImGui::TableSetColumnIndex(3);
+                ImGui::TextUnformatted(plan.Name.c_str());
+            }
+
+            ImGui::EndTable();
         }
 
         if (ImGui::BeginTable(
@@ -575,7 +754,16 @@ namespace DisparityGame
             center,
             baseMaterial,
             mesh);
+        const uint32_t directorMarkers = DrawProductionCatalogDirectorBurst(
+            renderer,
+            snapshot,
+            preview,
+            stats,
+            visualTime,
+            center,
+            baseMaterial,
+            mesh);
         ApplyProductionCatalogPreviewStats(snapshot, preview, stats);
-        return beaconCount + executionMarkers;
+        return beaconCount + executionMarkers + directorMarkers;
     }
 }

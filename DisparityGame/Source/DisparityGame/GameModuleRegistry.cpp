@@ -84,7 +84,7 @@ namespace DisparityGame
                 "production runtime catalog bridge",
                 "Game",
                 "DisparityGame/GameProductionRuntimeCatalog.cpp",
-                "v45-v47 binds engine production catalog data into editor diagnostics and visible public-demo preview/execution markers.",
+                "v45-v48 binds engine production catalog data into editor diagnostics, action plans, and visible public-demo preview/execution/director markers.",
                 false,
                 true,
                 true

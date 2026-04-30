@@ -873,6 +873,47 @@ function Assert-RuntimeReportSchema {
             throw "Runtime verification report did not satisfy v47 metric '$metric'."
         }
     }
+    if ($Metrics.ContainsKey("v48_action_director_points") -and [int]$Metrics["v48_action_director_points"] -lt 24) {
+        throw "Runtime verification report did not verify all twenty-four v48 Action Director points."
+    }
+    foreach ($metric in ($Metrics.Keys | Where-Object { $_ -like "v48_point_*" })) {
+        if ([int]$Metrics[$metric] -lt 1) {
+            throw "Runtime verification report did not mark v48 readiness metric '$metric' ready."
+        }
+    }
+    foreach ($metric in @(
+        "v48_runtime_action_plans",
+        "v48_runtime_ready_action_plans"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 18) {
+            throw "Runtime verification report recorded too few v48 action plans for '$metric'."
+        }
+    }
+    foreach ($metric in @(
+        "v48_editor_visible_action_plans",
+        "v48_playable_action_plans",
+        "v48_action_director_queue_depth",
+        "v48_director_editor_queue_rows",
+        "v48_verification_assets"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 6) {
+            throw "Runtime verification report recorded too few v48 readiness values for '$metric'."
+        }
+    }
+    foreach ($metric in @(
+        "v48_high_impact_action_plans",
+        "v48_action_director_requests",
+        "v48_action_director_history_rows",
+        "v48_director_cinematic_bursts",
+        "v48_director_route_ribbons",
+        "v48_director_encounter_ghosts",
+        "v48_director_plan_summary_rows",
+        "v48_docs_ready"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 1) {
+            throw "Runtime verification report did not satisfy v48 metric '$metric'."
+        }
+    }
     if ($Metrics.ContainsKey("public_demo_blend_tree_clips") -and [int]$Metrics["public_demo_blend_tree_clips"] -lt 4) {
         throw "Runtime verification report recorded too few public demo blend-tree clips."
     }
@@ -1006,6 +1047,7 @@ if (!$DisablePerfHistory) {
     $historyHeader += ",v45_runtime_catalog_bindings,v45_runtime_catalog_ready_bindings,v45_engine_live_bindings,v45_editor_live_bindings,v45_game_live_bindings,v45_catalog_panel_rows,v45_catalog_visible_beacons,v45_catalog_objective_bindings,v45_catalog_encounter_bindings,v45_catalog_negative_fixture_tests,v45_verification_assets,v45_runtime_catalog_hash_low,v45_docs_ready,v45_live_catalog_points"
     $historyHeader += ",v46_catalog_selectable_rows,v46_catalog_preview_selections,v46_catalog_preview_cycles,v46_catalog_preview_clears,v46_catalog_preview_details,v46_catalog_focused_beacons,v46_engine_preview_bindings,v46_editor_preview_bindings,v46_game_preview_bindings,v46_runtime_action_commands,v46_verification_assets,v46_docs_ready,v46_catalog_action_preview_points"
     $historyHeader += ",v47_catalog_execute_requests,v47_catalog_execution_stops,v47_catalog_execution_pulses,v47_engine_executable_bindings,v47_editor_executable_bindings,v47_game_executable_bindings,v47_engine_execution_overlays,v47_editor_execution_overlays,v47_game_execution_overlays,v47_world_execution_markers,v47_action_route_beams,v47_execution_detail_rows,v47_verification_assets,v47_docs_ready,v47_catalog_execution_points"
+    $historyHeader += ",v48_runtime_action_plans,v48_runtime_ready_action_plans,v48_high_impact_action_plans,v48_editor_visible_action_plans,v48_playable_action_plans,v48_action_director_requests,v48_action_director_queue_depth,v48_action_director_history_rows,v48_director_cinematic_bursts,v48_director_route_ribbons,v48_director_encounter_ghosts,v48_director_editor_queue_rows,v48_director_plan_summary_rows,v48_verification_assets,v48_docs_ready,v48_action_director_points"
     if (Test-Path -LiteralPath $HistoryPath) {
         $currentHeader = Get-Content -LiteralPath $HistoryPath -First 1
         if ($currentHeader -ne $historyHeader) {
@@ -1360,7 +1402,23 @@ if (!$DisablePerfHistory) {
         $metrics["v47_execution_detail_rows"],
         $metrics["v47_verification_assets"],
         $metrics["v47_docs_ready"],
-        $metrics["v47_catalog_execution_points"]
+        $metrics["v47_catalog_execution_points"],
+        $metrics["v48_runtime_action_plans"],
+        $metrics["v48_runtime_ready_action_plans"],
+        $metrics["v48_high_impact_action_plans"],
+        $metrics["v48_editor_visible_action_plans"],
+        $metrics["v48_playable_action_plans"],
+        $metrics["v48_action_director_requests"],
+        $metrics["v48_action_director_queue_depth"],
+        $metrics["v48_action_director_history_rows"],
+        $metrics["v48_director_cinematic_bursts"],
+        $metrics["v48_director_route_ribbons"],
+        $metrics["v48_director_encounter_ghosts"],
+        $metrics["v48_director_editor_queue_rows"],
+        $metrics["v48_director_plan_summary_rows"],
+        $metrics["v48_verification_assets"],
+        $metrics["v48_docs_ready"],
+        $metrics["v48_action_director_points"]
     ) | ForEach-Object {
         '"' + ([string]$_ -replace '"', '""') + '"'
     }

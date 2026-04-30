@@ -362,4 +362,35 @@ namespace DisparityGame
         } };
         return points;
     }
+
+    const std::array<GameFollowupPoint, V48ActionDirectorBatchPointCount>& GetV48ActionDirectorPoints()
+    {
+        static const std::array<GameFollowupPoint, V48ActionDirectorBatchPointCount> points = { {
+            { "v48_point_01_engine_action_plan_model", "Engine", "Production runtime catalog exposes prioritized action plans" },
+            { "v48_point_02_engine_action_plan_summary", "Engine", "Engine summarizes runtime-ready, high-impact, editor-visible, and playable action plans" },
+            { "v48_point_03_engine_priority_scoring", "Engine", "Catalog action plans compute deterministic priority scores from live binding metadata" },
+            { "v48_point_04_engine_plan_sorting", "Engine", "Action plans are stable-sorted so high-impact gameplay/editor work rises first" },
+            { "v48_point_05_engine_runtime_report_plan_counts", "Engine", "Runtime report emits v48 backend action-plan diagnostics" },
+            { "v48_point_06_engine_root_file_budget_preserved", "Engine", "Action Director work stays in engine/catalog split modules without growing DisparityGame.cpp" },
+            { "v48_point_07_editor_action_director_panel", "Editor", "Engine Services panel displays Production Catalogs v48 Action Director controls" },
+            { "v48_point_08_editor_director_burst_button", "Editor", "Editor exposes a Director Burst action for the selected catalog plan" },
+            { "v48_point_09_editor_execution_queue_table", "Editor", "Editor shows a prioritized action queue from engine action plans" },
+            { "v48_point_10_editor_execution_history_rows", "Editor", "Editor reports action director request and history rows" },
+            { "v48_point_11_editor_plan_summary_rows", "Editor", "Editor shows high-impact, playable, and editor-visible plan summaries" },
+            { "v48_point_12_editor_unique_director_ids", "Editor", "Action Director controls use stable ImGui IDs" },
+            { "v48_point_13_game_director_burst_visible", "Game", "Playable scene renders a stronger catalog Action Director burst" },
+            { "v48_point_14_game_route_ribbons_visible", "Game", "Action Director draws animated route ribbon segments around the rift" },
+            { "v48_point_15_game_encounter_ghosts_visible", "Game", "Action Director draws encounter ghost markers for show-off readability" },
+            { "v48_point_16_game_default_director_active", "Game", "Runtime verification primes the Action Director on the public-demo objective route" },
+            { "v48_point_17_game_director_telemetry", "Game", "Runtime report emits Action Director visual and interaction metrics" },
+            { "v48_point_18_game_domain_colored_director", "Game", "Action Director preserves Engine, Editor, and Game domain color language" },
+            { "v48_point_19_verification_manifest_gate", "Verification", "v48 Action Director manifest is present and reviewed" },
+            { "v48_point_20_verification_schema_gate", "Verification", "Runtime report schema includes v48 Action Director metrics" },
+            { "v48_point_21_verification_baseline_gate", "Verification", "Runtime baselines include v48 Action Director thresholds" },
+            { "v48_point_22_verification_release_gate", "Verification", "Release readiness includes the v48 Action Director manifest" },
+            { "v48_point_23_verification_performance_history_gate", "Verification", "Runtime and performance-history tooling track v48 Action Director metrics" },
+            { "v48_point_24_docs_agent_roadmap_gate", "Docs", "README, feature guide, roadmap, and AGENTS document v48 Action Director mode" }
+        } };
+        return points;
+    }
 }

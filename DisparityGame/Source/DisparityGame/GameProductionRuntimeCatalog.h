@@ -14,8 +14,10 @@ namespace DisparityGame
     {
         std::vector<Disparity::ProductionRuntimeAsset> Assets;
         std::vector<Disparity::ProductionRuntimeBinding> Bindings;
+        std::vector<Disparity::ProductionRuntimeActionPlan> ActionPlans;
         Disparity::ProductionRuntimeCatalogSummary Summary;
         Disparity::ProductionRuntimeCatalogDiagnostics Diagnostics;
+        Disparity::ProductionRuntimeActionPlanSummary ActionPlanSummary;
         uint32_t NegativeFixtureRejected = 0;
     };
 
@@ -33,8 +35,17 @@ namespace DisparityGame
         uint32_t ExecutionDetailRows = 0;
         uint32_t WorldExecutionMarkers = 0;
         uint32_t ActionRouteBeams = 0;
+        uint32_t ActionDirectorRequests = 0;
+        uint32_t ActionDirectorQueueDepth = 0;
+        uint32_t ActionDirectorHistoryRows = 0;
+        uint32_t DirectorCinematicBursts = 0;
+        uint32_t DirectorRouteRibbons = 0;
+        uint32_t DirectorEncounterGhosts = 0;
+        uint32_t DirectorEditorQueueRows = 0;
+        uint32_t DirectorPlanSummaryRows = 0;
         bool PreviewActive = true;
         bool ExecutionActive = false;
+        bool DirectorActive = false;
     };
 
     [[nodiscard]] std::vector<Disparity::ProductionRuntimeAssetRule> BuildProductionRuntimeCatalogRules();
