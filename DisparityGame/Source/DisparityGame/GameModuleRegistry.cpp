@@ -75,7 +75,7 @@ namespace DisparityGame
                 "roadmap batch evaluation",
                 "Verification",
                 "DisparityGame/GameRoadmapBatch.cpp",
-                "The v39 roadmap point evaluation and runtime-report writing live outside the orchestration layer so verification growth stays reviewable.",
+                "The v39-v50 roadmap point evaluation and runtime-report writing live outside the orchestration layer so verification growth stays reviewable.",
                 false,
                 true,
                 true
@@ -84,7 +84,7 @@ namespace DisparityGame
                 "production runtime catalog bridge",
                 "Game",
                 "DisparityGame/GameProductionRuntimeCatalog.cpp",
-                "v45-v48 binds engine production catalog data into editor diagnostics, action plans, and visible public-demo preview/execution/director markers.",
+                "v45-v50 binds engine production catalog data and physics preview state into editor diagnostics and visible public-demo markers.",
                 false,
                 true,
                 true
@@ -130,6 +130,15 @@ namespace DisparityGame
                 "Runtime",
                 "Disparity/Runtime/RuntimeCommandRegistry.cpp",
                 "Runtime command metadata gives engine, editor, and game systems one searchable command surface.",
+                true,
+                true,
+                true
+            },
+            {
+                "physics world",
+                "Engine",
+                "Disparity/Physics/PhysicsWorld.cpp",
+                "The v50 physics foundation owns body state, fixed-step contacts, trigger/query diagnostics, debug lines, and controller probes.",
                 true,
                 true,
                 true

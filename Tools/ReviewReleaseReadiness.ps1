@@ -25,6 +25,7 @@ param(
     [string]$V47CatalogExecutionPath = "Assets/Verification/V47CatalogExecutionMode.dfollowups",
     [string]$V48ActionDirectorPath = "Assets/Verification/V48ActionDirector.dfollowups",
     [string]$V49ActionMutationPath = "Assets/Verification/V49ActionMutation.dfollowups",
+    [string]$V50PhysicsFoundationPath = "Assets/Verification/V50PhysicsFoundation.dfollowups",
     [string]$OutputPath = "Saved/Release/release_readiness_manifest.json"
 )
 
@@ -65,6 +66,7 @@ $V46CatalogActionPreviewPath = Resolve-RepoPath -Path $V46CatalogActionPreviewPa
 $V47CatalogExecutionPath = Resolve-RepoPath -Path $V47CatalogExecutionPath
 $V48ActionDirectorPath = Resolve-RepoPath -Path $V48ActionDirectorPath
 $V49ActionMutationPath = Resolve-RepoPath -Path $V49ActionMutationPath
+$V50PhysicsFoundationPath = Resolve-RepoPath -Path $V50PhysicsFoundationPath
 $OutputPath = Resolve-RepoPath -Path $OutputPath
 
 $packageManifestPath = Join-Path $PackagePath "package_manifest.json"
@@ -100,7 +102,8 @@ $checks = @(
     [pscustomobject]@{ name = "v46_catalog_action_preview_manifest"; path = $V46CatalogActionPreviewPath; exists = Test-Path -LiteralPath $V46CatalogActionPreviewPath },
     [pscustomobject]@{ name = "v47_catalog_execution_manifest"; path = $V47CatalogExecutionPath; exists = Test-Path -LiteralPath $V47CatalogExecutionPath },
     [pscustomobject]@{ name = "v48_action_director_manifest"; path = $V48ActionDirectorPath; exists = Test-Path -LiteralPath $V48ActionDirectorPath },
-    [pscustomobject]@{ name = "v49_action_mutation_manifest"; path = $V49ActionMutationPath; exists = Test-Path -LiteralPath $V49ActionMutationPath }
+    [pscustomobject]@{ name = "v49_action_mutation_manifest"; path = $V49ActionMutationPath; exists = Test-Path -LiteralPath $V49ActionMutationPath },
+    [pscustomobject]@{ name = "v50_physics_foundation_manifest"; path = $V50PhysicsFoundationPath; exists = Test-Path -LiteralPath $V50PhysicsFoundationPath }
 )
 
 foreach ($check in $checks) {
@@ -123,8 +126,8 @@ $schemaMetrics = @(Get-Content -LiteralPath $RuntimeReportSchemaPath | Where-Obj
     $trimmed = $_.Trim()
     ![string]::IsNullOrWhiteSpace($trimmed) -and !$trimmed.StartsWith("#")
 })
-if ($schemaMetrics.Count -lt 1140 -or !($schemaMetrics -contains "v25_production_points") -or !($schemaMetrics -contains "v28_diversified_points") -or !($schemaMetrics -contains "v29_public_demo_points") -or !($schemaMetrics -contains "v30_vertical_slice_points") -or !($schemaMetrics -contains "v31_diversified_points") -or !($schemaMetrics -contains "v32_roadmap_points") -or !($schemaMetrics -contains "v33_playable_demo_points") -or !($schemaMetrics -contains "v34_aaa_foundation_points") -or !($schemaMetrics -contains "v35_engine_architecture_points") -or !($schemaMetrics -contains "v36_mixed_batch_points") -or !($schemaMetrics -contains "v38_diversified_points") -or !($schemaMetrics -contains "v39_roadmap_points") -or !($schemaMetrics -contains "v40_diversified_points") -or !($schemaMetrics -contains "v41_breadth_points") -or !($schemaMetrics -contains "v42_content_points") -or !($schemaMetrics -contains "v43_validation_points") -or !($schemaMetrics -contains "v44_catalog_points") -or !($schemaMetrics -contains "v45_live_catalog_points") -or !($schemaMetrics -contains "v46_catalog_action_preview_points") -or !($schemaMetrics -contains "v47_catalog_execution_points") -or !($schemaMetrics -contains "v48_action_director_points") -or !($schemaMetrics -contains "v49_action_mutation_points")) {
-    throw "Runtime report schema does not include the v25-v49 production metrics."
+if ($schemaMetrics.Count -lt 1180 -or !($schemaMetrics -contains "v25_production_points") -or !($schemaMetrics -contains "v28_diversified_points") -or !($schemaMetrics -contains "v29_public_demo_points") -or !($schemaMetrics -contains "v30_vertical_slice_points") -or !($schemaMetrics -contains "v31_diversified_points") -or !($schemaMetrics -contains "v32_roadmap_points") -or !($schemaMetrics -contains "v33_playable_demo_points") -or !($schemaMetrics -contains "v34_aaa_foundation_points") -or !($schemaMetrics -contains "v35_engine_architecture_points") -or !($schemaMetrics -contains "v36_mixed_batch_points") -or !($schemaMetrics -contains "v38_diversified_points") -or !($schemaMetrics -contains "v39_roadmap_points") -or !($schemaMetrics -contains "v40_diversified_points") -or !($schemaMetrics -contains "v41_breadth_points") -or !($schemaMetrics -contains "v42_content_points") -or !($schemaMetrics -contains "v43_validation_points") -or !($schemaMetrics -contains "v44_catalog_points") -or !($schemaMetrics -contains "v45_live_catalog_points") -or !($schemaMetrics -contains "v46_catalog_action_preview_points") -or !($schemaMetrics -contains "v47_catalog_execution_points") -or !($schemaMetrics -contains "v48_action_director_points") -or !($schemaMetrics -contains "v49_action_mutation_points") -or !($schemaMetrics -contains "v50_physics_foundation_points")) {
+    throw "Runtime report schema does not include the v25-v50 production metrics."
 }
 
 $productionPoints = @(Get-Content -LiteralPath $ProductionBatchPath | Where-Object {
@@ -281,6 +284,13 @@ if ($v49ActionMutationPoints.Count -ne 24) {
     throw "v49 Action Mutation manifest does not define twenty-four points."
 }
 
+$v50PhysicsFoundationPoints = @(Get-Content -LiteralPath $V50PhysicsFoundationPath | Where-Object {
+    $_.Trim().StartsWith("point ")
+})
+if ($v50PhysicsFoundationPoints.Count -ne 24) {
+    throw "v50 Physics Foundation manifest does not define twenty-four points."
+}
+
 $parent = Split-Path -Parent $OutputPath
 if (![string]::IsNullOrWhiteSpace($parent)) {
     New-Item -ItemType Directory -Force -Path $parent | Out-Null
@@ -314,6 +324,7 @@ if (![string]::IsNullOrWhiteSpace($parent)) {
     v47_catalog_execution_point_count = $v47CatalogExecutionPoints.Count
     v48_action_director_point_count = $v48ActionDirectorPoints.Count
     v49_action_mutation_point_count = $v49ActionMutationPoints.Count
+    v50_physics_foundation_point_count = $v50PhysicsFoundationPoints.Count
     checks = $checks
 } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $OutputPath
 

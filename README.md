@@ -61,7 +61,7 @@ Editor UI:
 - `Demo Director`: inspect the public vertical slice stage, objective distance, shard/anchor/gate/relay progress, checkpoint/retry/pressure/footstep/combo/collision/traversal/enemy/gamepad/audio/animation telemetry, recent gameplay events, and v30/v31/v32/v33 readiness while the demo is running.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters/production counters, and store/recall a mixer snapshot.
-- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, public-demo event routes, and the live v49 production catalog table/reload/preview/execution/Action Director mutation surface from one live readiness panel.
+- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, public-demo event routes, the live v49 production catalog table/reload/preview/execution/Action Director mutation surface, and the v50 physics foundation diagnostics from one live readiness panel.
 
 ## Engine v0 Features
 
@@ -70,6 +70,14 @@ Editor UI:
 - Keyboard and raw mouse input.
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
+
+## Engine v50 Physics Foundation Implemented
+
+- Added `DisparityEngine/Source/Disparity/Physics/PhysicsWorld.*`, an engine-owned CPU physics abstraction with static/dynamic/kinematic bodies, box/sphere/capsule metadata, gravity, fixed-step substeps, contact/trigger counters, raycast/overlap/sweep queries, and a starter character-controller ground probe.
+- `GameProductionRuntimeCatalog.*` now owns a source-split v50 preview world instead of growing `DisparityGame.cpp`: five cyan dynamic crates, amber static blockers/floor data, and a magenta trigger volume update near the public rift and feed runtime verification counters.
+- `Engine Services > Production Catalogs v49 Live Mutations > Physics Foundation v50` shows live body totals, dynamic/static/trigger counts, step/substep/contact/query/controller diagnostics, and a table of the preview bodies while the game is running.
+- The playable scene now draws v50 physics body markers near the DISPARITY rift so the new backend is visible in the public showpiece area, not just hidden in reports.
+- Runtime reports, baselines, schema checks, release-readiness review, production-batch review, performance-history summaries, README, feature docs, roadmap, and AGENTS context now require `v50_physics_foundation_points=24` plus body/query/debug metrics.
 
 ## Engine v49 Action Director Live Mutations Implemented
 

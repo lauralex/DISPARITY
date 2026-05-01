@@ -61,6 +61,10 @@ namespace DisparityGame
         uint32_t MutationWorldPillars = 0;
         uint32_t MutationWaveGhosts = 0;
         uint32_t MutationPanelRows = 0;
+        uint32_t PhysicsPreviewFrames = 0;
+        uint32_t PhysicsVisibleBodies = 0;
+        uint32_t PhysicsPanelRows = 0;
+        bool PhysicsPreviewInitialized = false;
         bool PreviewActive = true;
         bool ExecutionActive = false;
         bool DirectorActive = false;
@@ -68,6 +72,9 @@ namespace DisparityGame
         std::string ActiveWorkspacePreset;
         std::string ActiveCommandName;
         std::string ActiveTraceChannel;
+        Disparity::PhysicsWorld PhysicsPreviewWorld;
+        Disparity::PhysicsCharacterControllerState PhysicsCharacter;
+        Disparity::PhysicsWorldDiagnostics PhysicsDiagnostics;
     };
 
     [[nodiscard]] std::vector<Disparity::ProductionRuntimeAssetRule> BuildProductionRuntimeCatalogRules();

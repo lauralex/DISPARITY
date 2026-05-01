@@ -195,6 +195,27 @@ namespace DisparityGame
         std::array<uint32_t, 6> VerificationAssets = {};
     };
 
+    struct V50PhysicsFoundationMetrics
+    {
+        uint32_t Bodies = 0;
+        uint32_t DynamicBodies = 0;
+        uint32_t StaticBodies = 0;
+        uint32_t TriggerBodies = 0;
+        uint32_t Steps = 0;
+        uint32_t Substeps = 0;
+        uint32_t Contacts = 0;
+        uint32_t TriggerOverlaps = 0;
+        uint32_t Raycasts = 0;
+        uint32_t Sweeps = 0;
+        uint32_t Overlaps = 0;
+        uint32_t CharacterMoves = 0;
+        uint32_t CharacterGroundedMoves = 0;
+        uint32_t DebugLines = 0;
+        uint32_t VisibleBodies = 0;
+        uint32_t PanelRows = 0;
+        std::array<uint32_t, 6> VerificationAssets = {};
+    };
+
     [[nodiscard]] std::array<uint32_t, V39RoadmapPointCount> EvaluateV39RoadmapBatch(
         const V39RoadmapMetrics& metrics,
         const RuntimeBaseline& baseline);
@@ -237,6 +258,10 @@ namespace DisparityGame
         const V49ActionMutationMetrics& metrics);
     [[nodiscard]] uint32_t CountReadyV49ActionMutationPoints(
         const std::array<uint32_t, V49ActionMutationPointCount>& results);
+    [[nodiscard]] std::array<uint32_t, V50PhysicsFoundationPointCount> EvaluateV50PhysicsFoundation(
+        const V50PhysicsFoundationMetrics& metrics);
+    [[nodiscard]] uint32_t CountReadyV50PhysicsFoundationPoints(
+        const std::array<uint32_t, V50PhysicsFoundationPointCount>& results);
     void CaptureV39RoadmapStats(
         EditorVerificationStats& stats,
         const Disparity::RuntimeCommandRegistryDiagnostics& commandDiagnostics,

@@ -970,6 +970,52 @@ function Assert-RuntimeReportSchema {
     if ($Metrics.ContainsKey("v49_mutation_world_pillars") -and [int]$Metrics["v49_mutation_world_pillars"] -lt 6) {
         throw "Runtime verification report drew too few v49 mutation pillars."
     }
+    if ($Metrics.ContainsKey("v50_physics_foundation_points") -and [int]$Metrics["v50_physics_foundation_points"] -lt 24) {
+        throw "Runtime verification report did not verify all twenty-four v50 Physics Foundation points."
+    }
+    foreach ($metric in ($Metrics.Keys | Where-Object { $_ -like "v50_point_*" })) {
+        if ([int]$Metrics[$metric] -lt 1) {
+            throw "Runtime verification report did not mark v50 readiness metric '$metric' ready."
+        }
+    }
+    foreach ($metric in @(
+        "v50_physics_bodies",
+        "v50_physics_panel_rows"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 8) {
+            throw "Runtime verification report recorded too few v50 physics rows for '$metric'."
+        }
+    }
+    foreach ($metric in @(
+        "v50_physics_dynamic_bodies",
+        "v50_physics_visible_bodies"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 5) {
+            throw "Runtime verification report recorded too few v50 visible/dynamic bodies for '$metric'."
+        }
+    }
+    foreach ($metric in @(
+        "v50_physics_static_bodies",
+        "v50_physics_debug_lines"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 2) {
+            throw "Runtime verification report recorded too few v50 physics debug values for '$metric'."
+        }
+    }
+    foreach ($metric in @(
+        "v50_physics_trigger_bodies",
+        "v50_physics_steps",
+        "v50_physics_substeps",
+        "v50_physics_raycasts",
+        "v50_physics_sweeps",
+        "v50_physics_overlaps",
+        "v50_physics_character_moves",
+        "v50_physics_character_grounded_moves"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 1) {
+            throw "Runtime verification report did not satisfy v50 physics metric '$metric'."
+        }
+    }
     if ($Metrics.ContainsKey("public_demo_blend_tree_clips") -and [int]$Metrics["public_demo_blend_tree_clips"] -lt 4) {
         throw "Runtime verification report recorded too few public demo blend-tree clips."
     }
@@ -1105,6 +1151,7 @@ if (!$DisablePerfHistory) {
     $historyHeader += ",v47_catalog_execute_requests,v47_catalog_execution_stops,v47_catalog_execution_pulses,v47_engine_executable_bindings,v47_editor_executable_bindings,v47_game_executable_bindings,v47_engine_execution_overlays,v47_editor_execution_overlays,v47_game_execution_overlays,v47_world_execution_markers,v47_action_route_beams,v47_execution_detail_rows,v47_verification_assets,v47_docs_ready,v47_catalog_execution_points"
     $historyHeader += ",v48_runtime_action_plans,v48_runtime_ready_action_plans,v48_high_impact_action_plans,v48_editor_visible_action_plans,v48_playable_action_plans,v48_action_director_requests,v48_action_director_queue_depth,v48_action_director_history_rows,v48_director_cinematic_bursts,v48_director_route_ribbons,v48_director_encounter_ghosts,v48_director_editor_queue_rows,v48_director_plan_summary_rows,v48_verification_assets,v48_docs_ready,v48_action_director_points"
     $historyHeader += ",v49_runtime_mutation_plans,v49_runtime_mutation_runtime_plans,v49_editor_mutation_plans,v49_gameplay_mutation_plans,v49_budget_bound_mutation_plans,v49_action_mutation_requests,v49_mutation_queue_depth,v49_engine_budget_mutations,v49_scheduler_budget_mutations,v49_streaming_budget_mutations,v49_render_budget_mutations,v49_editor_workspace_mutations,v49_editor_command_mutations,v49_trace_event_rows,v49_game_spawned_encounter_waves,v49_game_objective_route_mutations,v49_game_combat_sandbox_mutations,v49_mutation_world_bursts,v49_mutation_world_pillars,v49_mutation_wave_ghosts,v49_mutation_panel_rows,v49_verification_assets,v49_docs_ready,v49_action_mutation_points"
+    $historyHeader += ",v50_physics_bodies,v50_physics_dynamic_bodies,v50_physics_static_bodies,v50_physics_trigger_bodies,v50_physics_steps,v50_physics_substeps,v50_physics_contacts,v50_physics_trigger_overlaps,v50_physics_raycasts,v50_physics_sweeps,v50_physics_overlaps,v50_physics_character_moves,v50_physics_character_grounded_moves,v50_physics_debug_lines,v50_physics_visible_bodies,v50_physics_panel_rows,v50_verification_assets,v50_docs_ready,v50_physics_foundation_points"
     if (Test-Path -LiteralPath $HistoryPath) {
         $currentHeader = Get-Content -LiteralPath $HistoryPath -First 1
         if ($currentHeader -ne $historyHeader) {
@@ -1499,7 +1546,26 @@ if (!$DisablePerfHistory) {
         $metrics["v49_mutation_panel_rows"],
         $metrics["v49_verification_assets"],
         $metrics["v49_docs_ready"],
-        $metrics["v49_action_mutation_points"]
+        $metrics["v49_action_mutation_points"],
+        $metrics["v50_physics_bodies"],
+        $metrics["v50_physics_dynamic_bodies"],
+        $metrics["v50_physics_static_bodies"],
+        $metrics["v50_physics_trigger_bodies"],
+        $metrics["v50_physics_steps"],
+        $metrics["v50_physics_substeps"],
+        $metrics["v50_physics_contacts"],
+        $metrics["v50_physics_trigger_overlaps"],
+        $metrics["v50_physics_raycasts"],
+        $metrics["v50_physics_sweeps"],
+        $metrics["v50_physics_overlaps"],
+        $metrics["v50_physics_character_moves"],
+        $metrics["v50_physics_character_grounded_moves"],
+        $metrics["v50_physics_debug_lines"],
+        $metrics["v50_physics_visible_bodies"],
+        $metrics["v50_physics_panel_rows"],
+        $metrics["v50_verification_assets"],
+        $metrics["v50_docs_ready"],
+        $metrics["v50_physics_foundation_points"]
     ) | ForEach-Object {
         '"' + ([string]$_ -replace '"', '""') + '"'
     }

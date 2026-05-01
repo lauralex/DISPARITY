@@ -95,6 +95,7 @@
     <ClInclude Include="Source\Disparity\Editor\EditorOverlay.h" />
     <ClInclude Include="Source\Disparity\Editor\EditorPanelRegistry.h" />
     <ClInclude Include="Source\Disparity\Math\Transform.h" />
+    <ClInclude Include="Source\Disparity\Physics\PhysicsWorld.h" />
     <ClInclude Include="Source\Disparity\Rendering\RenderGraph.h" />
     <ClInclude Include="Source\Disparity\Rendering\RenderGraphBudget.h" />
     <ClInclude Include="Source\Disparity\Rendering\Renderer.h" />
@@ -137,6 +138,7 @@
     <ClCompile Include="Source\Disparity\Editor\EditorGui.cpp" />
     <ClCompile Include="Source\Disparity\Editor\EditorOverlay.cpp" />
     <ClCompile Include="Source\Disparity\Editor\EditorPanelRegistry.cpp" />
+    <ClCompile Include="Source\Disparity\Physics\PhysicsWorld.cpp" />
     <ClCompile Include="Source\Disparity\Rendering\RenderGraph.cpp" />
     <ClCompile Include="Source\Disparity\Rendering\RenderGraphBudget.cpp" />
     <ClCompile Include="Source\Disparity\Rendering\Renderer.cpp" />

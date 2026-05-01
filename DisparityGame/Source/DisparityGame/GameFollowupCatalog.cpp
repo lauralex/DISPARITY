@@ -424,4 +424,35 @@ namespace DisparityGame
         } };
         return points;
     }
+
+    const std::array<GameFollowupPoint, V50PhysicsFoundationBatchPointCount>& GetV50PhysicsFoundationPoints()
+    {
+        static const std::array<GameFollowupPoint, V50PhysicsFoundationBatchPointCount> points = { {
+            { "v50_point_01_engine_physics_world_module", "Engine", "Engine exposes an owned PhysicsWorld module" },
+            { "v50_point_02_engine_body_shape_material_model", "Engine", "Physics body, shape, material, layer, and trigger data are modeled" },
+            { "v50_point_03_engine_fixed_step_solver", "Engine", "PhysicsWorld advances through bounded fixed substeps" },
+            { "v50_point_04_engine_dynamic_static_contacts", "Engine", "Dynamic bodies resolve against static geometry and ground contacts" },
+            { "v50_point_05_engine_ray_overlap_sweep_queries", "Engine", "PhysicsWorld exposes raycast, overlap, and sweep query coverage" },
+            { "v50_point_06_engine_character_controller_probe", "Engine", "PhysicsWorld provides a capsule-style character movement probe" },
+            { "v50_point_07_editor_physics_panel_visible", "Editor", "Engine Services panel displays Physics Foundation v50 diagnostics" },
+            { "v50_point_08_editor_physics_body_table", "Editor", "Editor shows live physics preview body rows" },
+            { "v50_point_09_editor_physics_contact_stats", "Editor", "Editor exposes contact, trigger, query, and substep counters" },
+            { "v50_point_10_editor_physics_debug_counts", "Editor", "Editor reports generated physics debug-line counts" },
+            { "v50_point_11_game_physics_bodies_visible", "Game", "Playable scene renders visible physics preview bodies near the rift" },
+            { "v50_point_12_game_dynamic_impulses_visible", "Game", "Dynamic physics preview crates receive impulses and settle under gravity" },
+            { "v50_point_13_game_trigger_volume_visible", "Game", "Rift-adjacent trigger volume is visible in the public demo preview" },
+            { "v50_point_14_game_physics_debug_shapes_visible", "Game", "Physics preview contributes visible debug body markers" },
+            { "v50_point_15_game_controller_ground_probe", "Game", "Runtime verification exercises a grounded character controller probe" },
+            { "v50_point_16_verification_manifest_gate", "Verification", "v50 physics foundation manifest is present and reviewed" },
+            { "v50_point_17_verification_schema_gate", "Verification", "Runtime report schema includes v50 physics metrics" },
+            { "v50_point_18_verification_baseline_gate", "Verification", "Runtime baselines include v50 physics thresholds" },
+            { "v50_point_19_verification_release_gate", "Verification", "Release readiness includes the v50 physics manifest" },
+            { "v50_point_20_verification_performance_history_gate", "Verification", "Runtime and performance-history tooling track v50 physics metrics" },
+            { "v50_point_21_docs_agent_roadmap_gate", "Docs", "README, feature guide, roadmap, and AGENTS document v50 physics foundation" },
+            { "v50_point_22_engine_project_entries", "Engine", "Visual Studio project includes the physics module sources" },
+            { "v50_point_23_engine_umbrella_include", "Engine", "Disparity umbrella include exposes PhysicsWorld" },
+            { "v50_point_24_engine_version_bump", "Engine", "Engine version advances to v0.50 for the physics foundation batch" }
+        } };
+        return points;
+    }
 }

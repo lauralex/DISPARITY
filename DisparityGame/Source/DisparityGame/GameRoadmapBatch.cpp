@@ -440,6 +440,46 @@ namespace DisparityGame
         return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
     }
 
+    std::array<uint32_t, V50PhysicsFoundationPointCount> EvaluateV50PhysicsFoundation(
+        const V50PhysicsFoundationMetrics& metrics)
+    {
+        std::array<uint32_t, V50PhysicsFoundationPointCount> results = {};
+        results[0] = TextContains("DisparityEngine/Source/Disparity/Physics/PhysicsWorld.h", "class PhysicsWorld") ? 1u : 0u;
+        results[1] = TextContains("DisparityEngine/Source/Disparity/Physics/PhysicsWorld.h", "PhysicsMaterial") &&
+            TextContains("DisparityEngine/Source/Disparity/Physics/PhysicsWorld.h", "PhysicsShape") ? 1u : 0u;
+        results[2] = metrics.Steps >= 1 && metrics.Substeps >= 1 &&
+            TextContains("DisparityEngine/Source/Disparity/Physics/PhysicsWorld.cpp", "MaxSubSteps") ? 1u : 0u;
+        results[3] = metrics.DynamicBodies >= 5 && metrics.StaticBodies >= 2 && metrics.Contacts >= 1 ? 1u : 0u;
+        results[4] = metrics.Raycasts >= 1 && metrics.Sweeps >= 1 && metrics.Overlaps >= 1 ? 1u : 0u;
+        results[5] = metrics.CharacterMoves >= 1 && metrics.CharacterGroundedMoves >= 1 ? 1u : 0u;
+        results[6] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Physics Foundation v50") ? 1u : 0u;
+        results[7] = metrics.PanelRows >= 8 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "PhysicsFoundationBodies##EngineServices") ? 1u : 0u;
+        results[8] = metrics.Contacts >= 1 && metrics.TriggerBodies >= 1 ? 1u : 0u;
+        results[9] = metrics.DebugLines >= 3 ? 1u : 0u;
+        results[10] = metrics.VisibleBodies >= 6 ? 1u : 0u;
+        results[11] = metrics.DynamicBodies >= 5 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "AddImpulse") ? 1u : 0u;
+        results[12] = metrics.TriggerBodies >= 1 && TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "V50 Rift Trigger") ? 1u : 0u;
+        results[13] = metrics.DebugLines >= 3 && metrics.VisibleBodies >= 6 ? 1u : 0u;
+        results[14] = metrics.CharacterGroundedMoves >= 1 ? 1u : 0u;
+        results[15] = metrics.VerificationAssets[0];
+        results[16] = metrics.VerificationAssets[1];
+        results[17] = metrics.VerificationAssets[2];
+        results[18] = metrics.VerificationAssets[3];
+        results[19] = metrics.VerificationAssets[4];
+        results[20] = metrics.VerificationAssets[5];
+        results[21] = TextContains("DisparityEngine/DisparityEngine.vcxproj", "PhysicsWorld.cpp") &&
+            TextContains("DisparityEngine/DisparityEngine.vcxproj", "PhysicsWorld.h") ? 1u : 0u;
+        results[22] = TextContains("DisparityEngine/Source/Disparity/Disparity.h", "PhysicsWorld.h") ? 1u : 0u;
+        results[23] = Disparity::Version::Minor >= 50 ? 1u : 0u;
+        return results;
+    }
+
+    uint32_t CountReadyV50PhysicsFoundationPoints(
+        const std::array<uint32_t, V50PhysicsFoundationPointCount>& results)
+    {
+        return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
+    }
+
     void CaptureV39RoadmapStats(
         EditorVerificationStats& stats,
         const Disparity::RuntimeCommandRegistryDiagnostics& commandDiagnostics,
@@ -1207,6 +1247,72 @@ namespace DisparityGame
         for (size_t index = 0; index < v49Points.size(); ++index)
         {
             report << v49Points[index].Key << "=" << v49Results[index] << "\n";
+        }
+
+        const std::array<uint32_t, 6> v50VerificationAssets = {
+            TextContains("Assets/Verification/V50PhysicsFoundation.dfollowups", "v50_point_24_engine_version_bump") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeReportSchema.dschema", "v50_physics_foundation_points") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeBaseline.dverify", "min_v50_physics_foundation_points") &&
+                TextContains("Assets/Verification/CameraSweepBaseline.dverify", "min_v50_physics_foundation_points") &&
+                TextContains("Assets/Verification/EditorPrecisionBaseline.dverify", "min_v50_physics_foundation_points") &&
+                TextContains("Assets/Verification/PostDebugBaseline.dverify", "min_v50_physics_foundation_points") &&
+                TextContains("Assets/Verification/AssetReloadBaseline.dverify", "min_v50_physics_foundation_points") &&
+                TextContains("Assets/Verification/GizmoDragBaseline.dverify", "min_v50_physics_foundation_points") ? 1u : 0u,
+            TextContains("Tools/ReviewReleaseReadiness.ps1", "V50PhysicsFoundationPath") ? 1u : 0u,
+            TextContains("Tools/RuntimeVerifyDisparity.ps1", "v50_physics_foundation_points") &&
+                TextContains("Tools/SummarizePerformanceHistory.ps1", "v50_physics_foundation_points") ? 1u : 0u,
+            TextContains("README.md", "Engine v50 Physics Foundation Implemented") &&
+                TextContains("Docs/ROADMAP.md", "v50 Completed Physics Foundation Batch") &&
+                TextContains("Docs/ENGINE_FEATURES.md", "v50_physics_foundation_points") &&
+                TextContains("AGENTS.md", "Editor/runtime v50") ? 1u : 0u
+        };
+        const V50PhysicsFoundationMetrics v50Metrics = {
+            stats.V50PhysicsBodies,
+            stats.V50PhysicsDynamicBodies,
+            stats.V50PhysicsStaticBodies,
+            stats.V50PhysicsTriggerBodies,
+            stats.V50PhysicsSteps,
+            stats.V50PhysicsSubsteps,
+            stats.V50PhysicsContacts,
+            stats.V50PhysicsTriggerOverlaps,
+            stats.V50PhysicsRaycasts,
+            stats.V50PhysicsSweeps,
+            stats.V50PhysicsOverlaps,
+            stats.V50PhysicsCharacterMoves,
+            stats.V50PhysicsCharacterGroundedMoves,
+            stats.V50PhysicsDebugLines,
+            stats.V50PhysicsVisibleBodies,
+            stats.V50PhysicsPanelRows,
+            v50VerificationAssets
+        };
+        const auto v50Results = EvaluateV50PhysicsFoundation(v50Metrics);
+        const uint32_t v50VerificationReady = static_cast<uint32_t>(std::count(v50VerificationAssets.begin(), v50VerificationAssets.end(), 1u));
+        const uint32_t v50ReadyPoints = CountReadyV50PhysicsFoundationPoints(v50Results);
+
+        report << "v50_physics_bodies=" << v50Metrics.Bodies << "\n";
+        report << "v50_physics_dynamic_bodies=" << v50Metrics.DynamicBodies << "\n";
+        report << "v50_physics_static_bodies=" << v50Metrics.StaticBodies << "\n";
+        report << "v50_physics_trigger_bodies=" << v50Metrics.TriggerBodies << "\n";
+        report << "v50_physics_steps=" << v50Metrics.Steps << "\n";
+        report << "v50_physics_substeps=" << v50Metrics.Substeps << "\n";
+        report << "v50_physics_contacts=" << v50Metrics.Contacts << "\n";
+        report << "v50_physics_trigger_overlaps=" << v50Metrics.TriggerOverlaps << "\n";
+        report << "v50_physics_raycasts=" << v50Metrics.Raycasts << "\n";
+        report << "v50_physics_sweeps=" << v50Metrics.Sweeps << "\n";
+        report << "v50_physics_overlaps=" << v50Metrics.Overlaps << "\n";
+        report << "v50_physics_character_moves=" << v50Metrics.CharacterMoves << "\n";
+        report << "v50_physics_character_grounded_moves=" << v50Metrics.CharacterGroundedMoves << "\n";
+        report << "v50_physics_debug_lines=" << v50Metrics.DebugLines << "\n";
+        report << "v50_physics_visible_bodies=" << v50Metrics.VisibleBodies << "\n";
+        report << "v50_physics_panel_rows=" << v50Metrics.PanelRows << "\n";
+        report << "v50_verification_assets=" << v50VerificationReady << "\n";
+        report << "v50_docs_ready=" << v50VerificationAssets[5] << "\n";
+        report << "v50_physics_foundation_points=" << v50ReadyPoints << "\n";
+
+        const auto& v50Points = GetV50PhysicsFoundationPoints();
+        for (size_t index = 0; index < v50Points.size(); ++index)
+        {
+            report << v50Points[index].Key << "=" << v50Results[index] << "\n";
         }
     }
 }

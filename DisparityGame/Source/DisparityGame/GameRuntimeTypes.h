@@ -781,6 +781,7 @@ inline constexpr size_t V46CatalogActionPreviewPointCount = V46CatalogActionPrev
 inline constexpr size_t V47CatalogExecutionPointCount = V47CatalogExecutionBatchPointCount;
 inline constexpr size_t V48ActionDirectorPointCount = V48ActionDirectorBatchPointCount;
 inline constexpr size_t V49ActionMutationPointCount = V49ActionMutationBatchPointCount;
+inline constexpr size_t V50PhysicsFoundationPointCount = V50PhysicsFoundationBatchPointCount;
 inline constexpr size_t PublicDemoShardCount = 6;
 inline constexpr size_t PublicDemoAnchorCount = 3;
 inline constexpr size_t PublicDemoResonanceGateCount = 2;
@@ -1254,6 +1255,23 @@ struct EditorVerificationStats
     uint32_t V49MutationWaveGhosts = 0;
     uint32_t V49MutationPanelRows = 0;
     uint32_t V49ActionMutationPointTests = 0;
+    uint32_t V50PhysicsBodies = 0;
+    uint32_t V50PhysicsDynamicBodies = 0;
+    uint32_t V50PhysicsStaticBodies = 0;
+    uint32_t V50PhysicsTriggerBodies = 0;
+    uint32_t V50PhysicsSteps = 0;
+    uint32_t V50PhysicsSubsteps = 0;
+    uint32_t V50PhysicsContacts = 0;
+    uint32_t V50PhysicsTriggerOverlaps = 0;
+    uint32_t V50PhysicsRaycasts = 0;
+    uint32_t V50PhysicsSweeps = 0;
+    uint32_t V50PhysicsOverlaps = 0;
+    uint32_t V50PhysicsCharacterMoves = 0;
+    uint32_t V50PhysicsCharacterGroundedMoves = 0;
+    uint32_t V50PhysicsDebugLines = 0;
+    uint32_t V50PhysicsVisibleBodies = 0;
+    uint32_t V50PhysicsPanelRows = 0;
+    uint32_t V50PhysicsPointTests = 0;
 };
 
 }

@@ -27,6 +27,7 @@
 #include "Disparity/Editor/EditorOverlay.h"
 #include "Disparity/Editor/EditorPanelRegistry.h"
 #include "Disparity/Math/Transform.h"
+#include "Disparity/Physics/PhysicsWorld.h"
 #include "Disparity/Rendering/RenderGraph.h"
 #include "Disparity/Rendering/RenderGraphBudget.h"
 #include "Disparity/Rendering/Renderer.h"
