@@ -216,6 +216,22 @@ namespace DisparityGame
         std::array<uint32_t, 6> VerificationAssets = {};
     };
 
+    struct V51PhysicsIntegrationMetrics
+    {
+        uint32_t ContactEvents = 0;
+        uint32_t TriggerEvents = 0;
+        uint32_t LayerSummaries = 0;
+        uint32_t SnapshotCaptures = 0;
+        uint32_t SnapshotRestores = 0;
+        uint32_t DestructibleChunks = 0;
+        uint32_t VisibleChunks = 0;
+        uint32_t EventRows = 0;
+        uint32_t LayerRows = 0;
+        uint32_t EventMarkers = 0;
+        uint32_t SnapshotBodies = 0;
+        std::array<uint32_t, 6> VerificationAssets = {};
+    };
+
     [[nodiscard]] std::array<uint32_t, V39RoadmapPointCount> EvaluateV39RoadmapBatch(
         const V39RoadmapMetrics& metrics,
         const RuntimeBaseline& baseline);
@@ -262,6 +278,10 @@ namespace DisparityGame
         const V50PhysicsFoundationMetrics& metrics);
     [[nodiscard]] uint32_t CountReadyV50PhysicsFoundationPoints(
         const std::array<uint32_t, V50PhysicsFoundationPointCount>& results);
+    [[nodiscard]] std::array<uint32_t, V51PhysicsIntegrationPointCount> EvaluateV51PhysicsIntegration(
+        const V51PhysicsIntegrationMetrics& metrics);
+    [[nodiscard]] uint32_t CountReadyV51PhysicsIntegrationPoints(
+        const std::array<uint32_t, V51PhysicsIntegrationPointCount>& results);
     void CaptureV39RoadmapStats(
         EditorVerificationStats& stats,
         const Disparity::RuntimeCommandRegistryDiagnostics& commandDiagnostics,

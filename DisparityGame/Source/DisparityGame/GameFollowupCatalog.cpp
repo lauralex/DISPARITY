@@ -455,4 +455,35 @@ namespace DisparityGame
         } };
         return points;
     }
+
+    const std::array<GameFollowupPoint, V51PhysicsIntegrationBatchPointCount>& GetV51PhysicsIntegrationPoints()
+    {
+        static const std::array<GameFollowupPoint, V51PhysicsIntegrationBatchPointCount> points = { {
+            { "v51_point_01_engine_contact_event_stream", "Engine", "PhysicsWorld records collision contact events for gameplay systems" },
+            { "v51_point_02_engine_trigger_event_stream", "Engine", "PhysicsWorld records trigger overlaps as event records" },
+            { "v51_point_03_engine_layer_summary_api", "Engine", "PhysicsWorld exposes per-layer body summaries for filtering diagnostics" },
+            { "v51_point_04_engine_snapshot_capture", "Engine", "PhysicsWorld can capture deterministic body-state snapshots" },
+            { "v51_point_05_engine_snapshot_restore", "Engine", "PhysicsWorld can restore snapshots for replay and save/load probes" },
+            { "v51_point_06_engine_event_history_controls", "Engine", "PhysicsWorld exposes contact history access and clearing" },
+            { "v51_point_07_editor_physics_integration_panel", "Editor", "Engine Services panel displays Physics Integration v51 diagnostics" },
+            { "v51_point_08_editor_contact_event_table", "Editor", "Editor shows live contact and trigger event rows" },
+            { "v51_point_09_editor_layer_summary_table", "Editor", "Editor shows live physics layer summary rows" },
+            { "v51_point_10_editor_snapshot_controls", "Editor", "Editor exposes capture and restore controls for the physics preview" },
+            { "v51_point_11_editor_unique_imgui_ids", "Editor", "v51 physics integration controls use stable ImGui IDs" },
+            { "v51_point_12_game_destructible_chunks_visible", "Game", "Playable scene renders destructible physics chunk preview bodies" },
+            { "v51_point_13_game_event_markers_visible", "Game", "Playable scene renders collision and trigger event markers" },
+            { "v51_point_14_game_trigger_probe_visible", "Game", "Runtime preview includes a trigger probe body to exercise trigger events" },
+            { "v51_point_15_game_snapshot_replay_active", "Game", "Runtime preview captures and restores physics snapshots during verification" },
+            { "v51_point_16_game_layer_colored_markers", "Game", "Physics preview uses layer-aware colors for world, dynamic, trigger, and destructible bodies" },
+            { "v51_point_17_verification_manifest_gate", "Verification", "v51 physics integration manifest is present and reviewed" },
+            { "v51_point_18_verification_schema_gate", "Verification", "Runtime report schema includes v51 physics integration metrics" },
+            { "v51_point_19_verification_baseline_gate", "Verification", "Runtime baselines include v51 physics integration thresholds" },
+            { "v51_point_20_verification_release_gate", "Verification", "Release readiness includes the v51 physics integration manifest" },
+            { "v51_point_21_verification_performance_history_gate", "Verification", "Runtime and performance-history tooling track v51 physics integration metrics" },
+            { "v51_point_22_verification_runtime_assertions", "Verification", "Runtime verification asserts v51 events, snapshots, layers, and visible chunks" },
+            { "v51_point_23_docs_agent_roadmap_gate", "Docs", "README, feature guide, roadmap, and AGENTS document v51 physics integration" },
+            { "v51_point_24_engine_version_bump", "Engine", "Engine version advances to v0.51 for the physics integration batch" }
+        } };
+        return points;
+    }
 }

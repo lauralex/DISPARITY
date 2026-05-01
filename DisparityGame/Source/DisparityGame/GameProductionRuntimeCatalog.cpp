@@ -11,6 +11,11 @@ namespace DisparityGame
     namespace
     {
         constexpr float TwoPi = 6.28318530718f;
+        constexpr uint32_t PhysicsLayerDefault = 0x1u;
+        constexpr uint32_t PhysicsLayerWorld = 0x2u;
+        constexpr uint32_t PhysicsLayerDynamic = 0x4u;
+        constexpr uint32_t PhysicsLayerTrigger = 0x8u;
+        constexpr uint32_t PhysicsLayerDestructible = 0x20u;
 
         [[nodiscard]] Disparity::ProductionRuntimeAssetRule MakeRule(
             const char* path,
@@ -238,6 +243,22 @@ namespace DisparityGame
             stats.V50PhysicsPanelRows = std::max(stats.V50PhysicsPanelRows, state.PhysicsPanelRows);
         }
 
+        void ApplyPhysicsIntegrationStats(const ProductionCatalogPreviewState& state, EditorVerificationStats& stats)
+        {
+            const Disparity::PhysicsWorldDiagnostics diagnostics = state.PhysicsDiagnostics;
+            stats.V51PhysicsContactEvents = std::max(stats.V51PhysicsContactEvents, diagnostics.ContactEvents);
+            stats.V51PhysicsTriggerEvents = std::max(stats.V51PhysicsTriggerEvents, diagnostics.TriggerEvents);
+            stats.V51PhysicsLayerSummaries = std::max(stats.V51PhysicsLayerSummaries, diagnostics.LayerSummaries);
+            stats.V51PhysicsSnapshotCaptures = std::max(stats.V51PhysicsSnapshotCaptures, state.PhysicsSnapshotCaptures);
+            stats.V51PhysicsSnapshotRestores = std::max(stats.V51PhysicsSnapshotRestores, state.PhysicsSnapshotRestores);
+            stats.V51PhysicsDestructibleChunks = std::max(stats.V51PhysicsDestructibleChunks, state.PhysicsDestructibleChunks);
+            stats.V51PhysicsVisibleChunks = std::max(stats.V51PhysicsVisibleChunks, state.PhysicsVisibleChunks);
+            stats.V51PhysicsEventRows = std::max(stats.V51PhysicsEventRows, state.PhysicsEventRows);
+            stats.V51PhysicsLayerRows = std::max(stats.V51PhysicsLayerRows, state.PhysicsLayerRows);
+            stats.V51PhysicsEventMarkers = std::max(stats.V51PhysicsEventMarkers, state.PhysicsEventMarkers);
+            stats.V51PhysicsSnapshotBodies = std::max(stats.V51PhysicsSnapshotBodies, state.PhysicsSnapshotBodies);
+        }
+
         void EnsurePhysicsPreview(ProductionCatalogPreviewState& state)
         {
             if (state.PhysicsPreviewInitialized)
@@ -258,7 +279,8 @@ namespace DisparityGame
             floor.Motion = Disparity::PhysicsMotionType::Static;
             floor.Shape.HalfExtents = { 4.6f, 0.12f, 3.2f };
             floor.Position = { 0.0f, -0.12f, 0.0f };
-            floor.LayerMask = 0x1u;
+            floor.LayerMask = PhysicsLayerWorld;
+            floor.CollidesWith = PhysicsLayerDynamic | PhysicsLayerDestructible | PhysicsLayerDefault;
             (void)state.PhysicsPreviewWorld.AddBody(floor);
 
             Disparity::PhysicsBodyDesc ramp;
@@ -267,7 +289,8 @@ namespace DisparityGame
             ramp.Motion = Disparity::PhysicsMotionType::Static;
             ramp.Shape.HalfExtents = { 0.55f, 0.75f, 1.0f };
             ramp.Position = { -1.35f, 0.75f, 0.2f };
-            ramp.LayerMask = 0x1u;
+            ramp.LayerMask = PhysicsLayerWorld;
+            ramp.CollidesWith = PhysicsLayerDynamic | PhysicsLayerDestructible | PhysicsLayerDefault;
             (void)state.PhysicsPreviewWorld.AddBody(ramp);
 
             Disparity::PhysicsBodyDesc trigger;
@@ -278,7 +301,8 @@ namespace DisparityGame
             trigger.Shape.Type = Disparity::PhysicsShapeType::Sphere;
             trigger.Shape.Radius = 1.45f;
             trigger.Position = { 1.45f, 1.45f, 0.0f };
-            trigger.LayerMask = 0x4u;
+            trigger.LayerMask = PhysicsLayerTrigger;
+            trigger.CollidesWith = PhysicsLayerDynamic | PhysicsLayerDestructible;
             (void)state.PhysicsPreviewWorld.AddBody(trigger);
 
             for (uint32_t index = 0; index < 5; ++index)
@@ -295,7 +319,8 @@ namespace DisparityGame
                     0.72f + static_cast<float>(index) * 0.36f,
                     -0.42f + static_cast<float>(index / 2u) * 0.44f
                 };
-                crate.LayerMask = 0x1u;
+                crate.LayerMask = PhysicsLayerDynamic;
+                crate.CollidesWith = PhysicsLayerWorld | PhysicsLayerTrigger | PhysicsLayerDefault;
                 const Disparity::PhysicsBodyId id = state.PhysicsPreviewWorld.AddBody(crate);
                 state.PhysicsPreviewWorld.AddImpulse(id, {
                     0.20f + static_cast<float>(index) * 0.04f,
@@ -304,6 +329,62 @@ namespace DisparityGame
                 });
             }
 
+            Disparity::PhysicsBodyDesc breaker;
+            breaker.Name = "V51 Breakable Anchor";
+            breaker.StableId = 5101;
+            breaker.Motion = Disparity::PhysicsMotionType::Static;
+            breaker.Shape.HalfExtents = { 0.38f, 0.42f, 0.38f };
+            breaker.Position = { 0.9f, 0.42f, -1.05f };
+            breaker.LayerMask = PhysicsLayerWorld;
+            breaker.CollidesWith = PhysicsLayerDestructible | PhysicsLayerDynamic;
+            (void)state.PhysicsPreviewWorld.AddBody(breaker);
+
+            for (uint32_t index = 0; index < 8; ++index)
+            {
+                Disparity::PhysicsBodyDesc chunk;
+                chunk.Name = "V51 Destructible Chunk " + std::to_string(index + 1u);
+                chunk.StableId = 5110 + index;
+                chunk.Motion = Disparity::PhysicsMotionType::Dynamic;
+                chunk.Shape.HalfExtents = {
+                    0.16f + static_cast<float>(index % 3u) * 0.025f,
+                    0.14f + static_cast<float>(index % 2u) * 0.035f,
+                    0.16f
+                };
+                chunk.Material.Restitution = 0.24f;
+                chunk.Material.DynamicFriction = 0.28f;
+                chunk.Position = {
+                    0.52f + static_cast<float>(index % 4u) * 0.22f,
+                    1.05f + static_cast<float>(index / 4u) * 0.28f,
+                    -1.24f + static_cast<float>(index % 2u) * 0.34f
+                };
+                chunk.LayerMask = PhysicsLayerDestructible;
+                chunk.CollidesWith = PhysicsLayerWorld | PhysicsLayerTrigger;
+                const Disparity::PhysicsBodyId id = state.PhysicsPreviewWorld.AddBody(chunk);
+                state.PhysicsPreviewWorld.AddImpulse(id, {
+                    -0.42f + static_cast<float>(index % 4u) * 0.16f,
+                    0.34f + static_cast<float>(index / 4u) * 0.08f,
+                    0.22f - static_cast<float>(index % 3u) * 0.07f
+                });
+                ++state.PhysicsDestructibleChunks;
+            }
+
+            Disparity::PhysicsBodyDesc triggerProbe;
+            triggerProbe.Name = "V51 Trigger Probe";
+            triggerProbe.StableId = 5125;
+            triggerProbe.Motion = Disparity::PhysicsMotionType::Dynamic;
+            triggerProbe.Shape.Type = Disparity::PhysicsShapeType::Sphere;
+            triggerProbe.Shape.Radius = 0.22f;
+            triggerProbe.Material.Restitution = 0.05f;
+            triggerProbe.Position = { 1.25f, 1.42f, 0.05f };
+            triggerProbe.LayerMask = PhysicsLayerDestructible;
+            triggerProbe.CollidesWith = PhysicsLayerWorld | PhysicsLayerTrigger;
+            (void)state.PhysicsPreviewWorld.AddBody(triggerProbe);
+            ++state.PhysicsDestructibleChunks;
+
+            state.PhysicsSnapshot = state.PhysicsPreviewWorld.CaptureSnapshot();
+            state.PhysicsSnapshotValid = true;
+            state.PhysicsSnapshotBodies = static_cast<uint32_t>(state.PhysicsSnapshot.Bodies.size());
+            ++state.PhysicsSnapshotCaptures;
             state.PhysicsCharacter.Position = { -2.35f, 1.25f, -0.8f };
             state.PhysicsCharacter.Velocity = { 0.0f, 0.0f, 0.0f };
             state.PhysicsPreviewInitialized = true;
@@ -316,6 +397,20 @@ namespace DisparityGame
 
             state.PhysicsPreviewWorld.Step(1.0f / 60.0f);
             ++state.PhysicsPreviewFrames;
+            if (state.PhysicsSnapshotValid && state.PhysicsPreviewFrames == 42u)
+            {
+                if (state.PhysicsPreviewWorld.RestoreSnapshot(state.PhysicsSnapshot))
+                {
+                    ++state.PhysicsSnapshotRestores;
+                }
+            }
+            if (state.PhysicsPreviewFrames == 96u)
+            {
+                state.PhysicsSnapshot = state.PhysicsPreviewWorld.CaptureSnapshot();
+                state.PhysicsSnapshotBodies = static_cast<uint32_t>(state.PhysicsSnapshot.Bodies.size());
+                state.PhysicsSnapshotValid = true;
+                ++state.PhysicsSnapshotCaptures;
+            }
 
             Disparity::PhysicsRaycastHit hit;
             (void)state.PhysicsPreviewWorld.Raycast({ -3.25f, 1.2f, -0.2f }, { 1.0f, -0.08f, 0.1f }, 8.0f, hit, 0xffffffffu);
@@ -333,7 +428,14 @@ namespace DisparityGame
             state.PhysicsPanelRows = std::max(
                 state.PhysicsPanelRows,
                 static_cast<uint32_t>(std::min<size_t>(state.PhysicsPreviewWorld.GetBodies().size(), 8u)));
+            state.PhysicsEventRows = std::max(
+                state.PhysicsEventRows,
+                static_cast<uint32_t>(std::min<size_t>(state.PhysicsPreviewWorld.GetContactEvents().size(), 8u)));
+            state.PhysicsLayerRows = std::max(
+                state.PhysicsLayerRows,
+                static_cast<uint32_t>(std::min<size_t>(state.PhysicsPreviewWorld.BuildLayerSummaries().size(), 6u)));
             ApplyPhysicsFoundationStats(state, stats);
+            ApplyPhysicsIntegrationStats(state, stats);
         }
 
         void ApplyProductionActionDirectorMutations(
@@ -832,6 +934,7 @@ namespace DisparityGame
         ApplyActionDirectorStats(snapshot, state, stats);
         ApplyMutationDirectorStats(snapshot, state, stats);
         ApplyPhysicsFoundationStats(state, stats);
+        ApplyPhysicsIntegrationStats(state, stats);
     }
 
     void ExecuteProductionCatalogPreview(
@@ -929,6 +1032,97 @@ namespace DisparityGame
             ImGui::EndTable();
         }
         ApplyPhysicsFoundationStats(preview, stats);
+        ImGui::SeparatorText("Physics Integration v51");
+        ImGui::Text(
+            "Events: contacts %u  triggers %u  layers %u  chunks %u",
+            preview.PhysicsDiagnostics.ContactEvents,
+            preview.PhysicsDiagnostics.TriggerEvents,
+            preview.PhysicsDiagnostics.LayerSummaries,
+            preview.PhysicsDestructibleChunks);
+        ImGui::Text(
+            "Snapshots: captures %u  restores %u  bodies %u  visible chunks %u",
+            preview.PhysicsSnapshotCaptures,
+            preview.PhysicsSnapshotRestores,
+            preview.PhysicsSnapshotBodies,
+            preview.PhysicsVisibleChunks);
+        if (ImGui::Button("Capture Snapshot##PhysicsV51"))
+        {
+            preview.PhysicsSnapshot = preview.PhysicsPreviewWorld.CaptureSnapshot();
+            preview.PhysicsSnapshotBodies = static_cast<uint32_t>(preview.PhysicsSnapshot.Bodies.size());
+            preview.PhysicsSnapshotValid = true;
+            ++preview.PhysicsSnapshotCaptures;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Restore Snapshot##PhysicsV51") && preview.PhysicsSnapshotValid)
+        {
+            if (preview.PhysicsPreviewWorld.RestoreSnapshot(preview.PhysicsSnapshot))
+            {
+                ++preview.PhysicsSnapshotRestores;
+            }
+        }
+
+        const std::vector<Disparity::PhysicsLayerSummary> layerSummaries = preview.PhysicsPreviewWorld.BuildLayerSummaries();
+        if (ImGui::BeginTable(
+            "PhysicsLayers##EngineServices",
+            4,
+            ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp,
+            ImVec2(0.0f, 92.0f)))
+        {
+            ImGui::TableSetupColumn("Layer", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+            ImGui::TableSetupColumn("Mask", ImGuiTableColumnFlags_WidthFixed, 56.0f);
+            ImGui::TableSetupColumn("Bodies", ImGuiTableColumnFlags_WidthFixed, 56.0f);
+            ImGui::TableSetupColumn("Dyn", ImGuiTableColumnFlags_WidthFixed, 42.0f);
+            ImGui::TableHeadersRow();
+
+            const size_t rowCount = std::min<size_t>(layerSummaries.size(), 6u);
+            preview.PhysicsLayerRows += static_cast<uint32_t>(rowCount);
+            for (size_t index = 0; index < rowCount; ++index)
+            {
+                const Disparity::PhysicsLayerSummary& summary = layerSummaries[index];
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextUnformatted(summary.Name.c_str());
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("0x%X", summary.LayerMask);
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%u", summary.BodyCount);
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text("%u", summary.DynamicBodies);
+            }
+            ImGui::EndTable();
+        }
+
+        if (ImGui::BeginTable(
+            "PhysicsEvents##EngineServices",
+            4,
+            ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp,
+            ImVec2(0.0f, 110.0f)))
+        {
+            ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 56.0f);
+            ImGui::TableSetupColumn("A", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+            ImGui::TableSetupColumn("B", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+            ImGui::TableSetupColumn("Pen", ImGuiTableColumnFlags_WidthFixed, 48.0f);
+            ImGui::TableHeadersRow();
+
+            const auto& events = preview.PhysicsPreviewWorld.GetContactEvents();
+            const size_t rowCount = std::min<size_t>(events.size(), 8u);
+            preview.PhysicsEventRows += static_cast<uint32_t>(rowCount);
+            for (size_t index = 0; index < rowCount; ++index)
+            {
+                const Disparity::PhysicsContactEvent& event = events[events.size() - 1u - index];
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextUnformatted(event.Type == Disparity::PhysicsContactEventType::Trigger ? "Trig" : "Hit");
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextUnformatted(event.NameA.c_str());
+                ImGui::TableSetColumnIndex(2);
+                ImGui::TextUnformatted(event.NameB.c_str());
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text("%.2f", event.Penetration);
+            }
+            ImGui::EndTable();
+        }
+        ApplyPhysicsIntegrationStats(preview, stats);
 
         ImGui::SeparatorText("Production Catalogs v49 Live Mutations");
         ImGui::Text(
@@ -1229,9 +1423,12 @@ namespace DisparityGame
         TickPhysicsPreview(preview, stats);
 
         uint32_t physicsMarkers = 0;
+        uint32_t visibleChunks = 0;
         for (const Disparity::PhysicsBodyState& body : preview.PhysicsPreviewWorld.GetBodies())
         {
-            if (body.Name.rfind("V50", 0) != 0)
+            const bool isV50Body = body.Name.rfind("V50", 0) == 0;
+            const bool isV51Body = body.Name.rfind("V51", 0) == 0;
+            if (!isV50Body && !isV51Body)
             {
                 continue;
             }
@@ -1252,28 +1449,77 @@ namespace DisparityGame
                 extents = { body.Shape.Radius, body.Shape.HalfHeight + body.Shape.Radius, body.Shape.Radius };
             }
             transform.Scale = Scale(extents, 2.0f);
+            if (isV51Body)
+            {
+                transform.Scale = Scale(transform.Scale, body.Name.find("Destructible") != std::string::npos ? 1.18f : 0.92f);
+            }
             if (body.Trigger)
             {
                 transform.Scale = Scale(transform.Scale, 1.16f + 0.05f * std::sin(visualTime * 3.0f));
             }
 
             Disparity::Material material = baseMaterial;
-            const DirectX::XMFLOAT3 color = body.Trigger
+            DirectX::XMFLOAT3 color = body.Trigger
                 ? DirectX::XMFLOAT3{ 1.0f, 0.28f, 0.88f }
                 : (body.Motion == Disparity::PhysicsMotionType::Dynamic
                     ? DirectX::XMFLOAT3{ 0.22f, 0.86f, 1.0f }
                     : DirectX::XMFLOAT3{ 1.0f, 0.72f, 0.20f });
+            if (body.Name.find("Destructible") != std::string::npos)
+            {
+                color = { 0.52f, 1.0f, 0.24f };
+                ++visibleChunks;
+            }
+            else if (isV51Body)
+            {
+                color = { 1.0f, 0.48f, 0.16f };
+            }
             material.Albedo = color;
             material.Emissive = color;
             material.EmissiveIntensity = body.Trigger ? 1.6f : (body.Motion == Disparity::PhysicsMotionType::Dynamic ? 0.72f : 0.28f);
+            if (isV51Body)
+            {
+                material.EmissiveIntensity += 0.38f;
+            }
             material.Alpha = body.Trigger ? 0.38f : 0.82f;
             renderer.DrawMesh(mesh, transform, material);
             ++physicsMarkers;
         }
         preview.PhysicsVisibleBodies += physicsMarkers;
+        preview.PhysicsVisibleChunks += visibleChunks;
+
+        uint32_t eventMarkers = 0;
+        const auto& events = preview.PhysicsPreviewWorld.GetContactEvents();
+        const size_t markerCount = std::min<size_t>(events.size(), 10u);
+        for (size_t index = 0; index < markerCount; ++index)
+        {
+            const Disparity::PhysicsContactEvent& event = events[events.size() - 1u - index];
+            if (event.NameA.rfind("V51", 0) != 0 && event.NameB.rfind("V51", 0) != 0)
+            {
+                continue;
+            }
+
+            Disparity::Transform eventTransform;
+            eventTransform.Position = Add(center, Add(event.Point, { -3.9f, 0.38f + static_cast<float>(index) * 0.015f, 2.25f }));
+            const float pulse = 0.08f * std::sin(visualTime * 7.0f + static_cast<float>(index));
+            eventTransform.Scale = { 0.12f + pulse, 0.12f + pulse, 0.12f + pulse };
+            eventTransform.Rotation = { visualTime * 1.8f, visualTime * 0.9f, 0.0f };
+
+            Disparity::Material markerMaterial = baseMaterial;
+            const DirectX::XMFLOAT3 markerColor = event.Type == Disparity::PhysicsContactEventType::Trigger
+                ? DirectX::XMFLOAT3{ 1.0f, 0.16f, 0.92f }
+                : DirectX::XMFLOAT3{ 1.0f, 0.96f, 0.28f };
+            markerMaterial.Albedo = markerColor;
+            markerMaterial.Emissive = markerColor;
+            markerMaterial.EmissiveIntensity = 1.85f;
+            markerMaterial.Alpha = 0.88f;
+            renderer.DrawMesh(mesh, eventTransform, markerMaterial);
+            ++eventMarkers;
+        }
+        preview.PhysicsEventMarkers += eventMarkers;
         ApplyPhysicsFoundationStats(preview, stats);
+        ApplyPhysicsIntegrationStats(preview, stats);
 
         ApplyProductionCatalogPreviewStats(snapshot, preview, stats);
-        return beaconCount + executionMarkers + directorMarkers + mutationMarkers + physicsMarkers;
+        return beaconCount + executionMarkers + directorMarkers + mutationMarkers + physicsMarkers + eventMarkers;
     }
 }

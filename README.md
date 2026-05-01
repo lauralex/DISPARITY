@@ -61,7 +61,7 @@ Editor UI:
 - `Demo Director`: inspect the public vertical slice stage, objective distance, shard/anchor/gate/relay progress, checkpoint/retry/pressure/footstep/combo/collision/traversal/enemy/gamepad/audio/animation telemetry, recent gameplay events, and v30/v31/v32/v33 readiness while the demo is running.
 - `Renderer`: toggle VSync, tone mapping, shadows, CSM coverage, clustered lights, bloom, SSAO, anti-aliasing, temporal AA, color grading, depth of field, lens dirt, cinematic overlays, and post debug views.
 - `Audio Mixer`: adjust master/bus volumes, mute buses, play generated UI/SFX/spatial test tones, optionally enable cinematic cue tones, inspect bus sends/meters/production counters, and store/recall a mixer snapshot.
-- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, public-demo event routes, the live v49 production catalog table/reload/preview/execution/Action Director mutation surface, and the v50 physics foundation diagnostics from one live readiness panel.
+- `Engine Services`: inspect registered services, telemetry counters/events, config variables, runtime commands, editor panel/workspace diagnostics, public-demo event routes, the live v49 production catalog table/reload/preview/execution/Action Director mutation surface, v50 physics foundation diagnostics, and v51 physics integration event/layer/snapshot rows from one live readiness panel.
 
 ## Engine v0 Features
 
@@ -70,6 +70,15 @@ Editor UI:
 - Keyboard and raw mouse input.
 - DirectX 11 renderer with depth, shaders, procedural meshes, materials, and directional lighting.
 - Third-person DISPARITY walking scene using procedural geometry only.
+
+## Engine v51 Physics Integration Implemented
+
+- Added `Assets/Verification/V51PhysicsIntegration.dfollowups`, a twenty-four-point batch that promotes the v50 preview solver into a more useful engine/editor/game integration surface.
+- `PhysicsWorld` now emits bounded contact and trigger event streams, reports collision-layer summaries, can clear event history, and can capture/restore deterministic snapshots for replay and editor tooling.
+- `GameProductionRuntimeCatalog.*` owns the source-split v51 preview: destructible green chunks, a trigger probe, snapshot capture/restore state, event-marker accounting, and runtime verification counters without growing `DisparityGame.cpp`.
+- `Engine Services > Production Catalogs v49 Live Mutations > Physics Integration v51` shows live contact/trigger rows, layer summaries, destructible chunk counts, and `Capture Snapshot` / `Restore Snapshot` controls.
+- The public scene now draws bright green v51 destructible chunk markers and contact/trigger event pips near the DISPARITY rift so the physics integration is visible during showcase/trailer capture.
+- Runtime reports, baselines, schema checks, release-readiness review, production-batch review, performance-history summaries, README, feature docs, roadmap, and AGENTS context now require `v51_physics_integration_points=24` plus contact/trigger/layer/snapshot/chunk/event metrics.
 
 ## Engine v50 Physics Foundation Implemented
 

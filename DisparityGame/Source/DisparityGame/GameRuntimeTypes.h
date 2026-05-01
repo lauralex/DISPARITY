@@ -782,6 +782,7 @@ inline constexpr size_t V47CatalogExecutionPointCount = V47CatalogExecutionBatch
 inline constexpr size_t V48ActionDirectorPointCount = V48ActionDirectorBatchPointCount;
 inline constexpr size_t V49ActionMutationPointCount = V49ActionMutationBatchPointCount;
 inline constexpr size_t V50PhysicsFoundationPointCount = V50PhysicsFoundationBatchPointCount;
+inline constexpr size_t V51PhysicsIntegrationPointCount = V51PhysicsIntegrationBatchPointCount;
 inline constexpr size_t PublicDemoShardCount = 6;
 inline constexpr size_t PublicDemoAnchorCount = 3;
 inline constexpr size_t PublicDemoResonanceGateCount = 2;
@@ -1272,6 +1273,18 @@ struct EditorVerificationStats
     uint32_t V50PhysicsVisibleBodies = 0;
     uint32_t V50PhysicsPanelRows = 0;
     uint32_t V50PhysicsPointTests = 0;
+    uint32_t V51PhysicsContactEvents = 0;
+    uint32_t V51PhysicsTriggerEvents = 0;
+    uint32_t V51PhysicsLayerSummaries = 0;
+    uint32_t V51PhysicsSnapshotCaptures = 0;
+    uint32_t V51PhysicsSnapshotRestores = 0;
+    uint32_t V51PhysicsDestructibleChunks = 0;
+    uint32_t V51PhysicsVisibleChunks = 0;
+    uint32_t V51PhysicsEventRows = 0;
+    uint32_t V51PhysicsLayerRows = 0;
+    uint32_t V51PhysicsEventMarkers = 0;
+    uint32_t V51PhysicsSnapshotBodies = 0;
+    uint32_t V51PhysicsIntegrationPointTests = 0;
 };
 
 }

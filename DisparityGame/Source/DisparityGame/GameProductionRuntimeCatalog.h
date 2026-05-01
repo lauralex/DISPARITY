@@ -64,7 +64,16 @@ namespace DisparityGame
         uint32_t PhysicsPreviewFrames = 0;
         uint32_t PhysicsVisibleBodies = 0;
         uint32_t PhysicsPanelRows = 0;
+        uint32_t PhysicsEventRows = 0;
+        uint32_t PhysicsLayerRows = 0;
+        uint32_t PhysicsSnapshotCaptures = 0;
+        uint32_t PhysicsSnapshotRestores = 0;
+        uint32_t PhysicsDestructibleChunks = 0;
+        uint32_t PhysicsVisibleChunks = 0;
+        uint32_t PhysicsEventMarkers = 0;
+        uint32_t PhysicsSnapshotBodies = 0;
         bool PhysicsPreviewInitialized = false;
+        bool PhysicsSnapshotValid = false;
         bool PreviewActive = true;
         bool ExecutionActive = false;
         bool DirectorActive = false;
@@ -75,6 +84,7 @@ namespace DisparityGame
         Disparity::PhysicsWorld PhysicsPreviewWorld;
         Disparity::PhysicsCharacterControllerState PhysicsCharacter;
         Disparity::PhysicsWorldDiagnostics PhysicsDiagnostics;
+        Disparity::PhysicsWorldSnapshot PhysicsSnapshot;
     };
 
     [[nodiscard]] std::vector<Disparity::ProductionRuntimeAssetRule> BuildProductionRuntimeCatalogRules();

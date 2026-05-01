@@ -93,6 +93,35 @@ namespace Disparity
         DirectX::XMFLOAT3 Normal = { 0.0f, 1.0f, 0.0f };
     };
 
+    enum class PhysicsContactEventType : uint8_t
+    {
+        Contact,
+        Trigger
+    };
+
+    struct PhysicsContactEvent
+    {
+        PhysicsContactEventType Type = PhysicsContactEventType::Contact;
+        PhysicsBodyId BodyA = InvalidPhysicsBodyId;
+        PhysicsBodyId BodyB = InvalidPhysicsBodyId;
+        uint64_t StableIdA = 0;
+        uint64_t StableIdB = 0;
+        std::string NameA;
+        std::string NameB;
+        DirectX::XMFLOAT3 Point = {};
+        DirectX::XMFLOAT3 Normal = { 0.0f, 1.0f, 0.0f };
+        float Penetration = 0.0f;
+    };
+
+    struct PhysicsLayerSummary
+    {
+        uint32_t LayerMask = 0;
+        std::string Name;
+        uint32_t BodyCount = 0;
+        uint32_t DynamicBodies = 0;
+        uint32_t TriggerBodies = 0;
+    };
+
     struct PhysicsCharacterControllerConfig
     {
         float Radius = 0.38f;
@@ -155,7 +184,21 @@ namespace Disparity
         uint32_t LayerRejects = 0;
         uint32_t Impulses = 0;
         uint32_t DebugLines = 0;
+        uint32_t ContactEvents = 0;
+        uint32_t TriggerEvents = 0;
+        uint32_t LayerSummaries = 0;
+        uint32_t SnapshotsCaptured = 0;
+        uint32_t SnapshotsRestored = 0;
         float SimulatedSeconds = 0.0f;
+    };
+
+    struct PhysicsWorldSnapshot
+    {
+        std::vector<PhysicsBodyState> Bodies;
+        PhysicsBodyId NextBodyId = 1u;
+        float Accumulator = 0.0f;
+        float SimulatedSeconds = 0.0f;
+        uint32_t StepCount = 0;
     };
 
     class PhysicsWorld
@@ -204,16 +247,28 @@ namespace Disparity
         [[nodiscard]] PhysicsWorldDiagnostics GetDiagnostics() const;
         [[nodiscard]] const std::vector<PhysicsBodyState>& GetBodies() const;
         [[nodiscard]] const std::vector<PhysicsDebugLine>& GetDebugLines() const;
+        [[nodiscard]] const std::vector<PhysicsContactEvent>& GetContactEvents() const;
+        [[nodiscard]] std::vector<PhysicsLayerSummary> BuildLayerSummaries() const;
+        [[nodiscard]] PhysicsWorldSnapshot CaptureSnapshot();
+        [[nodiscard]] bool RestoreSnapshot(const PhysicsWorldSnapshot& snapshot);
+        void ClearEventHistory();
 
     private:
         [[nodiscard]] PhysicsAabb ComputeAabb(const PhysicsBodyState& body) const;
         [[nodiscard]] bool AcceptLayer(const PhysicsBodyState& body, uint32_t layerMask);
+        void RecordContactEvent(
+            PhysicsContactEventType type,
+            const PhysicsBodyState& bodyA,
+            const PhysicsBodyState& bodyB,
+            const DirectX::XMFLOAT3& normal,
+            float penetration);
         void RebuildDiagnostics();
         void RebuildDebugLines();
 
         PhysicsWorldSettings m_settings;
         std::vector<PhysicsBodyState> m_bodies;
         std::vector<PhysicsDebugLine> m_debugLines;
+        std::vector<PhysicsContactEvent> m_contactEvents;
         PhysicsWorldDiagnostics m_diagnostics;
         PhysicsBodyId m_nextBodyId = 1u;
         float m_accumulator = 0.0f;

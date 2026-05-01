@@ -175,6 +175,35 @@ namespace Disparity
             }
             return { 0.0f, 0.0f, moving.Center.z < obstacle.Center.z ? -pushZ : pushZ };
         }
+
+        [[nodiscard]] std::string LayerName(uint32_t mask)
+        {
+            if (mask == 0x1u)
+            {
+                return "Default";
+            }
+            if (mask == 0x2u)
+            {
+                return "World";
+            }
+            if (mask == 0x4u)
+            {
+                return "Dynamic";
+            }
+            if (mask == 0x8u)
+            {
+                return "Trigger";
+            }
+            if (mask == 0x10u)
+            {
+                return "Player";
+            }
+            if (mask == 0x20u)
+            {
+                return "Destructible";
+            }
+            return "Custom";
+        }
     }
 
     void PhysicsWorld::Configure(const PhysicsWorldSettings& settings)
@@ -191,6 +220,7 @@ namespace Disparity
     {
         m_bodies.clear();
         m_debugLines.clear();
+        m_contactEvents.clear();
         m_diagnostics = {};
         m_accumulator = 0.0f;
         m_nextBodyId = 1u;
@@ -329,8 +359,10 @@ namespace Disparity
                     {
                         continue;
                     }
-                    if (!AcceptLayer(moving, obstacle.LayerMask) || !AcceptLayer(obstacle, moving.LayerMask))
+                    if ((moving.CollidesWith & obstacle.LayerMask) == 0u ||
+                        (obstacle.CollidesWith & moving.LayerMask) == 0u)
                     {
+                        ++m_diagnostics.LayerRejects;
                         continue;
                     }
 
@@ -345,6 +377,7 @@ namespace Disparity
                     if (moving.Trigger || obstacle.Trigger)
                     {
                         ++m_diagnostics.TriggerOverlaps;
+                        RecordContactEvent(PhysicsContactEventType::Trigger, moving, obstacle, { 0.0f, 1.0f, 0.0f }, 0.0f);
                         continue;
                     }
 
@@ -363,6 +396,7 @@ namespace Disparity
                     {
                         moving.Velocity.z = -moving.Velocity.z * moving.Material.Restitution;
                     }
+                    RecordContactEvent(PhysicsContactEventType::Contact, moving, obstacle, NormalizeOrForward(push), Length(push));
                     ++m_diagnostics.ContactPairs;
                 }
 
@@ -561,6 +595,15 @@ namespace Disparity
         PhysicsWorldDiagnostics diagnostics = m_diagnostics;
         diagnostics.BodyCount = static_cast<uint32_t>(m_bodies.size());
         diagnostics.DebugLines = static_cast<uint32_t>(m_debugLines.size());
+        diagnostics.ContactEvents = static_cast<uint32_t>(m_contactEvents.size());
+        diagnostics.TriggerEvents = static_cast<uint32_t>(std::count_if(
+            m_contactEvents.begin(),
+            m_contactEvents.end(),
+            [](const PhysicsContactEvent& event)
+            {
+                return event.Type == PhysicsContactEventType::Trigger;
+            }));
+        diagnostics.LayerSummaries = static_cast<uint32_t>(BuildLayerSummaries().size());
         return diagnostics;
     }
 
@@ -572,6 +615,69 @@ namespace Disparity
     const std::vector<PhysicsDebugLine>& PhysicsWorld::GetDebugLines() const
     {
         return m_debugLines;
+    }
+
+    const std::vector<PhysicsContactEvent>& PhysicsWorld::GetContactEvents() const
+    {
+        return m_contactEvents;
+    }
+
+    std::vector<PhysicsLayerSummary> PhysicsWorld::BuildLayerSummaries() const
+    {
+        std::vector<PhysicsLayerSummary> summaries;
+        for (const PhysicsBodyState& body : m_bodies)
+        {
+            auto found = std::find_if(summaries.begin(), summaries.end(), [&body](const PhysicsLayerSummary& summary)
+            {
+                return summary.LayerMask == body.LayerMask;
+            });
+            if (found == summaries.end())
+            {
+                summaries.push_back({ body.LayerMask, LayerName(body.LayerMask), 0u, 0u, 0u });
+                found = summaries.end() - 1;
+            }
+
+            ++found->BodyCount;
+            found->DynamicBodies += body.Motion == PhysicsMotionType::Dynamic ? 1u : 0u;
+            found->TriggerBodies += body.Trigger ? 1u : 0u;
+        }
+        return summaries;
+    }
+
+    PhysicsWorldSnapshot PhysicsWorld::CaptureSnapshot()
+    {
+        ++m_diagnostics.SnapshotsCaptured;
+        return {
+            m_bodies,
+            m_nextBodyId,
+            m_accumulator,
+            m_diagnostics.SimulatedSeconds,
+            m_diagnostics.StepCount
+        };
+    }
+
+    bool PhysicsWorld::RestoreSnapshot(const PhysicsWorldSnapshot& snapshot)
+    {
+        if (snapshot.NextBodyId == InvalidPhysicsBodyId)
+        {
+            return false;
+        }
+
+        m_bodies = snapshot.Bodies;
+        m_nextBodyId = std::max(1u, snapshot.NextBodyId);
+        m_accumulator = snapshot.Accumulator;
+        ++m_diagnostics.SnapshotsRestored;
+        m_diagnostics.SimulatedSeconds = snapshot.SimulatedSeconds;
+        m_diagnostics.StepCount = snapshot.StepCount;
+        RebuildDiagnostics();
+        RebuildDebugLines();
+        return true;
+    }
+
+    void PhysicsWorld::ClearEventHistory()
+    {
+        m_contactEvents.clear();
+        RebuildDiagnostics();
     }
 
     PhysicsAabb PhysicsWorld::ComputeAabb(const PhysicsBodyState& body) const
@@ -597,6 +703,32 @@ namespace Disparity
 
         ++m_diagnostics.LayerRejects;
         return false;
+    }
+
+    void PhysicsWorld::RecordContactEvent(
+        PhysicsContactEventType type,
+        const PhysicsBodyState& bodyA,
+        const PhysicsBodyState& bodyB,
+        const DirectX::XMFLOAT3& normal,
+        float penetration)
+    {
+        const DirectX::XMFLOAT3 point = Scale(Add(bodyA.Position, bodyB.Position), 0.5f);
+        m_contactEvents.push_back({
+            type,
+            bodyA.Id,
+            bodyB.Id,
+            bodyA.StableId,
+            bodyB.StableId,
+            bodyA.Name,
+            bodyB.Name,
+            point,
+            normal,
+            penetration
+        });
+        if (m_contactEvents.size() > 512u)
+        {
+            m_contactEvents.erase(m_contactEvents.begin(), m_contactEvents.begin() + 128);
+        }
     }
 
     void PhysicsWorld::RebuildDiagnostics()
@@ -625,6 +757,15 @@ namespace Disparity
         m_diagnostics.SleepingBodies = sleepingBodies;
         m_diagnostics.ActiveBodies = activeBodies;
         m_diagnostics.DebugLines = static_cast<uint32_t>(m_debugLines.size());
+        m_diagnostics.ContactEvents = static_cast<uint32_t>(m_contactEvents.size());
+        m_diagnostics.TriggerEvents = static_cast<uint32_t>(std::count_if(
+            m_contactEvents.begin(),
+            m_contactEvents.end(),
+            [](const PhysicsContactEvent& event)
+            {
+                return event.Type == PhysicsContactEventType::Trigger;
+            }));
+        m_diagnostics.LayerSummaries = static_cast<uint32_t>(BuildLayerSummaries().size());
     }
 
     void PhysicsWorld::RebuildDebugLines()

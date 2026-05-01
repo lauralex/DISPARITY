@@ -480,6 +480,54 @@ namespace DisparityGame
         return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
     }
 
+    std::array<uint32_t, V51PhysicsIntegrationPointCount> EvaluateV51PhysicsIntegration(
+        const V51PhysicsIntegrationMetrics& metrics)
+    {
+        std::array<uint32_t, V51PhysicsIntegrationPointCount> results = {};
+        results[0] = metrics.ContactEvents >= 1 &&
+            TextContains("DisparityEngine/Source/Disparity/Physics/PhysicsWorld.h", "PhysicsContactEvent") ? 1u : 0u;
+        results[1] = metrics.TriggerEvents >= 1 &&
+            TextContains("DisparityEngine/Source/Disparity/Physics/PhysicsWorld.cpp", "PhysicsContactEventType::Trigger") ? 1u : 0u;
+        results[2] = metrics.LayerSummaries >= 3 &&
+            TextContains("DisparityEngine/Source/Disparity/Physics/PhysicsWorld.h", "PhysicsLayerSummary") ? 1u : 0u;
+        results[3] = metrics.SnapshotCaptures >= 1 &&
+            TextContains("DisparityEngine/Source/Disparity/Physics/PhysicsWorld.h", "PhysicsWorldSnapshot") ? 1u : 0u;
+        results[4] = metrics.SnapshotRestores >= 1 &&
+            TextContains("DisparityEngine/Source/Disparity/Physics/PhysicsWorld.cpp", "RestoreSnapshot") ? 1u : 0u;
+        results[5] = TextContains("DisparityEngine/Source/Disparity/Physics/PhysicsWorld.h", "ClearEventHistory") &&
+            TextContains("DisparityEngine/Source/Disparity/Physics/PhysicsWorld.h", "GetContactEvents") ? 1u : 0u;
+        results[6] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Physics Integration v51") ? 1u : 0u;
+        results[7] = metrics.EventRows >= 1 &&
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "PhysicsEvents##EngineServices") ? 1u : 0u;
+        results[8] = metrics.LayerRows >= 3 &&
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "PhysicsLayers##EngineServices") ? 1u : 0u;
+        results[9] = metrics.SnapshotCaptures >= 1 && metrics.SnapshotRestores >= 1 &&
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Capture Snapshot##PhysicsV51") ? 1u : 0u;
+        results[10] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "Restore Snapshot##PhysicsV51") ? 1u : 0u;
+        results[11] = metrics.DestructibleChunks >= 8 && metrics.VisibleChunks >= 1 ? 1u : 0u;
+        results[12] = metrics.EventMarkers >= 1 &&
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "PhysicsEventMarkers") ? 1u : 0u;
+        results[13] = metrics.TriggerEvents >= 1 &&
+            TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "V51 Trigger Probe") ? 1u : 0u;
+        results[14] = metrics.SnapshotBodies >= 8 && metrics.SnapshotRestores >= 1 ? 1u : 0u;
+        results[15] = TextContains("DisparityGame/Source/DisparityGame/GameProductionRuntimeCatalog.cpp", "PhysicsLayerDestructible") ? 1u : 0u;
+        results[16] = metrics.VerificationAssets[0];
+        results[17] = metrics.VerificationAssets[1];
+        results[18] = metrics.VerificationAssets[2];
+        results[19] = metrics.VerificationAssets[3];
+        results[20] = metrics.VerificationAssets[4];
+        results[21] = TextContains("Tools/RuntimeVerifyDisparity.ps1", "v51_physics_integration_points") ? 1u : 0u;
+        results[22] = metrics.VerificationAssets[5];
+        results[23] = Disparity::Version::Minor >= 51 ? 1u : 0u;
+        return results;
+    }
+
+    uint32_t CountReadyV51PhysicsIntegrationPoints(
+        const std::array<uint32_t, V51PhysicsIntegrationPointCount>& results)
+    {
+        return static_cast<uint32_t>(std::count(results.begin(), results.end(), 1u));
+    }
+
     void CaptureV39RoadmapStats(
         EditorVerificationStats& stats,
         const Disparity::RuntimeCommandRegistryDiagnostics& commandDiagnostics,
@@ -1313,6 +1361,62 @@ namespace DisparityGame
         for (size_t index = 0; index < v50Points.size(); ++index)
         {
             report << v50Points[index].Key << "=" << v50Results[index] << "\n";
+        }
+
+        const std::array<uint32_t, 6> v51VerificationAssets = {
+            TextContains("Assets/Verification/V51PhysicsIntegration.dfollowups", "v51_point_24_engine_version_bump") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeReportSchema.dschema", "v51_physics_integration_points") ? 1u : 0u,
+            TextContains("Assets/Verification/RuntimeBaseline.dverify", "min_v51_physics_integration_points") &&
+                TextContains("Assets/Verification/CameraSweepBaseline.dverify", "min_v51_physics_integration_points") &&
+                TextContains("Assets/Verification/EditorPrecisionBaseline.dverify", "min_v51_physics_integration_points") &&
+                TextContains("Assets/Verification/PostDebugBaseline.dverify", "min_v51_physics_integration_points") &&
+                TextContains("Assets/Verification/AssetReloadBaseline.dverify", "min_v51_physics_integration_points") &&
+                TextContains("Assets/Verification/GizmoDragBaseline.dverify", "min_v51_physics_integration_points") ? 1u : 0u,
+            TextContains("Tools/ReviewReleaseReadiness.ps1", "V51PhysicsIntegrationPath") ? 1u : 0u,
+            TextContains("Tools/RuntimeVerifyDisparity.ps1", "v51_physics_integration_points") &&
+                TextContains("Tools/SummarizePerformanceHistory.ps1", "v51_physics_integration_points") ? 1u : 0u,
+            TextContains("README.md", "Engine v51 Physics Integration Implemented") &&
+                TextContains("Docs/ROADMAP.md", "v51 Completed Physics Integration Batch") &&
+                TextContains("Docs/ENGINE_FEATURES.md", "v51_physics_integration_points") &&
+                TextContains("AGENTS.md", "Editor/runtime v51") ? 1u : 0u
+        };
+        const V51PhysicsIntegrationMetrics v51Metrics = {
+            stats.V51PhysicsContactEvents,
+            stats.V51PhysicsTriggerEvents,
+            stats.V51PhysicsLayerSummaries,
+            stats.V51PhysicsSnapshotCaptures,
+            stats.V51PhysicsSnapshotRestores,
+            stats.V51PhysicsDestructibleChunks,
+            stats.V51PhysicsVisibleChunks,
+            stats.V51PhysicsEventRows,
+            stats.V51PhysicsLayerRows,
+            stats.V51PhysicsEventMarkers,
+            stats.V51PhysicsSnapshotBodies,
+            v51VerificationAssets
+        };
+        const auto v51Results = EvaluateV51PhysicsIntegration(v51Metrics);
+        const uint32_t v51VerificationReady = static_cast<uint32_t>(std::count(v51VerificationAssets.begin(), v51VerificationAssets.end(), 1u));
+        const uint32_t v51ReadyPoints = CountReadyV51PhysicsIntegrationPoints(v51Results);
+
+        report << "v51_physics_contact_events=" << v51Metrics.ContactEvents << "\n";
+        report << "v51_physics_trigger_events=" << v51Metrics.TriggerEvents << "\n";
+        report << "v51_physics_layer_summaries=" << v51Metrics.LayerSummaries << "\n";
+        report << "v51_physics_snapshot_captures=" << v51Metrics.SnapshotCaptures << "\n";
+        report << "v51_physics_snapshot_restores=" << v51Metrics.SnapshotRestores << "\n";
+        report << "v51_physics_destructible_chunks=" << v51Metrics.DestructibleChunks << "\n";
+        report << "v51_physics_visible_chunks=" << v51Metrics.VisibleChunks << "\n";
+        report << "v51_physics_event_rows=" << v51Metrics.EventRows << "\n";
+        report << "v51_physics_layer_rows=" << v51Metrics.LayerRows << "\n";
+        report << "v51_physics_event_markers=" << v51Metrics.EventMarkers << "\n";
+        report << "v51_physics_snapshot_bodies=" << v51Metrics.SnapshotBodies << "\n";
+        report << "v51_verification_assets=" << v51VerificationReady << "\n";
+        report << "v51_docs_ready=" << v51VerificationAssets[5] << "\n";
+        report << "v51_physics_integration_points=" << v51ReadyPoints << "\n";
+
+        const auto& v51Points = GetV51PhysicsIntegrationPoints();
+        for (size_t index = 0; index < v51Points.size(); ++index)
+        {
+            report << v51Points[index].Key << "=" << v51Results[index] << "\n";
         }
     }
 }

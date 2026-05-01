@@ -1016,6 +1016,44 @@ function Assert-RuntimeReportSchema {
             throw "Runtime verification report did not satisfy v50 physics metric '$metric'."
         }
     }
+    if ($Metrics.ContainsKey("v51_physics_integration_points") -and [int]$Metrics["v51_physics_integration_points"] -lt 24) {
+        throw "Runtime verification report did not verify all twenty-four v51 Physics Integration points."
+    }
+    foreach ($metric in ($Metrics.Keys | Where-Object { $_ -like "v51_point_*" })) {
+        if ([int]$Metrics[$metric] -lt 1) {
+            throw "Runtime verification report did not mark v51 readiness metric '$metric' ready."
+        }
+    }
+    foreach ($metric in @(
+        "v51_physics_contact_events",
+        "v51_physics_trigger_events",
+        "v51_physics_snapshot_captures",
+        "v51_physics_snapshot_restores",
+        "v51_physics_visible_chunks",
+        "v51_physics_event_rows",
+        "v51_physics_event_markers",
+        "v51_docs_ready"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 1) {
+            throw "Runtime verification report did not satisfy v51 physics integration metric '$metric'."
+        }
+    }
+    foreach ($metric in @(
+        "v51_physics_layer_summaries",
+        "v51_physics_layer_rows"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 3) {
+            throw "Runtime verification report recorded too few v51 physics layer values for '$metric'."
+        }
+    }
+    foreach ($metric in @(
+        "v51_physics_destructible_chunks",
+        "v51_physics_snapshot_bodies"
+    )) {
+        if ($Metrics.ContainsKey($metric) -and [int]$Metrics[$metric] -lt 8) {
+            throw "Runtime verification report recorded too few v51 destructible/snapshot values for '$metric'."
+        }
+    }
     if ($Metrics.ContainsKey("public_demo_blend_tree_clips") -and [int]$Metrics["public_demo_blend_tree_clips"] -lt 4) {
         throw "Runtime verification report recorded too few public demo blend-tree clips."
     }
@@ -1152,6 +1190,7 @@ if (!$DisablePerfHistory) {
     $historyHeader += ",v48_runtime_action_plans,v48_runtime_ready_action_plans,v48_high_impact_action_plans,v48_editor_visible_action_plans,v48_playable_action_plans,v48_action_director_requests,v48_action_director_queue_depth,v48_action_director_history_rows,v48_director_cinematic_bursts,v48_director_route_ribbons,v48_director_encounter_ghosts,v48_director_editor_queue_rows,v48_director_plan_summary_rows,v48_verification_assets,v48_docs_ready,v48_action_director_points"
     $historyHeader += ",v49_runtime_mutation_plans,v49_runtime_mutation_runtime_plans,v49_editor_mutation_plans,v49_gameplay_mutation_plans,v49_budget_bound_mutation_plans,v49_action_mutation_requests,v49_mutation_queue_depth,v49_engine_budget_mutations,v49_scheduler_budget_mutations,v49_streaming_budget_mutations,v49_render_budget_mutations,v49_editor_workspace_mutations,v49_editor_command_mutations,v49_trace_event_rows,v49_game_spawned_encounter_waves,v49_game_objective_route_mutations,v49_game_combat_sandbox_mutations,v49_mutation_world_bursts,v49_mutation_world_pillars,v49_mutation_wave_ghosts,v49_mutation_panel_rows,v49_verification_assets,v49_docs_ready,v49_action_mutation_points"
     $historyHeader += ",v50_physics_bodies,v50_physics_dynamic_bodies,v50_physics_static_bodies,v50_physics_trigger_bodies,v50_physics_steps,v50_physics_substeps,v50_physics_contacts,v50_physics_trigger_overlaps,v50_physics_raycasts,v50_physics_sweeps,v50_physics_overlaps,v50_physics_character_moves,v50_physics_character_grounded_moves,v50_physics_debug_lines,v50_physics_visible_bodies,v50_physics_panel_rows,v50_verification_assets,v50_docs_ready,v50_physics_foundation_points"
+    $historyHeader += ",v51_physics_contact_events,v51_physics_trigger_events,v51_physics_layer_summaries,v51_physics_snapshot_captures,v51_physics_snapshot_restores,v51_physics_destructible_chunks,v51_physics_visible_chunks,v51_physics_event_rows,v51_physics_layer_rows,v51_physics_event_markers,v51_physics_snapshot_bodies,v51_verification_assets,v51_docs_ready,v51_physics_integration_points"
     if (Test-Path -LiteralPath $HistoryPath) {
         $currentHeader = Get-Content -LiteralPath $HistoryPath -First 1
         if ($currentHeader -ne $historyHeader) {
@@ -1565,7 +1604,21 @@ if (!$DisablePerfHistory) {
         $metrics["v50_physics_panel_rows"],
         $metrics["v50_verification_assets"],
         $metrics["v50_docs_ready"],
-        $metrics["v50_physics_foundation_points"]
+        $metrics["v50_physics_foundation_points"],
+        $metrics["v51_physics_contact_events"],
+        $metrics["v51_physics_trigger_events"],
+        $metrics["v51_physics_layer_summaries"],
+        $metrics["v51_physics_snapshot_captures"],
+        $metrics["v51_physics_snapshot_restores"],
+        $metrics["v51_physics_destructible_chunks"],
+        $metrics["v51_physics_visible_chunks"],
+        $metrics["v51_physics_event_rows"],
+        $metrics["v51_physics_layer_rows"],
+        $metrics["v51_physics_event_markers"],
+        $metrics["v51_physics_snapshot_bodies"],
+        $metrics["v51_verification_assets"],
+        $metrics["v51_docs_ready"],
+        $metrics["v51_physics_integration_points"]
     ) | ForEach-Object {
         '"' + ([string]$_ -replace '"', '""') + '"'
     }

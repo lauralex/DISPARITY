@@ -26,6 +26,7 @@ namespace DisparityGame
 constexpr size_t V48ActionDirectorBatchPointCount = 24;
 constexpr size_t V49ActionMutationBatchPointCount = 24;
 constexpr size_t V50PhysicsFoundationBatchPointCount = 24;
+constexpr size_t V51PhysicsIntegrationBatchPointCount = 24;
 
     [[nodiscard]] const std::array<GameFollowupPoint, V36MixedBatchPointCount>& GetV36MixedBatchPoints();
     [[nodiscard]] const std::array<GameFollowupPoint, V38DiversifiedBatchPointCount>& GetV38DiversifiedBatchPoints();
@@ -41,4 +42,5 @@ constexpr size_t V50PhysicsFoundationBatchPointCount = 24;
 [[nodiscard]] const std::array<GameFollowupPoint, V48ActionDirectorBatchPointCount>& GetV48ActionDirectorPoints();
 [[nodiscard]] const std::array<GameFollowupPoint, V49ActionMutationBatchPointCount>& GetV49ActionMutationPoints();
 [[nodiscard]] const std::array<GameFollowupPoint, V50PhysicsFoundationBatchPointCount>& GetV50PhysicsFoundationPoints();
+[[nodiscard]] const std::array<GameFollowupPoint, V51PhysicsIntegrationBatchPointCount>& GetV51PhysicsIntegrationPoints();
 }
